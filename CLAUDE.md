@@ -528,10 +528,22 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 
 > **Autenticación de Git en esta máquina.** Credential Manager guarda de forma
 > global la cuenta `Riceious`, que no tiene permiso de escritura en este
-> repositorio. Está resuelto con configuración **local**:
+> repositorio. Se corrige con configuración **local**:
 > `credential.username = ZPSoftwareFastSolutions` en `.git/config`. Los demás
 > repositorios de la máquina no se ven afectados. Si aparece
 > `Permission denied to Riceious`, esa configuración local se perdió.
+>
+> **El push no se puede hacer desde una sesión de Claude Code.** Se comprobó el
+> 2026-09-09: la configuración local se había perdido, se restauró, y aun así
+> Credential Manager no tiene guardada la contraseña de
+> `ZPSoftwareFastSolutions` y abre un diálogo interactivo que la sesión no
+> puede atender. El push se queda colgado; con `GIT_TERMINAL_PROMPT=0` falla
+> con `could not read Password`. **Lo hace el usuario desde su terminal**, y
+> la primera vez GCM abrirá el navegador para autenticar.
+>
+> La lectura sí funciona sin credenciales porque el repositorio es público:
+> `git ls-remote` responde, lo que puede dar la falsa impresión de que el
+> acceso de escritura está resuelto.
 
 > **Vercel Authentication** protege las URL de despliegue con hash
 > (`gym-platform-<hash>-...`). **El enlace que se comparte con clientes es el
