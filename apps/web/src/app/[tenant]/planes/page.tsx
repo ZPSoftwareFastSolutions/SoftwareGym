@@ -36,7 +36,7 @@ export default async function PlansPage({ params }: TenantPageParams) {
         note={content.plansNote}
         slug={slug}
         eyebrow="Paquetes"
-        title="Elegí tu paquete"
+        title="Elige tu paquete"
       />
 
       {/* Categoría distinta de los paquetes: sección aparte, nunca en la misma

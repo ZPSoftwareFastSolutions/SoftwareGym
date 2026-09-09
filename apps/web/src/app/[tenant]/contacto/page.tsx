@@ -20,7 +20,7 @@ export default async function ContactPage({ params }: TenantPageParams) {
         slug={slug}
         eyebrow="Contacto"
         title="Estamos a un mensaje de distancia"
-        lead="Resolvé tus dudas antes de venir, o pasá directamente por recepción: no hace falta reservar."
+        lead="Resolvé tus dudas antes de venir, o pasa directamente por recepción: no hace falta reservar."
         breadcrumb={breadcrumb}
       />
 

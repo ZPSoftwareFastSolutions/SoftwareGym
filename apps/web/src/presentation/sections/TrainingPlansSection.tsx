@@ -44,7 +44,7 @@ export function TrainingPlansSection({
   plans,
   slug,
   eyebrow = 'Entrenamientos personalizados',
-  title = 'Descubrí el héroe que vive en vos',
+  title = 'Descubre el héroe que vive en ti',
   lead = 'Planes de entrenamiento con temática de superhéroes. Cada programa trae sus rutinas asignadas.',
   note,
 }: TrainingPlansSectionProps) {

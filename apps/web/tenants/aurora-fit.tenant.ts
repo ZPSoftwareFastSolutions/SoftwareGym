@@ -153,7 +153,7 @@ export const auroraFitTenant: TenantConfig = {
         '¿Por qué entrenar tenía que doler, apurar y competir? Aurora empezó en 2023 como respuesta a esa pregunta, en una sala prestada los martes por la tarde.',
       paragraphs: [
         'Hoy ocupamos una casa restaurada en la Recoleta, con tres salas y patio interno. Seguimos limitando las clases a diez personas porque es el número exacto en el que una profesora puede corregir a todo el mundo sin que nadie quede mirando desde el fondo.',
-        'No medimos el progreso en kilos levantados. Lo medimos en si podés agacharte sin pensarlo, dormir mejor y sostener una práctica que no se abandona en marzo. Eso lleva más tiempo y no queda tan bien en una foto.',
+        'No medimos el progreso en kilos levantados. Lo medimos en si puedes agacharte sin pensarlo, dormir mejor y sostener una práctica que no se abandona en marzo. Eso lleva más tiempo y no queda tan bien en una foto.',
         'Cada persona hace una clase de valoración antes de elegir disciplina. Nos interesa que entres en el grupo correcto desde el primer día, no que compres la membresía más cara.',
       ],
       values: [
@@ -229,7 +229,7 @@ export const auroraFitTenant: TenantConfig = {
       {
         id: 'membresias',
         name: 'Membresías',
-        description: 'Elegí con qué frecuencia querés practicar.',
+        description: 'Elige con qué frecuencia quieres practicar.',
         plans: [
           {
             id: 'clase-suelta',

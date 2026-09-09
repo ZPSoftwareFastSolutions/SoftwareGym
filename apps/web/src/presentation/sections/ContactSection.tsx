@@ -46,7 +46,7 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
         <SectionHeading
           eyebrow="Contacto"
           title="Hablemos"
-          lead="Escribinos, llamanos o pasá directamente. Estamos para responder cualquier duda antes de que te decidas."
+          lead="Escríbenos, llámanos o pasa directamente. Estamos para responder cualquier duda antes de que te decidas."
         />
 
         <div className="mt-14 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
@@ -94,12 +94,17 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
                 {showMap && (
                   <div className="mt-5 overflow-hidden rounded-[var(--t-radius-md)] border border-line">
                     {contact.mapEmbedUrl ? (
+                      // Google no ofrece variante oscura del mapa embebido, y un
+                      // rectángulo blanco sobre fondo carbón parte la página en
+                      // dos. Se atenúa por CSS: `map-embed` invierte y rota el
+                      // tono solo cuando el tenant es de tema oscuro, así que un
+                      // cliente de tema claro lo sigue viendo tal cual.
                       <iframe
                         src={contact.mapEmbedUrl}
                         title={`Ubicación de ${name}`}
                         loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        className="h-56 w-full border-0"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        className="map-embed h-56 w-full border-0"
                       />
                     ) : (
                       // Sin URL configurada se muestra un marcador de posición
@@ -140,7 +145,7 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
                 rel="noopener noreferrer"
               >
                 <div>
-                  <h3 className="t-h3">Escribinos</h3>
+                  <h3 className="t-h3">Escríbenos</h3>
                   <p className="mt-2 text-[0.88rem] text-muted">
                     Completá el formulario y te respondemos el mismo día.
                   </p>
@@ -198,7 +203,7 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
                   </label>
                   <select id="interes" name="interes" className={FIELD_CLASSES} defaultValue="">
                     <option value="" disabled>
-                      Elegí una opción
+                      Elige una opción
                     </option>
                     <option>Semana de prueba</option>
                     <option>Información de planes</option>

@@ -23,7 +23,7 @@ export default async function ServicesPage({ params }: TenantPageParams) {
       <PageHero
         slug={slug}
         eyebrow="Servicios"
-        title="Entrená con método, no por intuición"
+        title="Entrena con método, no por intuición"
         lead="Cada servicio tiene su propio espacio, su equipamiento y sus profesionales. Nada está improvisado."
         breadcrumb={breadcrumb}
       />
@@ -55,7 +55,7 @@ export default async function ServicesPage({ params }: TenantPageParams) {
           categories={content.products}
           contact={contact}
           eyebrow="Nuestros productos"
-          title="Calidad que podés confiar"
+          title="Calidad en la que puedes confiar"
           lead="Indumentaria, suplementación y accesorios disponibles en el mostrador del gimnasio."
         />
       )}

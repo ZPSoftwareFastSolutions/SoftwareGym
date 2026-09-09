@@ -21,9 +21,8 @@
  *
  * PENDIENTE DE CONFIRMAR POR ESCRITO CON EL CLIENTE — siguen siendo valores
  * heredados de la demostración y no deben tomarse como definitivos:
- *   · contact.email y contact.addressLine
+ *   · contact.email y la dirección exacta (contact.addressLine dice solo la ciudad)
  *   · hours.week / holidayNote
- *   · contact.mapEmbedUrl
  *   · content.about (relato, valores e hitos)
  *   · content.facilities, content.gallery, content.team, content.testimonials
  *   · content.hero.stats
@@ -83,11 +82,15 @@ export const miticoTenant: TenantConfig = {
       'Hola Mítico Fitness 👋 Quiero información sobre los paquetes y precios.',
     // PENDIENTE: confirmar con el cliente.
     email: 'hola@miticofitness.com',
-    addressLine: 'Av. Banzer 3er Anillo, Calle Los Cusis #240',
-    city: 'Santa Cruz de la Sierra',
+    addressLine: 'La Paz, Bolivia',
+    city: 'La Paz',
     country: 'Bolivia',
-    mapEmbedUrl: '',
-    mapLinkUrl: '',
+    // Mapa oficial del local. El recuadro se atenúa por CSS cuando el
+    // tenant es de tema oscuro: Google no sirve una variante oscura del
+    // embed, y un rectángulo blanco sobre fondo carbón parte la página.
+    mapEmbedUrl:
+      'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d927.4326416674123!2d-68.13122116825956!3d-16.503825761222917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x915f210016025b69%3A0x484d1d8a96c0313f!2sM%C3%ADtico%20Fitness!5e1!3m2!1ses-419!2sbo!4v1788959383433!5m2!1ses-419!2sbo',
+    mapLinkUrl: 'https://maps.app.goo.gl/?q=M%C3%ADtico+Fitness+La+Paz',
   },
 
   social: {
@@ -140,9 +143,9 @@ export const miticoTenant: TenantConfig = {
     title: 'Mítico Fitness — El dolor que sentirás hoy es la fuerza que sentirás mañana',
     titleTemplate: '%s | Mítico Fitness',
     description:
-      'Gimnasio en Santa Cruz de la Sierra. Paquetes mensuales desde 160 Bs, entrenamiento personalizado con rutinas temáticas, baile fitness, nutricionista y suplementación deportiva.',
+      'Gimnasio en La Paz. Paquetes mensuales desde 160 Bs, entrenamiento personalizado con rutinas temáticas, baile fitness, nutricionista y suplementación deportiva.',
     keywords: [
-      'gimnasio santa cruz',
+      'gimnasio la paz',
       'mítico fitness',
       'entrenamiento personalizado',
       'suplementos deportivos',
@@ -160,7 +163,7 @@ export const miticoTenant: TenantConfig = {
 
   content: {
     hero: {
-      eyebrow: 'Santa Cruz de la Sierra',
+      eyebrow: 'La Paz, Bolivia',
       title: 'Vamos con',
       titleAccent: 'todo',
       subtitle:
@@ -177,11 +180,11 @@ export const miticoTenant: TenantConfig = {
 
     about: {
       eyebrow: 'Mítico',
-      title: 'Descubrí el héroe que vive en vos',
+      title: 'Descubre el héroe que vive en ti',
       lead:
-        'Mítico Fitness es un gimnasio de Santa Cruz de la Sierra donde el entrenamiento se arma alrededor de la persona, no al revés.',
+        'Mítico Fitness es un gimnasio de La Paz donde el entrenamiento se arma alrededor de la persona, no al revés.',
       paragraphs: [
-        'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman baile fitness, nutricionista profesional o entrenador personal según lo que cada uno necesite. Podés empezar por un día y decidir después.',
+        'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman baile fitness, nutricionista profesional o entrenador personal según lo que cada uno necesite. Puedes empezar por un día y decidir después.',
         'El entrenamiento personalizado se organiza en rutinas con nombre propio —Batman, Gamora, Thor, Hulk, Capitana Marvel— que marcan el nivel y el enfoque de cada programa. No es decoración: cada rutina tiene una progresión distinta y un objetivo distinto.',
         'Además del entrenamiento, en el mostrador encontrás la suplementación y los accesorios que usamos y recomendamos: proteína, creatina, pre-entrenos, shakers y ropa deportiva de la casa.',
       ],
@@ -214,7 +217,7 @@ export const miticoTenant: TenantConfig = {
       milestones: [
         { year: '2019', text: 'Abrimos la primera sala de 180 m² con catorce máquinas.' },
         { year: '2021', text: 'Sumamos el área funcional y las primeras clases grupales.' },
-        { year: '2023', text: 'Mudanza a la sede actual sobre Av. Banzer: 1.200 m² en tres plantas.' },
+        { year: '2023', text: 'Mudanza a la sede actual: 1.200 m² en tres plantas.' },
         { year: '2025', text: 'Incorporamos evaluación de composición corporal para todos los socios.' },
         { year: '2026', text: 'Más de 2.400 socios activos y un equipo de 22 profesionales.' },
       ],
@@ -224,7 +227,7 @@ export const miticoTenant: TenantConfig = {
       {
         id: 'entrenamiento-personalizado',
         name: 'Entrenamiento personalizado',
-        summary: 'Descubrí el héroe que vive en vos.',
+        summary: 'Descubre el héroe que vive en ti.',
         description:
           'Cuatro planes con entrenador y seguimiento individual, cada uno con sus rutinas asignadas. Incluyen pre-entreno y batido semanal, y el plan Premium suma nutricionista profesional.',
         icon: 'trainer',
@@ -244,7 +247,7 @@ export const miticoTenant: TenantConfig = {
         name: 'Baile fitness',
         summary: 'Bachata, twerking y dance como parte del entrenamiento.',
         description:
-          'Disponible en los paquetes Fit Dance, Básico Dance, Mítico Fitness y Mítico Dance. Entrenás y bailás dentro de la misma membresía, sin pagar aparte.',
+          'Disponible en los paquetes Fit Dance, Básico Dance, Mítico Fitness y Mítico Dance. Entrenas y bailas dentro de la misma membresía, sin pagar aparte.',
         icon: 'group',
         highlights: ['Bachata y twerking', 'Incluido en paquetes Dance', 'Sin costo adicional'],
       },
@@ -339,7 +342,7 @@ export const miticoTenant: TenantConfig = {
         id: 'mensual-fit',
         name: 'Paquete Mensual Fit',
         description:
-          'Potenciá tus resultados con batidos semanales y asesoría nutricional profesional. Diseñados para quienes buscan un nivel superior de fitness.',
+          'Potencia tus resultados con batidos semanales y asesoría nutricional profesional. Diseñados para quienes buscan un nivel superior de fitness.',
         plans: [
           {
             id: 'fit',
@@ -542,7 +545,7 @@ export const miticoTenant: TenantConfig = {
       },
     ],
     plansNote:
-      'Todos los precios están en bolivianos. Podés pagar por QR o consultarnos por WhatsApp: te ayudamos a elegir el paquete que mejor se adapta a tus objetivos.',
+      'Todos los precios están en bolivianos. Puedes pagar por QR o consultarnos por WhatsApp: te ayudamos a elegir el paquete que mejor se adapta a tus objetivos.',
 
     /**
      * Programas de entrenamiento personalizado. No llevan nombre comercial:
@@ -766,7 +769,7 @@ export const miticoTenant: TenantConfig = {
       { id: 'g4', title: 'Clase de spinning', caption: 'Martes y jueves, 19:00', span: 1, seed: 58 },
       { id: 'g5', title: 'Cardio', caption: 'Ventanal norte al atardecer', span: 2, seed: 73 },
       { id: 'g6', title: 'Recuperación', caption: 'Movilidad y estiramiento asistido', span: 1, seed: 89 },
-      { id: 'g7', title: 'Recepción', caption: 'Entrada sobre Av. Banzer', span: 1, seed: 104 },
+      { id: 'g7', title: 'Recepción', caption: 'Entrada principal del gimnasio', span: 1, seed: 104 },
       { id: 'g8', title: 'Comunidad', caption: 'Reto mensual de fin de mes', span: 1, seed: 120 },
     ],
 
@@ -825,7 +828,7 @@ export const miticoTenant: TenantConfig = {
       {
         id: 'ts3',
         quote:
-          'Lo que más valoro es que siempre hay alguien en sala. No es el gimnasio donde entrás, hacés cualquier cosa y te vas. Te corrigen.',
+          'Lo que más valoro es que siempre hay alguien en sala. No es el gimnasio donde entras, haces cualquier cosa y te vas. Te corrigen.',
         author: 'Paola C.',
         context: 'Socia desde 2022 · Paquete Básico',
         rating: 5,
@@ -843,7 +846,7 @@ export const miticoTenant: TenantConfig = {
         id: 'pago',
         question: '¿Cómo puedo pagar?',
         answer:
-          'Podés pagar por QR. Si tenés dudas sobre qué paquete te conviene, escribinos por WhatsApp al 77700867 y te asesoramos antes de que pagues.',
+          'Puedes pagar por QR. Si tienes dudas sobre qué paquete te conviene, escríbenos por WhatsApp al 77700867 y te asesoramos antes de que pagues.',
       },
       {
         id: 'personalizado',
@@ -867,14 +870,14 @@ export const miticoTenant: TenantConfig = {
         id: 'suplementos',
         question: '¿Venden suplementos y productos?',
         answer:
-          'Sí, en el mostrador del gimnasio. Tenemos proteína, creatina, pre-entrenos, hidratación, shakers, tomatodos y las poleras de la casa. Consultanos por WhatsApp y te decimos qué hay disponible.',
+          'Sí, en el mostrador del gimnasio. Tenemos proteína, creatina, pre-entrenos, hidratación, shakers, tomatodos y las poleras de la casa. Consúltanos por WhatsApp y te decimos qué hay disponible.',
       },
     ],
 
     closingCta: {
       title: '¡Vamos con todo!',
       subtitle:
-        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Escribinos y armamos tu plan.',
+        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Escríbenos y armamos tu plan.',
       label: 'Consultar por WhatsApp',
     },
   },

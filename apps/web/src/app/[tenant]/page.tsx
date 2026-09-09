@@ -42,7 +42,7 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
           groups={content.planGroups.slice(0, 1)}
           note={content.plansNote}
           slug={slug}
-          lead="Elegí el paquete que se adapta a vos. Sin permanencia mínima."
+          lead="Elige el paquete que se adapta a ti. Sin permanencia mínima."
         />
       )}
 

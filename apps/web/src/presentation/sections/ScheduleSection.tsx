@@ -24,7 +24,7 @@ interface ScheduleSectionProps {
 export function ScheduleSection({
   hours,
   eyebrow = 'Horarios',
-  title = 'Cuándo podés venir',
+  title = 'Cuándo puedes venir',
   lead,
 }: ScheduleSectionProps) {
   return (

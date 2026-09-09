@@ -53,7 +53,7 @@ export function WhatsAppFab({ contact, name }: WhatsAppFabProps) {
           'hidden md:block',
         ].join(' ')}
       >
-        Escribinos por WhatsApp
+        Escríbenos por WhatsApp
       </span>
     </a>
   );

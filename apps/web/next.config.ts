@@ -8,6 +8,26 @@ import type { NextConfig } from 'next';
  * terceros ni estilos inline dinámicos. Si se añade analítica o un widget
  * externo, pasar primero a Content-Security-Policy-Report-Only.
  */
+
+/**
+ * Origen de Supabase, para `connect-src`.
+ *
+ * Sin esto la CSP bloquea en silencio todas las llamadas de autenticación: el
+ * formulario de acceso parece colgado y en la consola solo aparece un error de
+ * red. Se toma de la variable de entorno en vez de escribirlo a mano para que
+ * apuntar a otro proyecto no obligue a tocar la política.
+ */
+const SUPABASE_ORIGIN = (() => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!url) return '';
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+})();
+
+const connectSrc = ["'self'", SUPABASE_ORIGIN].filter(Boolean).join(' ');
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -25,7 +45,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      `connect-src ${connectSrc}`,
       "frame-src 'self' https://www.google.com https://maps.google.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",

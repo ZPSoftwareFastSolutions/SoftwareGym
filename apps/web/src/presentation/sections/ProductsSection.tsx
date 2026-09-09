@@ -37,7 +37,7 @@ export function ProductsSection({
   categories,
   contact,
   eyebrow = 'Productos',
-  title = 'Calidad que podés confiar',
+  title = 'Calidad en la que puedes confiar',
   lead,
 }: ProductsSectionProps) {
   const withItems = categories.filter((c) => c.items.length > 0);
@@ -122,7 +122,7 @@ export function ProductsSection({
         <Reveal delay={150}>
           <div className="mt-16 flex flex-col items-center gap-5 text-center">
             <p className="max-w-xl text-[0.92rem] text-muted">
-              ¿Tenés preguntas? Escribinos por WhatsApp y te ayudamos a elegir los mejores
+              ¿Tienes preguntas? Escríbenos por WhatsApp y te ayudamos a elegir los mejores
               productos para tus objetivos.
             </p>
             <LinkButton href={whatsappHref(contact)} variant="primary" size="lg" external glow>

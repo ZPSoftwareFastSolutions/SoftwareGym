@@ -8,9 +8,9 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · V2 arrancada en la rama
-> `feat/v2-plataforma`: esquema completo en Supabase con RLS y aislamiento
-> multi-tenant verificado. Sin backend ni UI todavía.
+> **Última actualización:** 2026-09-09 · V2 con login y registro funcionales,
+> ubicación en La Paz y textos en español neutro. Rama
+> `feat/v2-public-site`.
 
 ---
 
@@ -56,7 +56,7 @@ evoluciona; no se copia.
 |---|---|
 | Comentarios y documentación | **Español** |
 | Nombres de dominio y contenido (`PlanCard`, `tenant`, `plans`) | Inglés técnico |
-| Textos visibles al usuario final | Español rioplatense (voseo: "entrená", "elegí") |
+| Textos visibles al usuario final | **Español neutro (Bolivia)**: "entrena", "elige", "puedes". Sin voseo rioplatense. |
 | Mensajes de commit | Español, con cuerpo explicando **por qué** |
 
 Los comentarios explican **por qué**, nunca **qué**. Un comentario que
@@ -415,6 +415,116 @@ Lo construido es la base sobre la que todo eso se apoya.
    tanto se incumple la regla §47 del documento maestro.
 3. **La prueba de aislamiento es manual.** Automatizarla en CI es lo primero:
    una prueba que no corre sola se degrada.
+
+### V2 · Fase 2 — Login y registro funcionales ✅ 2026-09-09
+
+Ya se puede entrar al sistema. `/[tenant]/acceso` autentica de verdad y
+`/[tenant]/panel` es la primera ruta protegida.
+
+#### Cómo está armado
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| Validación de forma | `core/application/auth/login.usecase.ts` | Sin framework, sin I/O |
+| Acciones de servidor | `app/[tenant]/acceso/actions.ts` | Todo lo que decide algo |
+| Cliente de Supabase | `infrastructure/auth/supabase.server.ts` | Solo servidor |
+| Endurecimiento de cookie | `infrastructure/auth/cookie-options.ts` | `HttpOnly`, `Secure`, `SameSite=Lax` |
+| Renovación de sesión | `src/middleware.ts` | Refresca el token; **no autoriza** |
+| Formulario | `presentation/patterns/AccessForm.tsx` | Único componente de cliente |
+| Alta de perfil | Disparador `app.handle_new_auth_user` | Asigna tenant y rol |
+
+#### Las tres decisiones de seguridad que importan
+
+**1. El gimnasio sale de la ruta, no del formulario.** `tenantSlug` se
+re-resuelve en el servidor contra el registro de tenants. Es la regla §11
+aplicada al registro: el tenant nunca es dato del cliente.
+
+**2. El rol se escribe en el disparador, jamás se lee de los metadatos.**
+Ahí está la diferencia entre «el usuario pide» y «el sistema concede». Se
+verificó atacando el disparador directamente con metadatos falsificados
+(`role: super_admin`, `roles: [manager, super_admin]`, `customer_id` ajeno,
+`is_platform_admin: true`): el resultado fue rol `customer` y `customer_id`
+nulo. Lo único que se honra es el slug —validado contra la tabla— y el nombre.
+
+**3. La cookie es `HttpOnly`, y eso hubo que forzarlo.** `@supabase/ssr` no la
+marca así por defecto, porque su caso general contempla un cliente de Supabase
+en el navegador. Aquí no lo hay. **Se detectó en la prueba**: `document.cookie`
+devolvía el token de acceso *y el de refresco*. Con `'unsafe-inline'` todavía
+en la política de scripts, un XSS se habría llevado la sesión entera y podría
+renovarla indefinidamente. Corregido en `cookie-options.ts`, aplicado tanto en
+el cliente de servidor como en el middleware —si el middleware reescribiera la
+cookie con las opciones por defecto, desharía el `HttpOnly` en la siguiente
+renovación—.
+
+#### Otras decisiones
+
+- **`getUser()`, nunca `getSession()`** para decidir accesos: `getSession()`
+  devuelve lo que venga en la cookie sin validar la firma.
+- **El middleware no autoriza.** Renueva la cookie. Su `matcher` puede dejar
+  rutas fuera, y confiarle la autorización es cómo se abren huecos. Cada página
+  protegida comprueba por su cuenta, y por debajo está RLS.
+- **`connect-src` de la CSP incluye el origen de Supabase.** Sin eso la
+  política bloqueaba las llamadas de autenticación en silencio: el formulario
+  parecía colgado.
+- **El mensaje de error no distingue** entre correo inexistente y contraseña
+  incorrecta: distinguir convierte el formulario en un comprobador de qué
+  correos están registrados en el gimnasio.
+- **El cierre de sesión es un POST**, no un enlace: una acción que cambia
+  estado no puede dispararse con una precarga del navegador.
+
+#### Datos de demostración
+
+10 socios de Mítico con membresía y pago, repartidos a propósito entre los tres
+estados que la vista calcula: **2 vencidas, 2 por vencer, 6 activas**.
+
+Contraseña de todos: `Demo.Mitico.2026`
+Correos: `nombre.apellido@demo.miticofitness.com`
+
+> Esos 10 se insertaron directamente en `auth.users`, y por eso funcionan pese
+> a que Supabase rechaza el dominio `demo.miticofitness.com` como no
+> entregable. El registro **por el formulario** sí valida el dominio: se probó
+> y devuelve `email_address_invalid`. Para probar el alta hay que usar un
+> dominio real.
+
+Dos tropiezos que costaron encontrar y conviene no repetir:
+
+1. **Insertar en `auth.users` a mano deja columnas de token en NULL**
+   (`confirmation_token`, `recovery_token`, `email_change_token_new`,
+   `email_change`). GoTrue las lee como cadenas y el login falla con un 500
+   genérico: `converting NULL to string is unsupported`. Hay que ponerlas a `''`
+   y crear además la fila en `auth.identities`.
+2. **El filtro de mapa oscuro habitual (`invert` + `hue-rotate`) no sirve aquí.**
+   El embebido es vista satelital, y una foto aérea invertida queda en negativo,
+   no oscura. Se sustituyó por atenuación (`brightness`/`contrast`/`saturate`)
+   tras verlo en pantalla.
+
+#### Verificación de seguridad
+
+| Prueba | Resultado |
+|---|---|
+| Panel sin sesión | 307 → `/acceso` |
+| Cookie legible por JavaScript | Ninguna |
+| Token en `localStorage`/`sessionStorage` | Ninguno |
+| `service_role` o JWT en el paquete del navegador | No aparece |
+| Socio autenticado lista socios | Solo el suyo (1 de 10) |
+| Socio lista pagos / membresías / usuarios | Solo los suyos |
+| Socio lee la bitácora | 0 filas |
+| Socio se autoconcede rol de gerente | Bloqueado por RLS |
+| Socio registra un cobro | Bloqueado por RLS |
+| Socio extiende su membresía | Sin fila actualizable |
+| Socio cambia su propio tenant | Sin fila actualizable |
+| Socio se vincula a la ficha de otro | Sin fila actualizable |
+| Socio crea un permiso nuevo | Bloqueado por RLS |
+| Alta con metadatos falsificados | Rol `customer`, ficha nula |
+| Fuerza bruta contra el alta | Cortada por el rate limit de Supabase |
+| `get_advisors(security)` | 1 aviso, abajo |
+
+#### Pendiente de seguridad
+
+**Activar «Leaked Password Protection»** en el panel de Supabase
+(Authentication → Policies). Comprueba las contraseñas contra
+HaveIBeenPwned y hoy está desactivado; es el único hallazgo abierto del
+analizador. No se puede cambiar desde esta sesión: es un ajuste del panel.
 
 ---
 

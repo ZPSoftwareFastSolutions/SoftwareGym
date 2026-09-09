@@ -453,6 +453,41 @@ ol {
 }
 
 /* ===========================================================================
+   MAPA EMBEBIDO
+
+   Google Maps no sirve una variante oscura del iframe embebido, y no se puede
+   restilar desde fuera porque es otro origen. Un recuadro blanco sobre el
+   fondo carbón de un tenant oscuro parte la página en dos.
+
+   La única palanca desde este lado es un filtro CSS.
+
+   El truco habitual es `invert() hue-rotate()`, que funciona bien sobre el
+   mapa de calles. Aquí NO: el embebido de Mítico es vista satelital, y una
+   fotografía aérea invertida no queda oscura, queda en negativo —tejados
+   claros, vegetación malva, un desastre lavado—. Se comprobó en pantalla
+   antes de descartarlo.
+
+   Lo que sí funciona sobre imagen real es atenuarla: bajar el brillo para que
+   se asiente en el fondo carbón, subir un punto el contraste para que no se
+   empaste, y quitar algo de saturación para que los colores del mapa no
+   compitan con el verde de la marca.
+
+   Solo se aplica a los tenants de tema oscuro: uno de tema claro debe ver el
+   mapa como es. Y se desactiva si el usuario pide más contraste, porque
+   oscurecer va justo en contra de esa preferencia.
+   ======================================================================== */
+
+[data-theme='dark'] .map-embed {
+  filter: brightness(0.68) contrast(1.08) saturate(0.75);
+}
+
+@media (prefers-contrast: more) {
+  [data-theme='dark'] .map-embed {
+    filter: none;
+  }
+}
+
+/* ===========================================================================
    IMPRESIÓN
    ======================================================================== */
 

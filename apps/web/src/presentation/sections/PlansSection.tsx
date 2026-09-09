@@ -42,7 +42,7 @@ export function PlansSection({
   note,
   slug,
   eyebrow = 'Planes',
-  title = 'Elegí cómo querés entrenar',
+  title = 'Elige cómo quieres entrenar',
   lead,
 }: PlansSectionProps) {
   const withPlans = groups.filter((g) => g.plans.length > 0);
