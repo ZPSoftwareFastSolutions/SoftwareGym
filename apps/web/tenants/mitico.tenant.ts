@@ -11,6 +11,24 @@
  *   Verde Estructural #38761D  — bloques y tarjetas de servicio
  *   Verde de Barra    #1E5128  — barras de título y controles superiores
  *   Blanco / Gris     #FFFFFF / #C1C1C1 — texto y detalles sutiles
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * ORIGEN DE LOS DATOS
+ *
+ * Precios, paquetes, productos, redes y WhatsApp provienen del material
+ * comercial de la empresa (`informacion_empresa.md`). Es información real.
+ *
+ * PENDIENTE DE CONFIRMAR POR ESCRITO CON EL CLIENTE — hoy son valores de
+ * relleno heredados de la demo y NO deben publicarse como definitivos:
+ *   · contact.email
+ *   · contact.addressLine
+ *   · hours.week / holidayNote  (por eso `showSchedule` está apagada)
+ *   · contact.mapEmbedUrl       (por eso `showLocationMap` está apagada)
+ *   · enlace del grupo de WhatsApp (el material lo lista sin URL)
+ *
+ * Las secciones sin información real —galería, instalaciones, equipo,
+ * testimonios— están apagadas por flag, lo que además hace que sus rutas
+ * respondan 404. No se dejan encendidas con contenido inventado.
  */
 
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
@@ -20,7 +38,7 @@ export const miticoTenant: TenantConfig = {
   slug: 'mitico',
   name: 'Mítico Fitness',
   legalName: 'Mítico Fitness S.R.L.',
-  tagline: 'Entrená como una leyenda',
+  tagline: 'El dolor que sentirás hoy es la fuerza que sentirás mañana',
 
   domains: ['miticofitness.com', 'www.miticofitness.com'],
 
@@ -60,10 +78,11 @@ export const miticoTenant: TenantConfig = {
   },
 
   contact: {
-    phone: '+591 700 12345',
-    whatsapp: '59170012345',
+    phone: '+591 77700867',
+    whatsapp: '59177700867',
     whatsappMessage:
-      'Hola Mítico Fitness 👋 Quiero información sobre las membresías y el pase de prueba.',
+      'Hola Mítico Fitness 👋 Quiero información sobre los paquetes y precios.',
+    // PENDIENTE: confirmar con el cliente.
     email: 'hola@miticofitness.com',
     addressLine: 'Av. Banzer 3er Anillo, Calle Los Cusis #240',
     city: 'Santa Cruz de la Sierra',
@@ -73,12 +92,13 @@ export const miticoTenant: TenantConfig = {
   },
 
   social: {
-    instagram: '',
-    facebook: '',
-    tiktok: '',
-    youtube: '',
+    facebook: 'https://www.facebook.com/profile.php?id=100067354614799',
+    instagram: 'https://www.instagram.com/mitico_fit/',
+    tiktok: 'https://www.tiktok.com/@mitico_fitness',
+    youtube: 'https://www.youtube.com/@miticofitness',
   },
 
+  // PENDIENTE: horarios reales. `showSchedule` está apagada hasta confirmarlos.
   hours: {
     timezone: 'America/La_Paz',
     week: [
@@ -87,41 +107,50 @@ export const miticoTenant: TenantConfig = {
       { day: 'Miércoles', open: '05:30', close: '23:00', closed: false },
       { day: 'Jueves', open: '05:30', close: '23:00', closed: false },
       { day: 'Viernes', open: '05:30', close: '23:00', closed: false },
-      { day: 'Sábado', open: '07:00', close: '20:00', closed: false, note: 'Horario continuo' },
-      { day: 'Domingo', open: '08:00', close: '14:00', closed: false, note: 'Solo sala de pesas' },
+      { day: 'Sábado', open: '07:00', close: '20:00', closed: false },
+      { day: 'Domingo', open: '08:00', close: '14:00', closed: false },
     ],
-    holidayNote: 'Feriados nacionales: 08:00 a 13:00. Se anuncia por redes con 48 h de aviso.',
   },
 
+  /**
+   * Menú de cuatro entradas tomado del material comercial de la empresa.
+   *
+   * Las etiquetas son las que usa el gimnasio; los segmentos son las rutas del
+   * producto. Que no coincidan es exactamente la razón por la que la
+   * navegación es dato y no código: otro cliente nombra las mismas rutas de
+   * otra forma sin que se toque un archivo de la aplicación.
+   */
   navigation: [
-    { label: 'Inicio', segment: '' },
-    { label: 'Nosotros', segment: 'nosotros' },
-    { label: 'Servicios', segment: 'servicios' },
-    { label: 'Planes', segment: 'planes', requiresFeature: 'showPlans' },
-    { label: 'Instalaciones', segment: 'instalaciones', requiresFeature: 'showFacilities' },
-    { label: 'Galería', segment: 'galeria', requiresFeature: 'showGallery' },
-    { label: 'Horarios', segment: 'horarios', requiresFeature: 'showSchedule' },
-    { label: 'Contacto', segment: 'contacto' },
+    { label: 'Mítico', segment: '' },
+    { label: 'Rutina', segment: 'planes', requiresFeature: 'showPlans' },
+    { label: 'Ejercicio', segment: 'servicios' },
+    { label: 'Información', segment: 'contacto' },
   ],
 
   features: {
     ...DEFAULT_FEATURE_FLAGS,
-    showTeam: true,
-    showLocationMap: true,
+    showProducts: true,
+    // Sin material real todavía: apagadas, y sus rutas responden 404.
+    showGallery: false,
+    showFacilities: false,
+    showSchedule: false,
+    showTeam: false,
+    showTestimonials: false,
+    showLocationMap: false,
   },
 
   seo: {
-    title: 'Mítico Fitness — Entrená como una leyenda',
+    title: 'Mítico Fitness — El dolor que sentirás hoy es la fuerza que sentirás mañana',
     titleTemplate: '%s | Mítico Fitness',
     description:
-      'Gimnasio premium en Santa Cruz de la Sierra. Musculación, funcional, clases grupales y entrenamiento personalizado con equipamiento de primer nivel y acompañamiento profesional.',
+      'Gimnasio en Santa Cruz de la Sierra. Paquetes mensuales desde 160 Bs, entrenamiento personalizado con rutinas temáticas, baile fitness, nutricionista y suplementación deportiva.',
     keywords: [
       'gimnasio santa cruz',
       'mítico fitness',
-      'entrenamiento funcional',
-      'musculación',
-      'clases grupales',
-      'entrenador personal',
+      'entrenamiento personalizado',
+      'suplementos deportivos',
+      'baile fitness',
+      'paquetes de gimnasio',
     ],
     locale: 'es_BO',
   },
@@ -134,386 +163,568 @@ export const miticoTenant: TenantConfig = {
 
   content: {
     hero: {
-      eyebrow: 'Santa Cruz de la Sierra · Desde 2019',
-      title: 'Forjá tu',
-      titleAccent: 'versión mítica',
+      eyebrow: 'Santa Cruz de la Sierra',
+      title: 'Vamos con',
+      titleAccent: 'todo',
       subtitle:
-        'Más de 1.200 m² de equipamiento premium, entrenadores certificados y una comunidad que no te deja aflojar. Tu primera semana es de cortesía.',
-      primaryCta: { label: 'Ver planes', segment: 'planes' },
-      secondaryCta: { label: 'Conocer el gimnasio', segment: 'instalaciones' },
+        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Entrenamiento personalizado, baile fitness, nutrición y suplementación en un solo lugar.',
+      primaryCta: { label: 'Ver paquetes', segment: 'planes' },
+      secondaryCta: { label: 'Hablar por WhatsApp', segment: 'contacto' },
       stats: [
-        { value: '1.200', label: 'm² de entrenamiento' },
-        { value: '+2.400', label: 'socios activos' },
-        { value: '18', label: 'clases semanales' },
-        { value: '6', label: 'años de trayectoria' },
+        { value: '17', label: 'paquetes disponibles' },
+        { value: '25', label: 'Bs desde, por sesión' },
+        { value: '10', label: 'rutinas con nombre propio' },
+        { value: '4', label: 'planes personalizados' },
       ],
     },
 
     about: {
-      eyebrow: 'Nosotros',
-      title: 'No vendemos membresías. Construimos hábitos.',
+      eyebrow: 'Mítico',
+      title: 'Descubrí el héroe que vive en vos',
       lead:
-        'Mítico nació en 2019 con una idea simple y difícil: que entrenar deje de ser una obligación y se convierta en la mejor hora de tu día.',
+        'Mítico Fitness es un gimnasio de Santa Cruz de la Sierra donde el entrenamiento se arma alrededor de la persona, no al revés.',
       paragraphs: [
-        'Empezamos con 180 m², catorce máquinas y una lista de espera que no dejaba de crecer. Seis años después ocupamos tres plantas sobre la Av. Banzer, pero seguimos midiendo el éxito de la misma manera: por la cantidad de socios que siguen entrenando con nosotros después del tercer año.',
-        'Cada persona que se inscribe pasa por una evaluación inicial sin costo. Medimos composición corporal, movilidad y antecedentes, y recién entonces armamos una rutina. No creemos en el plan genérico que se le entrega a todo el mundo por igual: el cuerpo que entra por la puerta nunca es el mismo que el anterior.',
-        'Nuestro equipo se forma de manera continua. Todos los entrenadores tienen certificación vigente y revisan sus programas cada trimestre con nuestro coordinador metodológico. Es más caro y más lento. También es la razón por la que la gente se queda.',
+        'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman baile fitness, nutricionista profesional o entrenador personal según lo que cada uno necesite. Podés empezar por un día y decidir después.',
+        'El entrenamiento personalizado se organiza en rutinas con nombre propio —Batman, Gamora, Thor, Hulk, Capitana Marvel— que marcan el nivel y el enfoque de cada programa. No es decoración: cada rutina tiene una progresión distinta y un objetivo distinto.',
+        'Además del entrenamiento, en el mostrador encontrás la suplementación y los accesorios que usamos y recomendamos: proteína, creatina, pre-entrenos, shakers y ropa deportiva de la casa.',
       ],
       values: [
         {
-          title: 'Método antes que moda',
+          title: 'Entrenamiento personalizado',
           description:
-            'Programación basada en evidencia, con progresiones medibles. Nada de tendencias que duran un verano.',
-          icon: 'shield',
-        },
-        {
-          title: 'Acompañamiento real',
-          description:
-            'Un entrenador en sala en todo momento. Si estás haciendo mal un movimiento, alguien te lo va a corregir.',
+            'Seguimiento individual y rutina asignada según tu nivel, incluido en todos los paquetes.',
           icon: 'trainer',
         },
         {
-          title: 'Comunidad que sostiene',
+          title: 'Nutrición profesional',
           description:
-            'Grupos por objetivo, retos mensuales y un ambiente donde el principiante entrena al lado del avanzado sin sentirse fuera de lugar.',
+            'Nutricionista disponible en los paquetes Fit, Mítico y en el plan personalizado Premium.',
+          icon: 'nutrition',
+        },
+        {
+          title: 'Baile fitness',
+          description:
+            'Bachata, twerking y dance como parte del entrenamiento en los paquetes Dance.',
           icon: 'group',
         },
         {
-          title: 'Equipamiento serio',
+          title: 'Suplementación',
           description:
-            'Máquinas de marcas líderes con mantenimiento preventivo mensual documentado. Si algo falla, se repara esa semana.',
-          icon: 'dumbbell',
+            'Proteína, creatina, pre-entrenos y aminoácidos disponibles en el gimnasio.',
+          icon: 'sparkle',
         },
       ],
-      milestones: [
-        { year: '2019', text: 'Abrimos la primera sala de 180 m² con catorce máquinas.' },
-        { year: '2021', text: 'Sumamos el área funcional y las primeras clases grupales.' },
-        { year: '2023', text: 'Mudanza a la sede actual sobre Av. Banzer: 1.200 m² en tres plantas.' },
-        { year: '2025', text: 'Incorporamos evaluación de composición corporal para todos los socios.' },
-        { year: '2026', text: 'Más de 2.400 socios activos y un equipo de 22 profesionales.' },
-      ],
+      milestones: [],
     },
 
     services: [
       {
-        id: 'musculacion',
-        name: 'Musculación',
-        summary: 'Sala de pesas con equipamiento profesional y programación individual.',
-        description:
-          'Peso libre, máquinas guiadas y zona de fuerza con plataformas olímpicas. Cada socio recibe una rutina progresiva revisada cada seis semanas según su avance real, no según el calendario.',
-        icon: 'dumbbell',
-        highlights: ['4 racks de potencia', 'Mancuernas de 2 a 50 kg', 'Rutina revisada cada 6 semanas'],
-      },
-      {
-        id: 'funcional',
-        name: 'Entrenamiento funcional',
-        summary: 'Circuitos de alta intensidad orientados al movimiento cotidiano.',
-        description:
-          'Trabajo con kettlebells, cuerdas, trineos y peso corporal en un área dedicada de 300 m². Ideal si buscás mejorar resistencia, coordinación y composición corporal sin pasar dos horas en sala.',
-        icon: 'boxing',
-        highlights: ['Sesiones de 45 minutos', 'Grupos de máximo 12 personas', 'Tres niveles de intensidad'],
-      },
-      {
-        id: 'clases',
-        name: 'Clases grupales',
-        summary: 'Dieciocho clases semanales incluidas en todos los planes mensuales.',
-        description:
-          'Spinning, GAP, HIIT, yoga y movilidad. Todas dictadas por instructores certificados, con cupo controlado para que nadie entrene apretado ni sin supervisión.',
-        icon: 'group',
-        highlights: ['18 clases por semana', 'Reserva desde el mostrador', 'Sin costo adicional'],
-      },
-      {
-        id: 'personalizado',
+        id: 'entrenamiento-personalizado',
         name: 'Entrenamiento personalizado',
-        summary: 'Un entrenador dedicado, sesión a sesión, con seguimiento documentado.',
+        summary: 'Descubrí el héroe que vive en vos.',
         description:
-          'Para quien vuelve de una lesión, prepara una competencia o simplemente necesita que alguien lleve el registro. Incluye planificación mensual, control de cargas y ajuste según respuesta.',
+          'Cuatro planes con entrenador y seguimiento individual, cada uno con sus rutinas asignadas. Incluyen pre-entreno y batido semanal, y el plan Premium suma nutricionista profesional.',
         icon: 'trainer',
-        highlights: ['1 a 1 o en dupla', 'Planificación mensual escrita', 'Control de cargas y progreso'],
+        highlights: ['Desde 220 Bs al mes', 'Rutinas con nombre propio', 'Seguimiento personal'],
+      },
+      {
+        id: 'acceso-gimnasio',
+        name: 'Acceso al gimnasio',
+        summary: 'Acceso completo a todas las máquinas, con horario flexible.',
+        description:
+          'Todos los paquetes mensuales incluyen acceso completo al gimnasio, horario flexible y uso de todas las máquinas, además del entrenamiento personalizado.',
+        icon: 'dumbbell',
+        highlights: ['Horario flexible', 'Todas las máquinas', 'Desde 160 Bs al mes'],
+      },
+      {
+        id: 'baile-fitness',
+        name: 'Baile fitness',
+        summary: 'Bachata, twerking y dance como parte del entrenamiento.',
+        description:
+          'Disponible en los paquetes Fit Dance, Básico Dance, Mítico Fitness y Mítico Dance. Entrenás y bailás dentro de la misma membresía, sin pagar aparte.',
+        icon: 'group',
+        highlights: ['Bachata y twerking', 'Incluido en paquetes Dance', 'Sin costo adicional'],
       },
       {
         id: 'nutricion',
         name: 'Asesoría nutricional',
-        summary: 'Plan alimentario compatible con tu entrenamiento y tu vida real.',
+        summary: 'Nutricionista profesional dentro del gimnasio.',
         description:
-          'Consultas con nutricionista deportivo dentro del gimnasio. Trabajamos sobre lo que efectivamente comés y comprás, no sobre una dieta ideal que se abandona en dos semanas.',
+          'Incluida en los paquetes Básico Fit, Mítico y Mítico Dance, y en el plan de entrenamiento personalizado Premium. El plan alimentario acompaña al entrenamiento, no lo contradice.',
         icon: 'nutrition',
-        highlights: ['Evaluación de composición corporal', 'Plan ajustado cada mes', 'Incluido en plan Leyenda'],
+        highlights: ['Nutricionista profesional', 'Incluida en varios paquetes', 'Seguimiento continuo'],
       },
       {
-        id: 'recuperacion',
-        name: 'Zona de recuperación',
-        summary: 'Movilidad, estiramiento asistido y masaje deportivo.',
+        id: 'suplementacion',
+        name: 'Suplementación y productos',
+        summary: 'Proteínas, pre-entrenos, aminoácidos y accesorios.',
         description:
-          'Un área que la mayoría de los gimnasios no tiene y que explica buena parte de la continuidad de nuestros socios: entrenar fuerte sirve de poco si no se recupera bien.',
-        icon: 'spa',
-        highlights: ['Estiramiento asistido', 'Masaje deportivo con turno', 'Rodillos y bandas libres'],
+          'Venta en el mostrador del gimnasio: proteína, creatina, pre-entrenos, hidratación y accesorios como shakers y tomatodos, además de la ropa deportiva de la casa.',
+        icon: 'sparkle',
+        highlights: ['Proteína y creatina', 'Pre-entrenos', 'Shakers y ropa deportiva'],
       },
     ],
 
-    plans: [
+    planGroups: [
       {
-        id: 'inicio',
-        name: 'Inicio',
-        tagline: 'Para empezar sin vueltas',
-        price: 180,
-        currency: 'Bs',
-        period: 'mensual',
-        featured: false,
-        features: [
-          { label: 'Acceso libre a sala de pesas', included: true },
-          { label: 'Rutina inicial personalizada', included: true },
-          { label: 'Evaluación de composición corporal', included: true },
-          { label: 'Acceso en horario completo', included: true },
-          { label: 'Clases grupales', included: false },
-          { label: 'Zona de recuperación', included: false },
-          { label: 'Asesoría nutricional', included: false },
+        id: 'paquetes-basicos',
+        name: 'Paquetes básicos',
+        description: 'Lo esencial para entrenar: acceso completo y entrenamiento personalizado.',
+        plans: [
+          {
+            id: 'mensual-basico',
+            name: 'Paquete Mensual Básico',
+            tagline: 'El punto de partida',
+            price: 160,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: true,
+            badge: 'Más popular',
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Nutricionista profesional', included: false },
+              { label: 'Batido semanal', included: false },
+              { label: 'Baile fitness', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'quincenal',
+            name: 'Paquete 15 días',
+            tagline: 'Para probar sin comprometerte al mes',
+            price: 110,
+            currency: 'Bs',
+            period: 'quincenal',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio por 15 días', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Nutricionista profesional', included: false },
+              { label: 'Batido semanal', included: false },
+              { label: 'Baile fitness', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'basico-fit',
+            name: 'Paquete Básico Fit',
+            tagline: 'Con nutricionista profesional',
+            price: 260,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Nutricionista profesional', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Batido semanal', included: false },
+              { label: 'Baile fitness', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
         ],
-        ctaLabel: 'Empezar ahora',
       },
       {
-        id: 'atleta',
-        name: 'Atleta',
-        tagline: 'El plan que elige el 70% de nuestros socios',
-        price: 260,
-        currency: 'Bs',
-        period: 'mensual',
-        compareAtPrice: 320,
-        featured: true,
-        badge: 'Más elegido',
-        features: [
-          { label: 'Todo lo del plan Inicio', included: true },
-          { label: 'Las 18 clases grupales semanales', included: true },
-          { label: 'Zona de recuperación y movilidad', included: true },
-          { label: 'Reprogramación de rutina cada 6 semanas', included: true },
-          { label: 'Invitá a un amigo una vez al mes', included: true },
-          { label: 'Asesoría nutricional', included: false },
-          { label: 'Entrenamiento personalizado', included: false },
+        id: 'paquetes-fit',
+        name: 'Paquetes Fit',
+        description: 'Suman batido semanal y baile fitness al entrenamiento.',
+        plans: [
+          {
+            id: 'fit',
+            name: 'Paquete Fit',
+            tagline: 'Entrenamiento con batido semanal',
+            price: 180,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: true,
+            badge: 'Más popular',
+            features: [
+              { label: 'Batido semanal', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Baile fitness', included: false },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'fit-dance',
+            name: 'Paquete Fit Dance',
+            tagline: 'Batido semanal y baile fitness',
+            price: 280,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Batido semanal', included: true },
+              { label: 'Baile fitness', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'basico-dance',
+            name: 'Paquete Básico Dance',
+            tagline: 'Baile fitness sin batido',
+            price: 250,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Baile fitness', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Batido semanal', included: false },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
         ],
-        ctaLabel: 'Quiero este plan',
       },
       {
-        id: 'leyenda',
-        name: 'Leyenda',
-        tagline: 'Acompañamiento completo, sin techo',
-        price: 420,
-        currency: 'Bs',
-        period: 'mensual',
-        featured: false,
-        badge: 'Premium',
-        features: [
-          { label: 'Todo lo del plan Atleta', included: true },
-          { label: '4 sesiones personalizadas al mes', included: true },
-          { label: 'Asesoría nutricional mensual', included: true },
-          { label: 'Masaje deportivo quincenal', included: true },
-          { label: 'Acceso prioritario a clases con cupo', included: true },
-          { label: 'Congelamiento de membresía hasta 15 días', included: true },
-          { label: 'Casillero personal asignado', included: true },
+        id: 'paquetes-mitico',
+        name: 'Paquetes Mítico',
+        description: 'La oferta completa: nutrición, baile y batido en la misma membresía.',
+        plans: [
+          {
+            id: 'mitico',
+            name: 'Mítico',
+            tagline: 'Nutrición y batido semanal',
+            price: 280,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Batido semanal', included: true },
+              { label: 'Nutricionista profesional', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Baile fitness', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'mitico-fitness',
+            name: 'Mítico Fitness',
+            tagline: 'Bachata y twerking incluidos',
+            price: 300,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Bachata', included: true },
+              { label: 'Twerking', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'mitico-dance',
+            name: 'Mítico Dance',
+            tagline: 'Todo incluido',
+            price: 380,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: true,
+            badge: 'Más popular',
+            features: [
+              { label: 'Baile fitness', included: true },
+              { label: 'Batido semanal', included: true },
+              { label: 'Nutricionista profesional', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+            ],
+            ctaLabel: 'Consultar',
+          },
         ],
-        ctaLabel: 'Hablar con un asesor',
+      },
+      {
+        id: 'entrenamiento-personalizado',
+        name: 'Entrenamiento personalizado',
+        description: 'Descubrí el héroe que vive en vos. Cada plan trae sus rutinas asignadas.',
+        plans: [
+          {
+            id: 'personalizado-basico',
+            name: 'Plan Básico',
+            tagline: 'Entrenamiento con seguimiento personal',
+            price: 220,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Seguimiento personal', included: true },
+              { label: '1 pre-entreno', included: true },
+              { label: '1 batido semanal', included: true },
+              { label: 'Entrenador personal dedicado', included: false },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+            routines: ['Rutina Batman', 'Rutina Gamora'],
+          },
+          {
+            id: 'personalizado-intermedio',
+            name: 'Plan Intermedio',
+            tagline: 'Doble pre-entreno',
+            price: 350,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: '2 pre-entrenos', included: true },
+              { label: '1 batido semanal', included: true },
+              { label: 'Entrenador personal dedicado', included: false },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+            routines: ['Rutina Capitán América', 'Rutina Capitana Marvel'],
+          },
+          {
+            id: 'personalizado-avanzado',
+            name: 'Plan Avanzado',
+            tagline: 'Con entrenador personal',
+            price: 400,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Entrenador personal', included: true },
+              { label: '2 pre-entrenos semanales', included: true },
+              { label: '1 batido semanal', included: true },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+            routines: ['Rutina Thor', 'Rutina Fénix'],
+          },
+          {
+            id: 'personalizado-premium',
+            name: 'Plan Premium',
+            tagline: 'Entrenador y nutricionista',
+            price: 480,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            badge: 'Completo',
+            features: [
+              { label: 'Entrenador personal', included: true },
+              { label: '2 pre-entrenos semanales', included: true },
+              { label: '1 batido semanal', included: true },
+              { label: 'Nutricionista profesional', included: true },
+            ],
+            ctaLabel: 'Consultar',
+            routines: ['Rutina Hulk', 'Rutina Mujer Maravilla'],
+          },
+        ],
+      },
+      {
+        id: 'paquetes-especiales',
+        name: 'Paquetes especiales',
+        description: 'Sesión suelta y planes extendidos, para quien prefiere pagar por adelantado.',
+        plans: [
+          {
+            id: 'sesion-individual',
+            name: 'Sesión Individual',
+            tagline: 'Un día, sin compromiso',
+            price: 25,
+            currency: 'Bs',
+            period: 'diario',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'trimestral',
+            name: 'Plan Trimestral',
+            tagline: 'Tres meses por adelantado',
+            price: 400,
+            currency: 'Bs',
+            period: 'trimestral',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'semestral',
+            name: 'Plan Semestral',
+            tagline: 'Seis meses por adelantado',
+            price: 800,
+            currency: 'Bs',
+            period: 'semestral',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'anual',
+            name: 'Plan Anual',
+            tagline: 'El año completo',
+            price: 1500,
+            currency: 'Bs',
+            period: 'anual',
+            featured: false,
+            badge: 'Mejor valor',
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+            ],
+            ctaLabel: 'Consultar',
+          },
+        ],
       },
     ],
     plansNote:
-      'Todos los planes incluyen la primera semana de cortesía y la evaluación inicial sin costo. Sin matrícula de inscripción ni permanencia mínima: si no te convence, se cancela y listo.',
+      'Todos los precios están en bolivianos. Podés pagar por QR o consultarnos por WhatsApp: te ayudamos a elegir el paquete que mejor se adapta a tus objetivos.',
 
-    facilities: [
+    products: [
       {
-        id: 'sala-pesas',
-        name: 'Sala de pesas',
+        id: 'indumentaria',
+        name: 'Poleras y ropa deportiva',
+        description: 'Indumentaria de la casa, con diseño propio.',
+        icon: 'sparkle',
+        items: [
+          { id: 'polera-blanca', name: 'Polera blanca con diseño', price: 35, currency: 'Bs' },
+          {
+            id: 'polera-negra',
+            name: 'Polera negra con diseño',
+            price: 40,
+            currency: 'Bs',
+            badge: 'Más popular',
+          },
+        ],
+      },
+      {
+        id: 'suplementos',
+        name: 'Suplementos deportivos',
         description:
-          'Planta principal de 520 m² con equipamiento de marcas líderes, cuatro racks de potencia y una zona de peso libre que no se satura ni en hora pico.',
-        area: '520 m²',
+          'Proteínas, pre-entrenos, aminoácidos y más para potenciar tus resultados.',
+        icon: 'nutrition',
+        items: [
+          { id: 'atp-force', name: 'ATP Force', price: 250, currency: 'Bs' },
+          { id: 'fema-trope', name: 'Fema Trope', price: 290, currency: 'Bs' },
+          { id: 'dry-up', name: 'Dry Up', price: 290, currency: 'Bs' },
+          { id: 'hydra', name: 'Hydra', price: 300, currency: 'Bs' },
+          {
+            id: 'pre-entreno-venom',
+            name: 'Pre-entreno Venom',
+            price: 350,
+            currency: 'Bs',
+            badge: 'Más popular',
+          },
+          { id: 'creatina', name: 'Creatina', price: 370, currency: 'Bs' },
+          {
+            id: 'proteina',
+            name: 'Proteína',
+            price: 460,
+            currency: 'Bs',
+            badge: 'Más popular',
+          },
+        ],
+      },
+      {
+        id: 'accesorios',
+        name: 'Accesorios de entrenamiento',
+        description: 'Equipo y accesorios para mejorar tu entrenamiento y estilo.',
         icon: 'dumbbell',
-        stats: [
-          { label: 'Racks de potencia', value: '4' },
-          { label: 'Estaciones', value: '62' },
-          { label: 'Mancuernas', value: '2–50 kg' },
-        ],
-      },
-      {
-        id: 'funcional',
-        name: 'Área funcional',
-        description:
-          'Espacio abierto con piso amortiguado, trineos, cuerdas de batalla y estructura de calistenia. Diseñado para circuitos y trabajo en grupo reducido.',
-        area: '300 m²',
-        icon: 'boxing',
-        stats: [
-          { label: 'Piso amortiguado', value: 'Sí' },
-          { label: 'Cupo por circuito', value: '12' },
-          { label: 'Kettlebells', value: '4–40 kg' },
-        ],
-      },
-      {
-        id: 'salon-clases',
-        name: 'Salón de clases',
-        description:
-          'Sala insonorizada con espejos de pared completa, sistema de audio profesional y climatización independiente. Sede de las dieciocho clases semanales.',
-        area: '180 m²',
-        icon: 'group',
-        stats: [
-          { label: 'Capacidad', value: '28' },
-          { label: 'Clases/semana', value: '18' },
-          { label: 'Climatización', value: 'Independiente' },
-        ],
-      },
-      {
-        id: 'cardio',
-        name: 'Zona de cardio',
-        description:
-          'Cintas, elípticos, remos y bicicletas de aire frente al ventanal norte. Cada equipo con pantalla propia y toma de carga.',
-        area: '140 m²',
-        icon: 'heart',
-        stats: [
-          { label: 'Equipos', value: '24' },
-          { label: 'Pantalla propia', value: 'Todos' },
-          { label: 'Luz natural', value: 'Ventanal norte' },
-        ],
-      },
-      {
-        id: 'recuperacion',
-        name: 'Zona de recuperación',
-        description:
-          'Área silenciosa para movilidad, estiramiento asistido y masaje deportivo con turno previo. Rodillos, bandas y camillas disponibles.',
-        area: '60 m²',
-        icon: 'spa',
-        stats: [
-          { label: 'Camillas', value: '3' },
-          { label: 'Turnos', value: 'Con reserva' },
-          { label: 'Uso libre', value: 'Rodillos y bandas' },
-        ],
-      },
-      {
-        id: 'vestuarios',
-        name: 'Vestuarios',
-        description:
-          'Vestuarios amplios con casilleros, duchas de agua caliente permanente y área de secado. Limpieza documentada tres veces al día.',
-        area: '110 m²',
-        icon: 'shield',
-        stats: [
-          { label: 'Casilleros', value: '160' },
-          { label: 'Duchas', value: '12' },
-          { label: 'Limpieza', value: '3×/día' },
+        items: [
+          { id: 'tomatodo-pequeno', name: 'Tomatodo pequeño', price: 50, currency: 'Bs' },
+          { id: 'tomatodo-grande', name: 'Tomatodo grande', price: 70, currency: 'Bs' },
+          { id: 'shaker', name: 'Shaker', price: 120, currency: 'Bs' },
         ],
       },
     ],
 
-    gallery: [
-      { id: 'g1', title: 'Sala principal', caption: 'Planta de pesas en horario pico', span: 2, seed: 11 },
-      { id: 'g2', title: 'Zona de fuerza', caption: 'Plataformas y racks de potencia', span: 1, seed: 27 },
-      { id: 'g3', title: 'Área funcional', caption: 'Circuito de alta intensidad', span: 1, seed: 42 },
-      { id: 'g4', title: 'Clase de spinning', caption: 'Martes y jueves, 19:00', span: 1, seed: 58 },
-      { id: 'g5', title: 'Cardio', caption: 'Ventanal norte al atardecer', span: 2, seed: 73 },
-      { id: 'g6', title: 'Recuperación', caption: 'Movilidad y estiramiento asistido', span: 1, seed: 89 },
-      { id: 'g7', title: 'Recepción', caption: 'Entrada sobre Av. Banzer', span: 1, seed: 104 },
-      { id: 'g8', title: 'Comunidad', caption: 'Reto mensual de fin de mes', span: 1, seed: 120 },
-    ],
-
-    team: [
-      {
-        id: 't1',
-        name: 'Camila Rojas',
-        role: 'Coordinadora metodológica',
-        bio: 'Licenciada en Ciencias del Deporte. Diseña y audita los programas de todos los entrenadores del equipo.',
-        specialties: ['Programación de fuerza', 'Readaptación'],
-        seed: 7,
-      },
-      {
-        id: 't2',
-        name: 'Diego Antelo',
-        role: 'Entrenador de fuerza',
-        bio: 'Ocho años en levantamiento olímpico. Lleva la zona de peso libre y la preparación de competidores.',
-        specialties: ['Levantamiento olímpico', 'Powerlifting'],
-        seed: 23,
-      },
-      {
-        id: 't3',
-        name: 'Valeria Suárez',
-        role: 'Instructora de clases grupales',
-        bio: 'Certificada en spinning, GAP y movilidad. Responsable del calendario semanal de clases.',
-        specialties: ['Spinning', 'HIIT', 'Movilidad'],
-        seed: 51,
-      },
-      {
-        id: 't4',
-        name: 'Martín Céspedes',
-        role: 'Nutricionista deportivo',
-        bio: 'Atiende dentro del gimnasio. Trabaja sobre hábitos reales y compras semanales, no sobre dietas ideales.',
-        specialties: ['Composición corporal', 'Nutrición deportiva'],
-        seed: 66,
-      },
-    ],
-
-    testimonials: [
-      {
-        id: 'ts1',
-        quote:
-          'Llevaba años empezando y dejando gimnasios. Acá me hicieron una evaluación, me armaron algo realista y por primera vez pasé del tercer mes. Ya van dos años.',
-        author: 'Andrea M.',
-        context: 'Socia desde 2024 · Plan Atleta',
-        rating: 5,
-      },
-      {
-        id: 'ts2',
-        quote:
-          'Volví de una lesión de rodilla con miedo. Diego me armó una progresión de seis meses y no tuve una sola recaída. El seguimiento fue serio de verdad.',
-        author: 'Rodrigo V.',
-        context: 'Socio desde 2023 · Plan Leyenda',
-        rating: 5,
-      },
-      {
-        id: 'ts3',
-        quote:
-          'Lo que más valoro es que siempre hay alguien en sala. No es el gimnasio donde entrás, hacés cualquier cosa y te vas. Te corrigen.',
-        author: 'Paola C.',
-        context: 'Socia desde 2022 · Plan Atleta',
-        rating: 5,
-      },
-    ],
+    // Sin material fotográfico ni datos verificados todavía. Las flags
+    // correspondientes están apagadas y las rutas responden 404.
+    facilities: [],
+    gallery: [],
+    team: [],
+    testimonials: [],
 
     faq: [
       {
-        id: 'f1',
-        question: '¿Necesito experiencia previa para empezar?',
+        id: 'empezar',
+        question: '¿Cuánto cuesta empezar?',
         answer:
-          'No. Más de la mitad de quienes se inscriben nunca pisaron un gimnasio. La evaluación inicial y la rutina de arranque están pensadas exactamente para ese caso, y siempre hay un entrenador en sala para corregirte.',
+          'La sesión individual cuesta 25 Bs y te da acceso completo al gimnasio por un día. Si preferís el mes, el Paquete Mensual Básico está en 160 Bs e incluye entrenamiento personalizado, horario flexible y acceso a todas las máquinas.',
       },
       {
-        id: 'f2',
-        question: '¿Hay permanencia mínima o matrícula de inscripción?',
+        id: 'pago',
+        question: '¿Cómo puedo pagar?',
         answer:
-          'Ninguna de las dos. No cobramos matrícula y podés cancelar cuando quieras avisando antes del cierre del período en curso. Preferimos que te quedes porque querés, no porque firmaste.',
+          'Podés pagar por QR. Si tenés dudas sobre qué paquete te conviene, escribinos por WhatsApp al 77700867 y te asesoramos antes de que pagues.',
       },
       {
-        id: 'f3',
-        question: '¿Puedo probar antes de pagar?',
+        id: 'personalizado',
+        question: '¿Qué incluye el entrenamiento personalizado?',
         answer:
-          'Sí. La primera semana es de cortesía e incluye la evaluación de composición corporal y una clase grupal. Solo hace falta acercarse con documento y ropa deportiva.',
+          'Hay cuatro planes, de 220 a 480 Bs al mes. Todos incluyen entrenamiento personalizado, pre-entreno y un batido semanal. Del Avanzado en adelante sumás entrenador personal, y el Premium incluye además nutricionista profesional.',
       },
       {
-        id: 'f4',
-        question: '¿Las clases grupales tienen costo adicional?',
+        id: 'rutinas',
+        question: '¿Qué son las rutinas con nombre de superhéroe?',
         answer:
-          'No para los planes Atleta y Leyenda: las dieciocho clases semanales están incluidas. En el plan Inicio se pueden tomar clases sueltas abonando por sesión.',
+          'Cada plan de entrenamiento personalizado trae dos rutinas asignadas —Batman y Gamora en el Básico, Hulk y Mujer Maravilla en el Premium, entre otras—. El nombre marca el nivel y el enfoque del programa que vas a seguir.',
       },
       {
-        id: 'f5',
-        question: '¿Puedo congelar mi membresía si viajo?',
+        id: 'baile',
+        question: '¿Hay clases de baile?',
         answer:
-          'El plan Leyenda incluye hasta 15 días de congelamiento al año. En los planes Inicio y Atleta se puede solicitar por motivo médico presentando certificado.',
+          'Sí. Los paquetes Fit Dance, Básico Dance y Mítico Dance incluyen baile fitness, y el paquete Mítico Fitness incluye bachata y twerking. No se pagan aparte: van dentro de la membresía.',
       },
       {
-        id: 'f6',
-        question: '¿Cuál es el horario menos concurrido?',
+        id: 'suplementos',
+        question: '¿Venden suplementos y productos?',
         answer:
-          'Entre las 10:00 y las 16:00 de lunes a viernes la sala está a menos de la mitad de su capacidad. El pico es de 18:00 a 21:00.',
+          'Sí, en el mostrador del gimnasio. Tenemos proteína, creatina, pre-entrenos, hidratación, shakers, tomatodos y las poleras de la casa. Consultanos por WhatsApp y te decimos qué hay disponible.',
       },
     ],
 
     closingCta: {
-      title: 'Tu primera semana corre por nuestra cuenta',
+      title: '¡Vamos con todo!',
       subtitle:
-        'Vení, entrená, conocé el lugar y hablá con un entrenador. Si no es para vos, no pasa nada. Si lo es, ya sabés dónde encontrarnos.',
-      label: 'Reservar mi semana de prueba',
+        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Escribinos y armamos tu plan.',
+      label: 'Consultar por WhatsApp',
     },
   },
 };

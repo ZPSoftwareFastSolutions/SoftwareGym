@@ -31,11 +31,11 @@ export default async function PlansPage({ params }: TenantPageParams) {
       />
 
       <PlansSection
-        plans={content.plans}
+        groups={content.planGroups}
         note={content.plansNote}
         slug={slug}
         eyebrow="Comparativa"
-        title="Elegí tu plan"
+        title="Elegí tu paquete"
       />
 
       {features.showTestimonials && (

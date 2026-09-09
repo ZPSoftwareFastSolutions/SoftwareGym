@@ -32,7 +32,13 @@ export type IconKey =
   | 'shield'
   | 'sparkle';
 
-export type BillingPeriod = 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'diario';
+export type BillingPeriod =
+  | 'diario'
+  | 'quincenal'
+  | 'mensual'
+  | 'trimestral'
+  | 'semestral'
+  | 'anual';
 
 export interface PlanFeature {
   readonly label: string;
@@ -54,6 +60,51 @@ export interface MembershipPlan {
   readonly badge?: string;
   readonly features: readonly PlanFeature[];
   readonly ctaLabel: string;
+  /**
+   * Rutinas asociadas al plan, cuando el gimnasio comercializa su
+   * entrenamiento con nombre propio. Es opcional porque la mayoría de los
+   * clientes vende acceso, no programas nombrados.
+   */
+  readonly routines?: readonly string[];
+}
+
+/**
+ * Familia comercial de planes.
+ *
+ * Un gimnasio con una oferta simple declara un único grupo; uno que vende por
+ * líneas —mensualidades, entrenamiento personalizado, planes extendidos—
+ * declara varias. La agrupación es DATO: la retícula se arma sola a partir de
+ * lo que traiga la configuración, sin que ninguna página sepa cuántas familias
+ * existen ni cómo se llaman.
+ */
+export interface PlanGroup {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly plans: readonly MembershipPlan[];
+}
+
+/**
+ * Artículo del catálogo comercial del gimnasio (indumentaria, suplementos,
+ * accesorios). Es venta de mostrador, no una capacidad del sistema: en V1 no
+ * hay carrito ni stock, solo exhibición con derivación a WhatsApp.
+ */
+export interface ProductItem {
+  readonly id: string;
+  readonly name: string;
+  readonly price: number;
+  readonly currency: string;
+  /** Distintivo comercial: «Más popular», «Nuevo», «Últimas unidades». */
+  readonly badge?: string;
+  readonly note?: string;
+}
+
+export interface ProductCategory {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly icon: IconKey;
+  readonly items: readonly ProductItem[];
 }
 
 export interface FacilityItem {

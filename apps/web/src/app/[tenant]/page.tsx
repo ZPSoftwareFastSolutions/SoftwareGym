@@ -12,6 +12,7 @@ import { FaqSection } from '@/presentation/sections/FaqSection';
 import { HeroSection } from '@/presentation/sections/HeroSection';
 import { MarqueeStrip } from '@/presentation/sections/MarqueeStrip';
 import { PlansSection } from '@/presentation/sections/PlansSection';
+import { ProductsSection } from '@/presentation/sections/ProductsSection';
 import { ServicesSection } from '@/presentation/sections/ServicesSection';
 import { TestimonialsSection } from '@/presentation/sections/TestimonialsSection';
 
@@ -35,11 +36,18 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
 
       {features.showPlans && (
         <PlansSection
-          plans={content.plans}
+          // El inicio muestra solo la familia principal: la comparativa
+          // completa vive en /planes. Una portada con todo el tarifario
+          // obliga a decidir antes de haber terminado de leer quiénes somos.
+          groups={content.planGroups.slice(0, 1)}
           note={content.plansNote}
           slug={slug}
-          lead="Sin matrícula, sin permanencia mínima y con la primera semana de cortesía."
+          lead="Elegí el paquete que se adapta a vos. Sin permanencia mínima."
         />
+      )}
+
+      {features.showProducts && (
+        <ProductsSection categories={content.products} contact={contact} />
       )}
 
       {features.showTestimonials && <TestimonialsSection testimonials={content.testimonials} />}

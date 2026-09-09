@@ -4,6 +4,7 @@ import { PageHero } from '@/presentation/layouts/PageHero';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
 import { PlansSection } from '@/presentation/sections/PlansSection';
+import { ProductsSection } from '@/presentation/sections/ProductsSection';
 import { ServicesSection } from '@/presentation/sections/ServicesSection';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
@@ -36,11 +37,21 @@ export default async function ServicesPage({ params }: TenantPageParams) {
 
       {features.showPlans && (
         <PlansSection
-          plans={content.plans}
+          groups={content.planGroups}
           note={content.plansNote}
           slug={slug}
           eyebrow="Membresías"
-          title="¿Qué servicios incluye cada plan?"
+          title="¿Qué incluye cada paquete?"
+        />
+      )}
+
+      {features.showProducts && (
+        <ProductsSection
+          categories={content.products}
+          contact={contact}
+          eyebrow="Nuestros productos"
+          title="Calidad que podés confiar"
+          lead="Indumentaria, suplementación y accesorios disponibles en el mostrador del gimnasio."
         />
       )}
 

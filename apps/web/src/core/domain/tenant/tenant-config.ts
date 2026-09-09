@@ -16,7 +16,8 @@ import type {
   FacilityItem,
   FaqItem,
   GalleryItem,
-  MembershipPlan,
+  PlanGroup,
+  ProductCategory,
   ServiceItem,
   StatItem,
   TeamMember,
@@ -106,8 +107,14 @@ export interface TenantContent {
   readonly hero: HeroContent;
   readonly about: AboutContent;
   readonly services: readonly ServiceItem[];
-  readonly plans: readonly MembershipPlan[];
+  /**
+   * Oferta comercial agrupada por familia. Un gimnasio de oferta simple
+   * declara un solo grupo; la presentación no distingue el caso.
+   */
+  readonly planGroups: readonly PlanGroup[];
   readonly plansNote: string;
+  /** Catálogo de mostrador. Vacío en los clientes que no venden productos. */
+  readonly products: readonly ProductCategory[];
   readonly facilities: readonly FacilityItem[];
   readonly gallery: readonly GalleryItem[];
   readonly team: readonly TeamMember[];

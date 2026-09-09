@@ -8,7 +8,8 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · V1 desplegada y publicada en GitHub.
+> **Última actualización:** 2026-09-09 · Datos reales de Mítico Fitness cargados
+> (bonus de V1): contrato de catálogo ampliado con productos y grupos de planes.
 
 ---
 
@@ -219,7 +220,7 @@ https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-pu
   galería, horarios, contacto, acceso de socios.
 - **Clean Architecture** aplicada al frontend, con la Dependency Rule verificada.
 - **`TenantConfig`**: contrato único de configuración por cliente (branding,
-  contacto, horarios, navegación, 22 feature flags, SEO, contenido completo).
+  contacto, horarios, navegación, 23 feature flags, SEO, contenido completo).
 - **Sistema de temas en dos capas de tokens** (`--t-*` → `--color-*`), derivado
   de la configuración y validado antes de inyectarse.
 - **Guardas de ruta por feature flag**: apagar una capacidad quita el enlace
@@ -269,11 +270,70 @@ READMEs por capa del backend.
 - Solapamiento del header a 390 px: `hidden` perdía contra el `inline-flex`
   propio del botón → resuelto por composición y documentado en `lib/cn.ts`.
 
+### V1 · Bonus — Datos reales de Mítico Fitness ✅ 2026-09-09
+
+Origen: `informacion_empresa.md` (material comercial de la empresa). Sustituye
+el contenido de demostración por la oferta real.
+
+**Ampliaciones del contrato de dominio** (autorizadas explícitamente por el
+cliente tras señalarse que no entraban sin tocar arquitectura):
+
+| Cambio | Motivo |
+|---|---|
+| `ProductItem` + `ProductCategory` en `catalog.ts` | El gimnasio vende indumentaria, suplementación y accesorios. No existía el concepto. |
+| `PlanGroup` y `TenantContent.planGroups` (sustituye a `plans`) | La oferta real son 17 paquetes en 5 familias comerciales, no una lista plana. |
+| `MembershipPlan.routines?` | Los planes personalizados se venden con rutinas de nombre propio (Batman, Thor, Hulk…). |
+| `BillingPeriod` += `quincenal` | Existe un paquete de 15 días. |
+| `FeatureFlags.showProducts` | Capacidad nueva, apagada por defecto. |
+
+**Regla de destacado revisada:** `featured` es único **por grupo**, no por
+tenant. Un único destacado global obligaría a elegir entre resaltar una
+mensualidad o un plan personalizado, que no compiten entre sí.
+
+**Estado de Mítico tras el cambio:**
+
+- Menú de 4 entradas del material comercial (Mítico · Rutina · Ejercicio ·
+  Información) sobre las rutas del producto. Las etiquetas son dato: Aurora Fit
+  conserva sus 8 entradas sin que se tocara un archivo de aplicación.
+- 17 paquetes en 5 grupos · 12 productos en 3 categorías · 4 redes sociales
+  reales · WhatsApp `+591 77700867` · slogan y CTA de marca.
+- Secciones sin información real **apagadas por flag**, con sus rutas
+  devolviendo 404 verificado: galería, instalaciones, horarios, equipo,
+  testimonios, mapa. No se dejan encendidas con contenido inventado.
+
+**Verificado:** `tsc --noEmit` limpio · `next build` 23 páginas · `npm audit` 0
+vulnerabilidades · Dependency Rule y grep del ADR 0003 sin hallazgos ·
+404 confirmado por HTTP en las 3 rutas apagadas · Aurora Fit sin regresión ·
+móvil 375 px sin desborde horizontal.
+
+**Pendiente de confirmar por escrito con el cliente** (marcado en el encabezado
+de `mitico.tenant.ts`): email, dirección, horarios, URL del mapa y el enlace del
+grupo de WhatsApp. Siguen siendo valores heredados de la demo.
+
 ---
 
 ## 4. Lista de pendientes
 
 ### 🔴 Prioridad alta — antes de sumar features
+
+0. **Deuda detectada en la auditoría del 2026-09-09** (ninguna rompe hoy, todas
+   se cobran solas más adelante):
+   - `publicSite` está declarada y **no se usa en ningún sitio**: ponerla en
+     `false` no apaga nada. O se aplica como guarda global o se elimina.
+   - `DEFAULT_FEATURE_FLAGS` dice en su comentario que toda flag nace en
+     `false`, pero tiene 10 en `true`, y **se usa como base de spread** en los
+     dos tenants. Cuando la configuración llegue de la API (V1.5), un
+     `{ ...DEFAULT, ...remoto }` con respuesta parcial encendería capacidades
+     por omisión. Contradice el principio de fallar cerrado.
+   - `next: "^16.3.4"` lleva caret; la regla §2.9 exige versión exacta.
+   - `DEFAULT_TENANT_SLUG` cae a `'mitico'` hardcodeado en `tenant.registry.ts`.
+     Sobrevive al grep del ADR 0003 solo porque el grep excluye ese archivo.
+   - Deriva de documentación: `next.config.ts` cita
+     `docs/architecture/security-headers.md`, que no existe;
+     `get-tenant.usecase.ts` cita `guards/feature.guard.ts`, cuando el archivo
+     real es `lib/page-guards.ts`.
+   - `/[tenant]/nosotros` no tiene guarda de flag y quedó fuera del menú de
+     Mítico: responde 200 sin estar enlazada desde ninguna parte.
 
 1. **Abrir el PR de V1** y fusionar a `main`:
    https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-public-site
@@ -286,13 +346,14 @@ READMEs por capa del backend.
 
 ### 🟡 Prioridad media — cerrar V1 de verdad
 
-5. **Fotografía real** de Mítico. Colocar en `apps/web/public/tenants/mitico/` y
-   rellenar `GalleryItem.src`. El `aspect-ratio` no cambia: no habrá salto de
-   layout.
-6. **Datos reales de Mítico**: teléfono, WhatsApp, dirección, precios y horarios
-   confirmados por escrito con el cliente. Los actuales son de ejemplo.
-7. **Enlaces de redes sociales** (hoy vacíos e inertes a propósito).
-8. **URL del mapa** (`contact.mapEmbedUrl`) y activar `showLocationMap`.
+5. **Fotografía real** de Mítico. Colocar en `apps/web/public/tenants/mitico/`,
+   rellenar `GalleryItem.src` y volver a encender `showGallery`. El
+   `aspect-ratio` no cambia: no habrá salto de layout.
+6. **Datos de Mítico que faltan confirmar**: email, dirección y horarios. Con
+   los horarios confirmados se vuelve a encender `showSchedule`. Precios,
+   paquetes, productos, redes y WhatsApp ya son reales.
+7. **URL del mapa** (`contact.mapEmbedUrl`) y activar `showLocationMap`.
+8. **Enlace del grupo de WhatsApp**: el material comercial lo lista sin URL.
 9. **Presupuesto de tamaño de bundle** y Lighthouse CI: sin límite automatizado,
    el bundle solo crece.
 10. **Auditoría con lector de pantalla real** (NVDA/VoiceOver) e integración de
@@ -356,13 +417,20 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 
 ### MCP disponibles en la sesión
 
-| MCP | Uso en este proyecto |
-|---|---|
-| **Vercel** | Despliegues, logs de build, protección de despliegue |
-| **Supabase** | Sin usar. Candidato para V1.5 si se prefiere sobre PostgreSQL administrado |
-| **Notion** | Sin usar |
-| **Browser / Claude in Chrome** | Verificación visual y responsive de los sitios |
-| **Terminal** | Lectura de la terminal del usuario |
+> **La disponibilidad de MCP varía según la sesión: verificarla, no asumirla.**
+> En la sesión del 2026-09-09 el MCP de Vercel **no estaba conectado** y el de
+> GitHub falló al conectar. Tampoco están instalados `gh` ni la CLI de Vercel.
+> Consecuencia práctica: se puede commitear y (probablemente) hacer `push`, pero
+> **no abrir PRs ni desplegar desde la sesión**. Eso lo hace el usuario.
+
+| MCP | Estado verificado 2026-09-09 | Uso en este proyecto |
+|---|---|---|
+| **Supabase** | ✅ Conectado | Org `Z&P Software Fast Solutions` · proyecto `ZPSoftwareFastSolutions's Project` (ref `dnclwawnjnzqqxgsuhpn`) · PostgreSQL 17.6.1 · `us-west-2` · **0 tablas**. Reservado para V1.5: es el candidato para sustituir el registro estático de tenants. |
+| **Vercel** | ❌ No conectado | Despliegues y logs de build, cuando esté disponible |
+| **GitHub** | ❌ Falló al conectar | PRs y API. Mientras tanto, git por CLI |
+| **Browser** | ✅ Conectado | Verificación visual y responsive de los sitios |
+| **Notion** | Sin usar | — |
+| **Terminal** | ✅ Conectado | Lectura de la terminal del usuario |
 
 *n8n no está conectado. Si se incorpora para automatizar avisos de vencimiento
 de membresía (V2), documentarlo aquí.*

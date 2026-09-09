@@ -79,8 +79,13 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
 
   // Coherencia entre flags y contenido: una sección encendida sin datos
   // renderiza un bloque vacío, que es peor que no mostrarla.
-  if (tenant.features.showPlans && tenant.content.plans.length === 0) {
-    issues.push('features.showPlans está activo pero content.plans está vacío.');
+  const allPlans = tenant.content.planGroups.flatMap((g) => g.plans);
+
+  if (tenant.features.showPlans && allPlans.length === 0) {
+    issues.push('features.showPlans está activo pero content.planGroups no tiene ningún plan.');
+  }
+  if (tenant.features.showProducts && tenant.content.products.length === 0) {
+    issues.push('features.showProducts está activo pero content.products está vacío.');
   }
   if (tenant.features.showGallery && tenant.content.gallery.length === 0) {
     issues.push('features.showGallery está activo pero content.gallery está vacío.');
@@ -95,14 +100,38 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('features.showFaq está activo pero content.faq está vacío.');
   }
 
-  const featuredPlans = tenant.content.plans.filter((p) => p.featured);
-  if (featuredPlans.length > 1) {
-    issues.push(`Solo un plan puede tener featured: true (hay ${featuredPlans.length}).`);
+  // El destacado se juzga POR GRUPO: cada familia comercial compite consigo
+  // misma. Un único destacado global obligaría a elegir entre resaltar una
+  // mensualidad o un plan de entrenamiento, que no son alternativas entre sí.
+  for (const group of tenant.content.planGroups) {
+    if (group.plans.length === 0) {
+      issues.push(`El grupo de planes "${group.id}" no tiene ningún plan.`);
+    }
+    const featured = group.plans.filter((p) => p.featured);
+    if (featured.length > 1) {
+      issues.push(
+        `Solo un plan por grupo puede tener featured: true (grupo "${group.id}" tiene ${featured.length}).`,
+      );
+    }
   }
 
-  const planIds = new Set(tenant.content.plans.map((p) => p.id));
-  if (planIds.size !== tenant.content.plans.length) {
-    issues.push('Hay identificadores de plan duplicados en content.plans.');
+  const groupIds = new Set(tenant.content.planGroups.map((g) => g.id));
+  if (groupIds.size !== tenant.content.planGroups.length) {
+    issues.push('Hay identificadores duplicados en content.planGroups.');
+  }
+
+  // Los ids de plan deben ser únicos en TODO el tenant, no solo dentro de su
+  // grupo: son la clave de React en la retícula y, en V1.5, la clave natural
+  // de la fila de la tabla `MembershipPlans`.
+  const planIds = new Set(allPlans.map((p) => p.id));
+  if (planIds.size !== allPlans.length) {
+    issues.push('Hay identificadores de plan duplicados entre los grupos de content.planGroups.');
+  }
+
+  const productIds = new Set(tenant.content.products.flatMap((c) => c.items.map((i) => i.id)));
+  const productCount = tenant.content.products.reduce((n, c) => n + c.items.length, 0);
+  if (productIds.size !== productCount) {
+    issues.push('Hay identificadores de producto duplicados en content.products.');
   }
 
   return issues;

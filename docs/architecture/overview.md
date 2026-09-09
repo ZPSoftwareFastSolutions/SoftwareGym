@@ -160,7 +160,7 @@ TenantConfig
 ├── social            enlaces por red (vacíos = inertes, no rotos)
 ├── hours             zona horaria · 7 días · nota de feriados
 ├── navigation        etiquetas, orden y flag requerida por ítem
-├── features          22 feature flags
+├── features          23 feature flags
 ├── seo               título · plantilla · descripción · keywords · locale
 ├── provisioning      plan comercial · alta · estado
 └── content           hero · about · services · plans · facilities

@@ -19,6 +19,7 @@ export interface FeatureFlags {
   readonly showTeam: boolean;
   readonly showTestimonials: boolean;
   readonly showFaq: boolean;
+  readonly showProducts: boolean;
   readonly showLocationMap: boolean;
   readonly whatsappFloatingButton: boolean;
   readonly contactForm: boolean;
@@ -47,6 +48,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   showTeam: false,
   showTestimonials: true,
   showFaq: true,
+  showProducts: false,
   showLocationMap: true,
   whatsappFloatingButton: true,
   contactForm: true,
