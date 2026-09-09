@@ -858,6 +858,12 @@ de membresía (V2), documentarlo aquí.*
 >
 > Lección: un `list_teams` vacío no significa «sin permisos», significa «este
 > token no ve equipos». No es lo mismo, y confundirlo costó tres sesiones.
+>
+> **El despliegue NO depende de eso.** Vercel está conectado a GitHub y publica
+> solo en cada push a `feat/v2-public-site`, con el alias
+> `gym-platform-alpha.vercel.app` apuntando a esa rama. El conector MCP sirve
+> para leer logs de build y gestionar el proyecto, no para publicar: mientras
+> siga sin alcance, la vía es empujar a la rama.
 
 ### Skills de arquitectura activas
 
