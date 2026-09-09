@@ -5,14 +5,23 @@
 | | |
 |---|---|
 | Plataforma | Vercel |
-| Framework | Next.js 15 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Salida | Estático prerenderizado |
-| Directorio raíz | Repositorio completo; el build entra a `apps/web` |
+| **Root Directory** | `apps/web` |
 | Node | 20 o superior |
+| Proyecto | `zp-software-fast-solutions/gym-platform` |
+| URL pública | https://gym-platform-alpha.vercel.app |
 
-La configuración vive en `vercel.json` en la raíz. Si la plataforma pide el
-*Root Directory* en el panel, dejalo en la raíz: el `buildCommand` ya usa
-`npm --prefix apps/web`.
+La configuración de build vive en `apps/web/vercel.json`. El *Root Directory*
+del proyecto debe ser `apps/web`: Vercel detecta el framework leyendo el
+`package.json` de esa carpeta, no el de la raíz del repositorio.
+
+> **Protección de despliegue.** Vercel Authentication viene activada por
+> defecto y protege las URL de despliegue (`gym-platform-<hash>-...`). El alias
+> de producción `gym-platform-alpha.vercel.app` es el que se comparte con
+> clientes: es público. Si al enviarle el enlace a alguien le aparece una
+> pantalla de login de Vercel, le pasaste una URL de despliegue en vez del
+> alias.
 
 ---
 

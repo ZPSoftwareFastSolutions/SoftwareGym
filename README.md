@@ -5,6 +5,14 @@ despliega para múltiples clientes cambiando configuración, no código.
 
 Desarrollado por **ZP Software Fast Solutions**.
 
+**Demo en vivo:** https://gym-platform-alpha.vercel.app
+
+| | |
+|---|---|
+| Vitrina de la plataforma | https://gym-platform-alpha.vercel.app |
+| Mítico Fitness | https://gym-platform-alpha.vercel.app/mitico |
+| Aurora Fit | https://gym-platform-alpha.vercel.app/aurora-fit |
+
 ---
 
 ## Estado
@@ -76,15 +84,15 @@ Instalaciones · Galería · Horarios · Contacto · Acceso socios.
 - Cabeceras de seguridad: CSP, HSTS-ready, `nosniff`, `frame-ancestors`, `Referrer-Policy`.
 - Responsive de 320 px en adelante, con `prefers-reduced-motion` respetado.
 
-**Métricas del build:** 24 páginas estáticas · 106 kB de JS inicial · sin
-librería de animación ni de iconos.
+**Métricas del build:** 24 páginas estáticas · ~106 kB de JS inicial · sin
+librería de animación ni de iconos · `npm audit` sin vulnerabilidades.
 
 ---
 
 ## Estructura
 
 ```text
-apps/web/                Sitio público (Next.js 15 · TypeScript · Tailwind v4)
+apps/web/                Sitio público (Next.js 16 · TypeScript · Tailwind v4)
   src/core/domain/       Contratos y reglas. Sin framework.
   src/core/application/  Casos de uso, puertos, derivación del tema
   src/infrastructure/    Adaptadores, validación, composition root

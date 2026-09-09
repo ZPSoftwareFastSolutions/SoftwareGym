@@ -13,7 +13,7 @@ Se evaluó también Blazor, por coherencia con el backend previsto.
 
 ## Decisión
 
-**Next.js 15 (App Router) + TypeScript + Tailwind CSS v4**, prerenderizado
+**Next.js 16 (App Router) + TypeScript + Tailwind CSS v4**, prerenderizado
 estático, desplegado en Vercel.
 
 ## Motivos

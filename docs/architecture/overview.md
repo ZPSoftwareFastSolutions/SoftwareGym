@@ -35,6 +35,20 @@ Todo lo demás en este documento existe para sostener esa frase.
 | API .NET y base de datos | ⛔ No existe (V1.5 / V2) |
 | Sistema de gestión privado | ⛔ No existe (V2) |
 
+### Despliegue
+
+| | |
+|---|---|
+| URL pública | https://gym-platform-alpha.vercel.app |
+| Proyecto | `zp-software-fast-solutions/gym-platform` |
+| Framework | Next.js 16 · React 19 · Tailwind CSS v4 |
+| Vulnerabilidades conocidas | 0 (`npm audit` limpio) |
+
+Se subió de Next 15 a Next 16 durante la entrega: Next 15.5.x arrastraba una
+vulnerabilidad crítica (CVE-2025-66478) y un `postcss` transitivo con avisos
+altos que solo se resolvían en la major siguiente. La migración no requirió
+cambios de código.
+
 **V1 no tiene backend a propósito.** El sitio público es estático: no necesita
 uno, y añadirlo antes de tener el módulo de gestión sería construir
 infraestructura sin consumidor.
@@ -46,7 +60,7 @@ infraestructura sin consumidor.
 ```text
 SoftwareGym/
 ├── apps/
-│   └── web/                        Sitio público multi-tenant (Next.js 15)
+│   └── web/                        Sitio público multi-tenant (Next.js 16)
 │       ├── src/
 │       │   ├── app/                Rutas — Presentation
 │       │   ├── core/
