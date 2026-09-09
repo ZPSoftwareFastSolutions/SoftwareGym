@@ -8,8 +8,9 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · Oferta real de Mítico cargada:
-> paquetes por familia, programas de entrenamiento en sección propia y productos.
+> **Última actualización:** 2026-09-09 · V2 arrancada en la rama
+> `feat/v2-plataforma`: esquema completo en Supabase con RLS y aislamiento
+> multi-tenant verificado. Sin backend ni UI todavía.
 
 ---
 
@@ -36,8 +37,8 @@ discusiones cuando dos opciones parecen igual de buenas.
 
 ```text
 V1   ✅  Sitio público multi-tenant, configurable, estático
-V1.5     API .NET + PostgreSQL; la configuración pasa de archivos a base de datos
-V2       Autenticación, clientes, membresías, pagos, dashboard, auditoría
+V1.5     Base de datos en Supabase ✅ · la configuración pasará de archivos a BD
+V2   🔨  Autenticación, clientes, membresías, pagos, dashboard, auditoría
 V3       Asistencia, QR, reservas, entrenadores, rutinas, clases
 V4       Multi-sucursal, suscripciones, licencias, facturación, integraciones
 ```
@@ -332,6 +333,89 @@ dos filas son idénticas (220 Bs, mismas prestaciones, mismas rutinas Batman y
 Gamora). Se cargaron **cuatro** programas distintos. Si la quinta fila era un
 nivel aparte, falta su precio y sus rutinas.
 
+### V2 · Fase 1 — Base de datos y aislamiento 🔨 2026-09-09
+
+**Rama:** `feat/v2-plataforma` (parte de `feat/v1-public-site`)
+**Proyecto Supabase:** `dnclwawnjnzqqxgsuhpn` · PostgreSQL 17 · 11 migraciones
+
+Detalle completo en [`supabase/README.md`](supabase/README.md) y en el
+[ADR 0004](docs/architecture/adr/0004-identidad-y-aislamiento-en-supabase.md).
+
+#### La decisión de fondo
+
+**Identidad en Supabase Auth, aislamiento en RLS.** No se implementa el
+`JwtProvider` propio que preveía ARCHITECV2. El motivo no es comodidad: un
+filtro global de EF Core es una convención del código —`IgnoreQueryFilters()`
+la desactiva entera, incluido el filtro de tenant— mientras que RLS se evalúa
+en el motor, por debajo de cualquier ORM y de cualquier consulta escrita a
+mano. Es garantía, no convención.
+
+**No cancela la API .NET.** Puede construirse encima, con una condición: que
+propague el JWT del usuario. Si se conecta con `service_role` —que tiene
+`BYPASSRLS`— el aislamiento vuelve a depender del código y esta decisión pierde
+su sentido.
+
+#### Qué existe
+
+| Área | Tablas |
+|---|---|
+| Plataforma | `tenants` |
+| Identidad | `app_users`, `roles`, `permissions`, `role_permissions`, `user_roles` |
+| Gimnasio | `customers`, `membership_plans`, `memberships`, `payments` |
+| Operación | `attendance_records`, `audit_log` |
+| Vistas | `v_memberships`, `v_customer_overview` |
+
+- **20 permisos** en formato `modulo.accion` y **4 roles de sistema**:
+  `super_admin` (alcance plataforma), `manager`, `receptionist`, `customer`.
+- **Esquema `app`** con las funciones de contexto, fuera del esquema que
+  PostgREST publica: en `public` cada función es un endpoint `/rest/v1/rpc/...`,
+  y estas son `SECURITY DEFINER`.
+- **2 gimnasios sembrados** con los slugs del sitio público (`mitico`,
+  `aurora-fit`) y sus 17 planes reales.
+- `get_advisors(security)` → **0 hallazgos**.
+
+#### Aislamiento verificado a mano
+
+Con dos recepcionistas de gimnasios distintos y un socio del portal, simulando
+la sesión con `set local role authenticated`:
+
+- Cada recepción ve solo sus socios y solo sus planes.
+- Leer el socio ajeno **por su id exacto** devuelve 0 filas.
+- Alta, edición y cobro cruzados: bloqueados por RLS.
+- El socio del portal ve solo su ficha, teniendo un compañero en el mismo
+  gimnasio, y no tiene ningún permiso de recepción.
+
+#### Decisiones de modelado que conviene no revisitar
+
+- **`membership_status` no guarda «por vencer»**: es derivado de `end_date`.
+  Guardarlo obliga a un proceso diario y permite que la fila contradiga a la
+  fecha. Se calcula en `v_memberships`.
+- **Las vistas llevan `security_invoker = true`**. Por omisión una vista corre
+  con los permisos de su propietario y **saltaría el RLS**: fuga entre
+  gimnasios servida en bandeja.
+- **Los pagos no tienen `UPDATE` ni `DELETE`**: un cobro erróneo se corrige con
+  el asiento inverso.
+- **Los socios se archivan, no se borran**: borrar un socio con histórico de
+  pagos es perder contabilidad.
+- **El precio se congela en `memberships.price`**: si el plan sube, la
+  membresía ya vendida no cambia.
+- **El super admin no lee socios ni pagos de sus clientes.** Administrar
+  gimnasios no es ver los datos personales de sus socios (§39, §112).
+
+#### Lo que NO existe todavía
+
+Ni backend ni interfaz. No hay login, ni pantalla de clientes, ni dashboard.
+Lo construido es la base sobre la que todo eso se apoya.
+
+#### Riesgos vivos
+
+1. **`service_role` tiene `BYPASSRLS`.** Nunca puede llegar al navegador.
+2. **Las migraciones están en el servidor, no en el repositorio.** Hace falta
+   `npx supabase link` + `npx supabase db pull` para materializarlas. Mientras
+   tanto se incumple la regla §47 del documento maestro.
+3. **La prueba de aislamiento es manual.** Automatizarla en CI es lo primero:
+   una prueba que no corre sola se degrada.
+
 ---
 
 ## 4. Lista de pendientes
@@ -380,6 +464,20 @@ nivel aparte, falta su precio y sus rutinas.
    el bundle solo crece.
 10. **Auditoría con lector de pantalla real** (NVDA/VoiceOver) e integración de
     `axe-core`. Las herramientas automáticas cubren entre el 30 % y el 40 %.
+
+### 🟠 V2 — lo siguiente, en este orden
+
+A. **Exportar las migraciones al repositorio** (`supabase link` + `db pull`).
+   Hoy el esquema vive solo en el servidor.
+B. **Automatizar la prueba de aislamiento multi-tenant** en CI. Es el único
+   control que no se degrada con el tiempo si corre solo.
+C. **Login y sesión** con Supabase Auth: cookie `HttpOnly` vía SSR, no token
+   en `localStorage`.
+D. **App privada** (`apps/admin` o rutas protegidas en `apps/web`): clientes,
+   membresías con renovación, pagos, asistencia y dashboard.
+E. **Escritura de `audit_log`** desde los casos de uso que mutan datos.
+F. **Sustituir el registro estático de tenants** por la tabla `tenants`: cambia
+   una línea del composition root, que para eso el puerto es asíncrono.
 
 ### 🟢 V1.5 — Backend
 
