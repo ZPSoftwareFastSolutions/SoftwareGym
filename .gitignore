@@ -1,0 +1,60 @@
+# ============================================================
+# Node / Next.js
+# ============================================================
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ============================================================
+# Entorno — NUNCA versionar secretos
+# Los valores reales viven en el gestor de secretos del entorno.
+# ============================================================
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+
+# ============================================================
+# .NET (backend, a partir de V1.5)
+# ============================================================
+bin/
+obj/
+*.user
+*.suo
+.vs/
+appsettings.Development.json
+appsettings.Production.json
+
+# ============================================================
+# Herramientas y despliegue
+# ============================================================
+.vercel
+.turbo
+coverage/
+playwright-report/
+test-results/
+
+# ============================================================
+# Sistema operativo / editores
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ============================================================
+# Logs
+# ============================================================
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log

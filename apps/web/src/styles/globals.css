@@ -1,0 +1,471 @@
+@import 'tailwindcss';
+
+/* ============================================================================
+   GYM PLATFORM — SISTEMA DE DISEÑO
+   ----------------------------------------------------------------------------
+   Arquitectura de tokens en dos capas y dos namespaces:
+
+     1. `--t-*`      TOKENS DE TENANT. Los inyecta el layout en <style>,
+                     derivados de `TenantConfig.branding`. Nunca se escriben a
+                     mano aquí; los defaults de abajo solo cubren el instante
+                     previo a la resolución del tenant.
+
+     2. `--color-*`  TOKENS SEMÁNTICOS de Tailwind. Es lo ÚNICO que consumen
+        `--radius-*` los componentes: `bg-surface`, `text-muted`, `border-line`,
+        `--font-*`   `text-action`, `rounded-lg`, `font-display`...
+
+   Los namespaces están separados a propósito: si compartieran nombre,
+   `--color-surface: var(--color-surface)` se auto-referenciaría.
+
+   Regla de oro: ningún componente escribe un color literal ni lee un `--t-*`
+   de marca. Por eso dar de alta un gimnasio no toca un solo componente.
+   ========================================================================= */
+
+@theme inline {
+  --color-surface: var(--t-surface);
+  --color-raised: var(--t-raised);
+  --color-card: var(--t-card);
+  --color-ink: var(--t-ink);
+  --color-muted: var(--t-muted);
+  --color-line: var(--t-line);
+  --color-action: var(--t-action);
+  --color-action-strong: var(--t-action-strong);
+  --color-on-action: var(--t-on-action);
+  --color-structural: var(--t-structural);
+  --color-structural-deep: var(--t-structural-deep);
+  --color-accent: var(--t-accent);
+
+  --radius-sm: var(--t-radius-sm);
+  --radius-md: var(--t-radius-md);
+  --radius-lg: var(--t-radius-lg);
+  --radius-xl: var(--t-radius-xl);
+
+  --font-display: var(--t-font-display);
+  --font-body: var(--t-font-body);
+}
+
+/* ---------------------------------------------------------------------------
+   Defaults de seguridad. Evitan un destello sin estilo si la resolución del
+   tenant fallara. No son "el tema de Mítico": son el mínimo neutral.
+   ------------------------------------------------------------------------ */
+:root {
+  --t-surface: #0c0e0f;
+  --t-raised: #131617;
+  --t-card: #1a1c1e;
+  --t-surface-rgb: 12 14 15;
+  --t-ink: #ffffff;
+  --t-muted: #9ba49b;
+  --t-line: #252a26;
+  --t-action: #39ff14;
+  --t-action-strong: #2bd40d;
+  --t-action-rgb: 57 255 20;
+  --t-on-action: #0c0e0f;
+  --t-focus: #39ff14;
+  --t-structural: #38761d;
+  --t-structural-deep: #1e5128;
+  --t-structural-rgb: 56 118 29;
+  --t-accent: #c1c1c1;
+
+  --t-radius-sm: 4px;
+  --t-radius-md: 6px;
+  --t-radius-lg: 10px;
+  --t-radius-xl: 14px;
+
+  --t-font-display: var(--font-display-condensed), 'Arial Narrow', sans-serif;
+  --t-font-body: var(--font-body-sans), system-ui, sans-serif;
+  --t-heading-transform: uppercase;
+  --t-heading-tracking: 0.02em;
+
+  --t-size-display: clamp(2.8rem, 1.6rem + 5.4vw, 6rem);
+  --t-size-h1: clamp(2.3rem, 1.5rem + 3.6vw, 4rem);
+  --t-size-h2: clamp(1.8rem, 1.35rem + 2.1vw, 2.9rem);
+  --t-size-h3: clamp(1.25rem, 1.1rem + 0.7vw, 1.7rem);
+  --t-size-lead: clamp(1.05rem, 0.98rem + 0.42vw, 1.3rem);
+  --t-section-space: clamp(5rem, 3.2rem + 6.5vw, 9rem);
+
+  --t-glow-strength: 1;
+  --t-glow: 0 0 18px rgb(57 255 20 / 0.4);
+  --t-grid-opacity: 1;
+  --t-blur: 14px;
+  --t-card-alpha: 0.6;
+  --t-elevation: none;
+
+  --shell-max: 1200px;
+  --shell-gutter: clamp(1.15rem, 0.8rem + 1.8vw, 2.5rem);
+  --header-height: 74px;
+}
+
+/* ===========================================================================
+   BASE
+   ======================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* Cura del desbordamiento horizontal en móvil: sin esto, un hijo de
+     flex/grid no puede encoger por debajo del ancho de su contenido. */
+  min-width: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Evita que la cabecera fija tape el elemento enfocado
+     (WCAG 2.2 — Focus Not Obscured). */
+  scroll-padding-top: calc(var(--header-height) + 1.5rem);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--t-surface);
+  color: var(--t-ink);
+  font-family: var(--t-font-body);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--t-font-display);
+  text-transform: var(--t-heading-transform);
+  letter-spacing: var(--t-heading-tracking);
+  line-height: 1.06;
+  margin: 0;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Foco visible SIEMPRE. Quitarlo sin reemplazo hace el sitio inusable por
+   teclado; es el defecto de accesibilidad más extendido de la web. */
+:focus-visible {
+  outline: 2px solid var(--t-focus);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+::selection {
+  background: var(--t-action);
+  color: var(--t-on-action);
+}
+
+/* ===========================================================================
+   LAYOUT
+   ======================================================================== */
+
+.shell {
+  width: 100%;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding-inline: var(--shell-gutter);
+}
+
+.shell-wide {
+  --shell-max: 1400px;
+}
+
+.section {
+  padding-block: var(--t-section-space);
+  position: relative;
+}
+
+.section--tight {
+  padding-block: calc(var(--t-section-space) * 0.58);
+}
+
+/* ===========================================================================
+   TIPOGRAFÍA
+   ======================================================================== */
+
+.t-display {
+  font-size: var(--t-size-display);
+}
+.t-h1 {
+  font-size: var(--t-size-h1);
+}
+.t-h2 {
+  font-size: var(--t-size-h2);
+}
+.t-h3 {
+  font-size: var(--t-size-h3);
+}
+
+.t-lead {
+  font-size: var(--t-size-lead);
+  color: var(--t-muted);
+  line-height: 1.7;
+  font-family: var(--t-font-body);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.t-body {
+  color: var(--t-muted);
+  line-height: 1.75;
+}
+
+.t-eyebrow {
+  font-family: var(--t-font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--t-action);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.t-eyebrow::before {
+  content: '';
+  width: 1.6rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.75;
+  flex: none;
+}
+
+.t-accent {
+  color: var(--t-action);
+  text-shadow: var(--t-glow);
+}
+
+/* ===========================================================================
+   SUPERFICIES
+   ======================================================================== */
+
+.surface-card {
+  background: color-mix(in srgb, var(--t-card) calc(var(--t-card-alpha) * 100%), transparent);
+  backdrop-filter: blur(var(--t-blur));
+  -webkit-backdrop-filter: blur(var(--t-blur));
+  border: 1px solid var(--t-line);
+  border-radius: var(--t-radius-lg);
+  box-shadow: var(--t-elevation);
+}
+
+.surface-raised {
+  background: var(--t-raised);
+}
+
+.hairline-t {
+  border-top: 1px solid var(--t-line);
+}
+
+.hairline-b {
+  border-bottom: 1px solid var(--t-line);
+}
+
+/* ===========================================================================
+   FONDOS GENERATIVOS
+   Arte dirigido en CSS puro: cero peticiones de red, cero imágenes rotas en la
+   demo al cliente, y adaptación automática a la paleta de cada tenant.
+   ======================================================================== */
+
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--t-grid-opacity);
+  background-image:
+    linear-gradient(to right, rgb(var(--t-action-rgb) / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--t-action-rgb) / 0.055) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, #000 15%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, #000 15%, transparent 78%);
+}
+
+.bg-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-aura::before,
+.bg-aura::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(100px);
+  opacity: 0.2;
+}
+
+.bg-aura::before {
+  width: 44rem;
+  height: 44rem;
+  top: -22rem;
+  inset-inline-start: -14rem;
+  background: radial-gradient(circle, var(--t-action) 0%, transparent 68%);
+}
+
+.bg-aura::after {
+  width: 36rem;
+  height: 36rem;
+  bottom: -18rem;
+  inset-inline-end: -10rem;
+  background: radial-gradient(circle, var(--t-structural) 0%, transparent 70%);
+}
+
+.bg-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ===========================================================================
+   ANIMACIÓN
+   Sin librería: solo `transform` y `opacity`, las dos propiedades que el
+   compositor anima sin provocar reflow.
+   ======================================================================== */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 640ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 640ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+[data-reveal='in'] {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-marquee {
+  animation: marquee-x 38s linear infinite;
+}
+
+/* `prefers-reduced-motion` no es una preferencia estética: el movimiento
+   provoca mareo y migraña en personas con trastornos vestibulares. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===========================================================================
+   ACCESIBILIDAD
+   ======================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  inset-inline-start: 50%;
+  top: 0.75rem;
+  z-index: 999;
+  translate: -50% -200%;
+  background: var(--t-action);
+  color: var(--t-on-action);
+  padding: 0.7rem 1.3rem;
+  border-radius: var(--t-radius-md);
+  font-weight: 700;
+  transition: translate 180ms ease-out;
+}
+
+.skip-link:focus-visible {
+  translate: -50% 0;
+}
+
+/* ===========================================================================
+   IMPRESIÓN
+   ======================================================================== */
+
+@media print {
+  .bg-grid,
+  .bg-aura,
+  .bg-noise,
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+}
