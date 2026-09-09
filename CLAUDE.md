@@ -524,6 +524,49 @@ Dos tropiezos que costaron encontrar y conviene no repetir:
 | Fuerza bruta contra el alta | Cortada por el rate limit de Supabase |
 | `get_advisors(security)` | 1 aviso, abajo |
 
+#### Fallo de despliegue y lección (2026-09-09)
+
+El primer despliegue a Vercel **rompió el build entero**:
+
+```
+Failed to collect page data for /[tenant]/panel
+  at module evaluation (src/infrastructure/auth/supabase.config.ts)
+```
+
+Causa: `supabase.config.ts` validaba las variables de entorno **al evaluar el
+módulo**. La intención era buena —que una variable ausente rompiera pronto en
+vez de producir un formulario que falla en silencio— pero Next.js evalúa el
+grafo de módulos al recolectar los datos de página durante el `build`. Sin las
+variables configuradas en Vercel, ese `throw` tumbaba la compilación de las
+**25 páginas**, incluidas las 24 del sitio público que no dependen de Supabase
+para nada.
+
+> **La regla que sale de aquí: una capacidad que falta desactiva SU parte, no
+> el producto.** Validar al importar acopla el arranque de todo a la
+> configuración de una pieza. Se valida al usar.
+
+Corregido: `supabaseConfig()` devuelve `null` en vez de lanzar,
+`isSupabaseConfigured()` permite preguntar sin romper, y `requireSupabaseConfig()`
+solo se llama donde ya es seguro. `getAuthenticatedUser()` devuelve `null` sin
+configuración —para una ruta protegida, «no hay sesión» y «no hay proveedor de
+sesiones» llevan al mismo sitio— y las acciones responden con un mensaje claro
+en vez de una traza.
+
+**Verificado en los dos escenarios**, que es lo que faltó la primera vez:
+
+| Escenario | Resultado |
+|---|---|
+| `build` SIN variables (el de Vercel) | 25 páginas, salida 0 |
+| Sitio público sin variables | 200 en todas las rutas |
+| `/panel` sin variables | 307 → acceso, no 500 |
+| Formulario sin variables | Mensaje claro, sin traza |
+| `build` y login CON variables | Igual que antes |
+
+**Variables que Vercel necesita** (Settings → Environment Variables), o el
+acceso de socios queda inhabilitado aunque el sitio funcione:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y
+`NEXT_PUBLIC_SITE_URL`. Están en `apps/web/.env.example`.
+
 #### Limitación aceptada, no es deuda
 
 El analizador de Supabase marca **«Leaked Password Protection Disabled»**. Se

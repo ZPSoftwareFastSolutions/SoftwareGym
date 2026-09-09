@@ -1,36 +1,56 @@
 /**
  * CAPA: Infrastructure / Auth
  *
- * Configuración compartida por el cliente de navegador y el de servidor.
+ * Configuración compartida por el middleware y el cliente de servidor.
  *
- * Se valida al cargar el módulo, no en la primera petición: una variable de
- * entorno ausente debe romper el arranque y no producir un formulario de
- * acceso que falla en silencio cuando alguien intenta entrar.
+ * SE VALIDA AL USARLA, NO AL IMPORTARLA. La primera versión lanzaba al evaluar
+ * el módulo, con la idea de que una variable ausente rompiera pronto y no
+ * produjera un formulario de acceso que falla en silencio. La intención era
+ * buena; el efecto, no: Next.js evalúa el grafo de módulos al recolectar los
+ * datos de página durante el `build`, así que en un despliegue sin las
+ * variables configuradas el `throw` tumbaba la compilación entera —las 24
+ * páginas del sitio público incluidas, que no dependen de Supabase para nada—.
+ *
+ * Una capacidad que falta debe desactivar SU parte, no el producto completo.
+ * Ahora el sitio público compila y se sirve siempre; lo único que queda
+ * inhabilitado, y diciéndolo con claridad, es el acceso de socios.
  */
 
-function requerida(nombre: string, valor: string | undefined): string {
-  const limpio = valor?.trim();
-  if (!limpio) {
-    throw new Error(
-      `Falta la variable de entorno ${nombre}. Copiar apps/web/.env.example a .env.local.`,
-    );
-  }
-  return limpio;
+export interface SupabaseConfig {
+  readonly url: string;
+  readonly publishableKey: string;
 }
 
-export const SUPABASE_URL = requerida(
-  'NEXT_PUBLIC_SUPABASE_URL',
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-);
+/**
+ * Devuelve la configuración, o `null` si falta. Nunca lanza: sirve para
+ * preguntar «¿está disponible el acceso?» sin que la respuesta rompa la página.
+ */
+export function supabaseConfig(): SupabaseConfig | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+
+  if (!url || !publishableKey) return null;
+  return { url, publishableKey };
+}
+
+/** `true` si el acceso de socios puede funcionar en este despliegue. */
+export function isSupabaseConfigured(): boolean {
+  return supabaseConfig() !== null;
+}
 
 /**
- * Clave PUBLICABLE. Es pública por diseño y viaja al navegador.
- *
- * No concede nada por sí sola: todo lo que se puede leer o escribir con ella
- * lo decide RLS. La que sí concede todo es `service_role`, que tiene BYPASSRLS
- * y no aparece en este proyecto ni debe aparecer nunca en el lado cliente.
+ * Igual que `supabaseConfig()` pero exigiendo el valor. Se usa solo donde ya
+ * es seguro que la configuración existe; el mensaje nombra las dos variables
+ * porque el error acaba en un registro que alguien va a leer con prisa.
  */
-export const SUPABASE_PUBLISHABLE_KEY = requerida(
-  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-);
+export function requireSupabaseConfig(): SupabaseConfig {
+  const config = supabaseConfig();
+  if (!config) {
+    throw new Error(
+      'Faltan NEXT_PUBLIC_SUPABASE_URL y/o NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. ' +
+        'En local: copiar apps/web/.env.example a .env.local. ' +
+        'En Vercel: Settings → Environment Variables.',
+    );
+  }
+  return config;
+}

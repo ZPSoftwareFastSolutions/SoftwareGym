@@ -24,6 +24,7 @@ import {
 import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
 import { createSupabaseServerClient } from '@infra/auth/supabase.server';
+import { isSupabaseConfigured } from '@infra/auth/supabase.config';
 
 export interface EstadoFormulario {
   readonly errores?: Readonly<Record<string, string>>;
@@ -38,6 +39,15 @@ async function resolverTenant(slugCrudo: unknown): Promise<string | null> {
   return tenant?.slug ?? null;
 }
 
+/**
+ * Un despliegue sin las variables de Supabase no puede autenticar. Se dice
+ * así, en vez de dejar que reviente: el socio no tiene por qué ver una traza,
+ * y quien administra el sitio necesita saber que el fallo es de configuración
+ * y no de sus credenciales.
+ */
+const ACCESO_NO_CONFIGURADO =
+  'El acceso de socios no está disponible en este momento. Escríbenos por WhatsApp y lo resolvemos.';
+
 function texto(form: FormData, campo: string): string {
   const valor = form.get(campo);
   return typeof valor === 'string' ? valor : '';
@@ -49,6 +59,7 @@ export async function iniciarSesion(
 ): Promise<EstadoFormulario> {
   const slug = await resolverTenant(form.get('tenantSlug'));
   if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
+  if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
 
   const email = texto(form, 'email').trim().toLowerCase();
   const password = texto(form, 'password');
@@ -76,6 +87,7 @@ export async function registrarse(
 ): Promise<EstadoFormulario> {
   const slug = await resolverTenant(form.get('tenantSlug'));
   if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
+  if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
 
   const email = texto(form, 'email').trim().toLowerCase();
   const password = texto(form, 'password');
@@ -115,8 +127,11 @@ export async function registrarse(
 
 export async function cerrarSesion(form: FormData): Promise<void> {
   const slug = await resolverTenant(form.get('tenantSlug'));
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+  }
 
   if (slug) revalidatePath(`/${slug}`, 'layout');
   redirect(slug ? `/${slug}/acceso` : '/');
