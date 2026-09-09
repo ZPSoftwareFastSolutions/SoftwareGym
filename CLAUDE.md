@@ -754,6 +754,58 @@ Lección: el idioma de un producto enlatado no vive solo en la configuración.
 Los valores por defecto de los componentes también son texto visible, y son
 los que hereda el próximo gimnasio que no los sobrescriba.
 
+#### El despliegue por Git falla, y no es culpa del código
+
+Los dos últimos push a `feat/v2-public-site` crearon despliegues **Preview**
+que Vercel marcó como fallidos. El código no tenía nada que ver: se clonó el
+commit publicado en limpio, `npm install` + `next build`, y compiló las 26
+páginas sin un error. El registro del despliegue lo confirma —`Build Completed
+in /vercel/output`— y el fallo llega **después**, al subir la salida:
+
+```
+Cannot patch preview comments when immutable static file upload is enabled.
+Upgrade to next@v16.3.0-canary.32 or newer to resolve this.
+```
+
+Es una incompatibilidad de la plataforma entre los **comentarios de preview**
+(la barra de Vercel) y la subida inmutable de estáticos de Next. El consejo del
+mensaje está caducado: el proyecto ya va en `16.3.4`, muy por delante de esa
+canary. Solo afecta a Preview, porque los comentarios de preview solo existen
+ahí; producción nunca los toca.
+
+**Dos consecuencias, y conviene no confundirlas:**
+
+1. El alias `gym-platform-alpha.vercel.app` **no se actualiza solo** con cada
+   push. La vía que funciona hoy es `npx vercel deploy --prod --yes` desde
+   `apps/web`, con la credencial que la CLI ya tiene guardada en la máquina.
+2. Aunque se arregle lo anterior, los push a esta rama seguirían generando
+   **Preview**, no producción: la Production Branch del proyecto no es
+   `feat/v2-public-site`.
+
+Para que el push despliegue solo hacen falta dos cosas del panel de Vercel, que
+no se pueden tocar desde la sesión: **apagar Comments/Toolbar** en el proyecto
+(Settings → General) y **poner la Production Branch** en la rama de V2.
+
+> La CLI **sí** alcanza el equipo `zp-software-fast-solutions`; el conector MCP
+> no. Son credenciales distintas: `vercel inspect` sobre un despliegue del
+> equipo funcionó mientras el MCP seguía devolviendo 403. Si hace falta leer
+> registros de build, la CLI es la vía.
+
+#### Verificado en producción (2026-09-09, commit `b1310db`)
+
+| Prueba | Resultado |
+|---|---|
+| 18 rutas públicas de los dos gimnasios | 200 |
+| Tenant inexistente | 404 |
+| `/mitico/panel` y `/aurora-fit/panel` sin sesión | 307 a su acceso |
+| Pista `gp-sesion=1` falsificada | 307, no abre nada |
+| `/auth/confirmar?gimnasio=<sitio externo>` | 307 a `/`, sin redirector abierto |
+| Cabecera anónima | «Acceso socios» |
+| Primer fotograma del panel tras entrar | «Mi panel» |
+| Primer fotograma tras salir | «Acceso socios» y pista retirada |
+| Cookies visibles a JavaScript | solo `gp-sesion=1`; ningún token |
+| `service_role` / JWT en los 10 scripts servidos | ninguno |
+
 ### V2 · Cuentas de demostración
 
 Una por rol. **Todas verificadas contra el endpoint de autenticación**, no solo
@@ -860,8 +912,11 @@ del perfil con el de la ruta y redirige al propio.
    ADR 0003 en cada PR. Sin esto, las reglas de arriba se degradan solas.
 3. **Tests.** Empezar por lo que más duele si se rompe: `tenant.validator`,
    `build-theme`, `visibleNavigation`, y un smoke test de las 9 rutas por tenant.
-4. **Conectar el repo a Vercel** (Settings → Git) para que cada push despliegue
-   solo. Hoy el despliegue va por CLI.
+4. **Que el push despliegue solo.** El repo ya está conectado, pero los
+   despliegues Preview fallan por los comentarios de preview y la rama de V2
+   no es la Production Branch. Dos interruptores del panel de Vercel; detalle
+   arriba, en «El despliegue por Git falla». Hoy la vía es
+   `npx vercel deploy --prod --yes`.
 
 ### 🟡 Prioridad media — cerrar V1 de verdad
 
