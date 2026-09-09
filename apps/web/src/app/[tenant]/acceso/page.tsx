@@ -7,6 +7,7 @@
  */
 
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { loadTenantPage, tenantPageMetadata, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref, whatsappHref } from '@/lib/tenant-links';
 import { AccessForm } from '@/presentation/patterns/AccessForm';
@@ -26,18 +27,9 @@ const UPCOMING = [
   { icon: 'heart' as const, title: 'Progreso medido', text: 'Composición corporal y evolución por período.' },
 ];
 
-interface AccessPageProps extends TenantPageParams {
-  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-export default async function MemberAccessPage({ params, searchParams }: AccessPageProps) {
+export default async function MemberAccessPage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params, 'memberLogin');
   const { name, slug, contact } = tenant;
-
-  // Lo deja la ruta de retorno del enlace de confirmación (`/auth/confirmar`).
-  const { confirmado } = await searchParams;
-  const confirmacion =
-    confirmado === '1' ? ('ok' as const) : confirmado === '0' ? ('fallo' as const) : undefined;
 
   return (
     <>
@@ -58,7 +50,13 @@ export default async function MemberAccessPage({ params, searchParams }: AccessP
                   Acceso de socios
                 </h2>
 
-                <AccessForm slug={slug} gymName={name} confirmacion={confirmacion} />
+                {/*
+                  `Suspense` es obligatorio: el formulario usa `useSearchParams`
+                  y sin frontera Next.js no puede prerenderizar la página.
+                */}
+                <Suspense fallback={<div className="surface-card min-h-[28rem] p-7 lg:p-9" />}>
+                  <AccessForm slug={slug} gymName={name} />
+                </Suspense>
 
                 <div className="mt-8 flex flex-col gap-3 border-t border-line pt-7">
                   <p className="text-[0.88rem] text-muted">

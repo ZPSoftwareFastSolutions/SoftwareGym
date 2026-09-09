@@ -16,6 +16,8 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+import { COOKIE_PISTA_SESION, opcionesPistaSesion } from '@infra/auth/session-hint';
 import {
   mensajeDeErrorDeAcceso,
   validarLogin,
@@ -142,6 +144,17 @@ export async function cerrarSesion(form: FormData): Promise<void> {
     const supabase = await createSupabaseServerClient();
     await supabase.auth.signOut();
   }
+
+  // La pista de la cabecera se retira AQUÍ y no se deja al middleware.
+  //
+  // Al cerrar sesión, el middleware ya se había ejecutado para esta petición
+  // —con la sesión todavía viva— y la navegación posterior la resuelve el
+  // enrutador del cliente sin volver a pasar por él. Resultado observado: la
+  // sesión se cerraba de verdad pero la cabecera seguía ofreciendo «Mi panel».
+  (await cookies()).set(COOKIE_PISTA_SESION, '', {
+    ...opcionesPistaSesion(process.env.NODE_ENV === 'production'),
+    maxAge: 0,
+  });
 
   if (slug) revalidatePath(`/${slug}`, 'layout');
   redirect(slug ? `/${slug}/acceso` : '/');

@@ -17,6 +17,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { endurecerCookie } from '@infra/auth/cookie-options';
 import { supabaseConfig } from '@infra/auth/supabase.config';
+import { COOKIE_PISTA_SESION, opcionesPistaSesion } from '@infra/auth/session-hint';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -48,7 +49,19 @@ export async function middleware(request: NextRequest) {
 
   // `getUser()` valida la firma contra el servidor de autenticación y, de
   // paso, dispara la renovación. `getSession()` no valida nada.
-  await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser();
+
+  // Pista para la cabecera: sin ella habría que leer la sesión en el layout
+  // del tenant, y eso sacaría del prerenderizado a las 24 páginas del sitio
+  // público solo para decidir el texto de un botón. No lleva token; ver
+  // `session-hint.ts`.
+  const opciones = opcionesPistaSesion(process.env.NODE_ENV === 'production');
+  if (data.user) {
+    response.cookies.set(COOKIE_PISTA_SESION, '1', opciones);
+  } else if (request.cookies.has(COOKIE_PISTA_SESION)) {
+    // La sesión caducó o se cerró en otra pestaña: la pista se retira sola.
+    response.cookies.set(COOKIE_PISTA_SESION, '', { ...opciones, maxAge: 0 });
+  }
 
   return response;
 }

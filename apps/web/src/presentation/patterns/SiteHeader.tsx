@@ -11,16 +11,47 @@
  * decisión de qué mostrar es del dominio, no de la cabecera.
  */
 
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import type { BrandLogo } from '@core/domain/tenant/branding';
 import type { NavItem } from '@core/domain/tenant/tenant-config';
 import { cn } from '@/lib/cn';
 import { tenantHref } from '@/lib/tenant-links';
+import { COOKIE_PISTA_SESION } from '@infra/auth/session-hint';
 import { Icon } from '../icons/Icon';
 import { LinkButton } from '../ui/Button';
 import { Logo } from '../ui/Logo';
+
+/**
+ * ¿Hay sesión abierta? Se lee del navegador, no del servidor.
+ *
+ * Leerlo en el layout obligaría a renderizar bajo demanda las 24 páginas del
+ * sitio público, que hoy se sirven prerenderizadas. La pista la escribe el
+ * middleware y no contiene token —ver `infrastructure/auth/session-hint.ts`—.
+ *
+ * Arranca en `false` a propósito: el visitante anónimo es el caso mayoritario
+ * y así ve el enlace correcto desde el primer pintado. Quien tiene sesión ve
+ * cambiar el botón al hidratar, que es un parpadeo aceptable a cambio de no
+ * sacar el sitio entero del prerenderizado.
+ */
+function useSesionAbierta(): boolean {
+  const [abierta, setAbierta] = useState(false);
+  const ruta = usePathname();
+
+  // Se vuelve a leer en cada cambio de ruta. La cabecera vive en el layout y
+  // no se desmonta al navegar, así que con `[]` como dependencia se quedaba
+  // con el valor del primer montaje: tras cerrar sesión seguía ofreciendo
+  // «Mi panel» hasta recargar la página entera.
+  useEffect(() => {
+    const tiene = document.cookie
+      .split(';')
+      .some((c) => c.trim().startsWith(`${COOKIE_PISTA_SESION}=1`));
+    setAbierta(tiene);
+  }, [ruta]);
+
+  return abierta;
+}
 
 interface SiteHeaderProps {
   readonly slug: string;
@@ -41,6 +72,7 @@ export function SiteHeader({
   ctaSegment,
   showLogin,
 }: SiteHeaderProps) {
+  const sesionAbierta = useSesionAbierta();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -135,16 +167,21 @@ export function SiteHeader({
             emita más tarde en la hoja. Componer evita ese conflicto sin
             arrastrar `tailwind-merge` al bundle.
           */}
+          {/*
+            Con sesión abierta el enlace deja de ofrecer «Acceso socios» y pasa
+            a llevar al panel: invitar a acceder a quien ya accedió confunde, y
+            además deja al socio sin ruta visible hacia lo suyo.
+          */}
           {showLogin && (
             <span className="hidden md:contents">
               <LinkButton
-                href={tenantHref(slug, 'acceso')}
+                href={tenantHref(slug, sesionAbierta ? 'panel' : 'acceso')}
                 variant="ghost"
                 size="sm"
-                icon="lock"
+                icon={sesionAbierta ? 'trainer' : 'lock'}
                 iconPosition="start"
               >
-                Acceso socios
+                {sesionAbierta ? 'Mi panel' : 'Acceso socios'}
               </LinkButton>
             </span>
           )}
@@ -215,14 +252,14 @@ export function SiteHeader({
             </LinkButton>
             {showLogin && (
               <LinkButton
-                href={tenantHref(slug, 'acceso')}
+                href={tenantHref(slug, sesionAbierta ? 'panel' : 'acceso')}
                 variant="secondary"
                 size="lg"
-                icon="lock"
+                icon={sesionAbierta ? 'trainer' : 'lock'}
                 iconPosition="start"
                 fullWidth
               >
-                Acceso socios
+                {sesionAbierta ? 'Mi panel' : 'Acceso socios'}
               </LinkButton>
             )}
           </div>

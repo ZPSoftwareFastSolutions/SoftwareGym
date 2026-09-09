@@ -12,6 +12,7 @@
  */
 
 import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import {
   iniciarSesion,
@@ -109,11 +110,20 @@ function ErrorCampo({ id, mensaje }: { readonly id: string; readonly mensaje?: s
 interface AccessFormProps {
   readonly slug: string;
   readonly gymName: string;
-  /** `'ok'` o `'fallo'` cuando se vuelve del enlace de confirmación. */
-  readonly confirmacion?: 'ok' | 'fallo';
 }
 
-export function AccessForm({ slug, gymName, confirmacion }: AccessFormProps) {
+export function AccessForm({ slug, gymName }: AccessFormProps) {
+  // El parámetro se lee AQUÍ, en cliente, y no en la página.
+  //
+  // Leerlo en el servidor obligaba a renderizar `/acceso` bajo demanda: en
+  // cuanto una página toca `searchParams`, Next.js la saca del prerenderizado.
+  // Se perdía una de las páginas servidas desde CDN para pintar un aviso que
+  // solo ve quien vuelve del correo de confirmación.
+  const params = useSearchParams();
+  const confirmado = params.get('confirmado');
+  const confirmacion =
+    confirmado === '1' ? ('ok' as const) : confirmado === '0' ? ('fallo' as const) : undefined;
+
   const [pestana, setPestana] = useState<'login' | 'registro'>('login');
   const idBase = useId();
   const formLogin = useRef<HTMLFormElement>(null);

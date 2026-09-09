@@ -335,7 +335,9 @@ nivel aparte, falta su precio y sus rutinas.
 
 ### V2 · Fase 1 — Base de datos y aislamiento 🔨 2026-09-09
 
-**Rama:** `feat/v2-plataforma` (parte de `feat/v1-public-site`)
+**Rama:** `feat/v2-public-site` — rama de consolidación de V2, **no de
+producción**. Es la referencia del enlatado: se mantiene pulcra para que
+cualquier cliente que necesite estas capacidades salga de aquí.
 **Proyecto Supabase:** `dnclwawnjnzqqxgsuhpn` · PostgreSQL 17 · 11 migraciones
 
 Detalle completo en [`supabase/README.md`](supabase/README.md) y en el
@@ -656,6 +658,49 @@ mostrador de un gimnasio la misma pantalla la usan varias personas.
 
 **El botón sí se desactiva durante el envío** (`useFormStatus`, con `aria-busy`
 y el texto «Un momento…»). Se verificó muestreando su estado a mitad del envío.
+
+### V2 · Fase 4 — La cabecera conoce la sesión ✅ 2026-09-09
+
+Ofrecer «Acceso socios» a quien ya entró no tiene sentido. Con sesión abierta
+el enlace pasa a **«Mi panel»** —en escritorio y en el menú móvil—, en vez de
+desaparecer sin más: quitarlo dejaría al socio sin ruta visible hacia lo suyo.
+
+#### La restricción que condicionó la solución
+
+Lo natural era leer la sesión en el layout del tenant. **No se puede:** ese
+layout es el que prerenderiza las páginas del sitio público, y en cuanto lee
+cookies Next.js las saca del prerenderizado. Se perdería el servido desde CDN
+de todo el sitio comercial para decidir el texto de un botón.
+
+La salida es una **cookie de pista** (`gp-sesion`) que escribe el middleware
+—que ya valida la sesión en cada petición—. No lleva token ni identidad: es un
+`1` que solo dice «hay sesión». Al no ser `HttpOnly` la cabecera la lee desde
+el navegador, sin petición extra y sin sacar una sola página de estático.
+
+> **No es un control de seguridad y no debe usarse como tal.** Cualquiera puede
+> escribirla desde la consola. **Comprobado:** con la cookie falsificada la
+> cabecera muestra «Mi panel», y al entrar el panel devuelve 307 al acceso.
+> Falsearla no abre nada, porque quien decide es `getUser()` y, por debajo, RLS.
+
+De paso se devolvió `/acceso` a estática: leía `searchParams` en el servidor
+para el aviso de confirmación, lo que la sacaba del prerenderizado. Ahora ese
+parámetro se lee en cliente con `useSearchParams` dentro de un `Suspense`.
+**Solo `/panel` y `/auth/confirmar` son dinámicas**, que es lo correcto.
+
+#### Dos fallos encontrados al probar el ciclo completo
+
+Ninguno aparecía leyendo el código; salieron al hacer entrar → salir.
+
+1. **La pista sobrevivía al cierre de sesión.** El middleware ya se había
+   ejecutado para esa petición —con la sesión viva— y la navegación posterior
+   la resuelve el enrutador del cliente sin volver a pasar por él. Se retira
+   ahora explícitamente en la acción `cerrarSesion`.
+2. **La cabecera no se enteraba.** Vive en el layout y no se desmonta al
+   navegar, así que con `[]` como dependencia conservaba el valor del primer
+   montaje. Ahora relee la pista en cada cambio de ruta.
+
+Verificado el ciclo entero: sin sesión «Acceso socios» → tras entrar «Mi
+panel» → tras salir «Acceso socios» y cookie retirada.
 
 #### Limitación aceptada, no es deuda
 
