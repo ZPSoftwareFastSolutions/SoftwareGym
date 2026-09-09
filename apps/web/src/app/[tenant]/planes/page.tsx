@@ -5,6 +5,7 @@ import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
 import { PlansSection } from '@/presentation/sections/PlansSection';
 import { TestimonialsSection } from '@/presentation/sections/TestimonialsSection';
+import { TrainingPlansSection } from '@/presentation/sections/TrainingPlansSection';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
   return tenantPageMetadata(params, 'Planes y membresías');
@@ -34,9 +35,16 @@ export default async function PlansPage({ params }: TenantPageParams) {
         groups={content.planGroups}
         note={content.plansNote}
         slug={slug}
-        eyebrow="Comparativa"
+        eyebrow="Paquetes"
         title="Elegí tu paquete"
       />
+
+      {/* Categoría distinta de los paquetes: sección aparte, nunca en la misma
+          retícula. Comparar el precio de un programa con el de una mensualidad
+          lleva a una conclusión equivocada. */}
+      {features.showTrainingPlans && (
+        <TrainingPlansSection plans={content.trainingPlans} slug={slug} />
+      )}
 
       {features.showTestimonials && (
         <TestimonialsSection

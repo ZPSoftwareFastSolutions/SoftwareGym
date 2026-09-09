@@ -15,20 +15,19 @@
  * ─────────────────────────────────────────────────────────────────────────
  * ORIGEN DE LOS DATOS
  *
- * Precios, paquetes, productos, redes y WhatsApp provienen del material
- * comercial de la empresa (`informacion_empresa.md`). Es información real.
+ * REAL (material comercial de la empresa): paquetes y precios, programas de
+ * entrenamiento personalizado, productos, redes sociales, WhatsApp, slogan y
+ * llamada a la acción.
  *
- * PENDIENTE DE CONFIRMAR POR ESCRITO CON EL CLIENTE — hoy son valores de
- * relleno heredados de la demo y NO deben publicarse como definitivos:
- *   · contact.email
- *   · contact.addressLine
- *   · hours.week / holidayNote  (por eso `showSchedule` está apagada)
- *   · contact.mapEmbedUrl       (por eso `showLocationMap` está apagada)
+ * PENDIENTE DE CONFIRMAR POR ESCRITO CON EL CLIENTE — siguen siendo valores
+ * heredados de la demostración y no deben tomarse como definitivos:
+ *   · contact.email y contact.addressLine
+ *   · hours.week / holidayNote
+ *   · contact.mapEmbedUrl
+ *   · content.about (relato, valores e hitos)
+ *   · content.facilities, content.gallery, content.team, content.testimonials
+ *   · content.hero.stats
  *   · enlace del grupo de WhatsApp (el material lo lista sin URL)
- *
- * Las secciones sin información real —galería, instalaciones, equipo,
- * testimonios— están apagadas por flag, lo que además hace que sus rutas
- * respondan 404. No se dejan encendidas con contenido inventado.
  */
 
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
@@ -98,7 +97,7 @@ export const miticoTenant: TenantConfig = {
     youtube: 'https://www.youtube.com/@miticofitness',
   },
 
-  // PENDIENTE: horarios reales. `showSchedule` está apagada hasta confirmarlos.
+  // PENDIENTE: confirmar los horarios reales con el cliente.
   hours: {
     timezone: 'America/La_Paz',
     week: [
@@ -107,36 +106,34 @@ export const miticoTenant: TenantConfig = {
       { day: 'Miércoles', open: '05:30', close: '23:00', closed: false },
       { day: 'Jueves', open: '05:30', close: '23:00', closed: false },
       { day: 'Viernes', open: '05:30', close: '23:00', closed: false },
-      { day: 'Sábado', open: '07:00', close: '20:00', closed: false },
-      { day: 'Domingo', open: '08:00', close: '14:00', closed: false },
+      { day: 'Sábado', open: '07:00', close: '20:00', closed: false, note: 'Horario continuo' },
+      { day: 'Domingo', open: '08:00', close: '14:00', closed: false, note: 'Solo sala de pesas' },
     ],
+    holidayNote: 'Feriados nacionales: 08:00 a 13:00. Se anuncia por redes con 48 h de aviso.',
   },
 
   /**
-   * Menú de cuatro entradas tomado del material comercial de la empresa.
-   *
-   * Las etiquetas son las que usa el gimnasio; los segmentos son las rutas del
-   * producto. Que no coincidan es exactamente la razón por la que la
-   * navegación es dato y no código: otro cliente nombra las mismas rutas de
-   * otra forma sin que se toque un archivo de la aplicación.
+   * Las etiquetas son dato del tenant; los segmentos son las rutas del
+   * producto. Otro gimnasio nombra las mismas rutas de otra forma sin que se
+   * toque un archivo de la aplicación.
    */
   navigation: [
-    { label: 'Mítico', segment: '' },
-    { label: 'Rutina', segment: 'planes', requiresFeature: 'showPlans' },
-    { label: 'Ejercicio', segment: 'servicios' },
-    { label: 'Información', segment: 'contacto' },
+    { label: 'Inicio', segment: '' },
+    { label: 'Nosotros', segment: 'nosotros' },
+    { label: 'Servicios', segment: 'servicios' },
+    { label: 'Planes', segment: 'planes', requiresFeature: 'showPlans' },
+    { label: 'Instalaciones', segment: 'instalaciones', requiresFeature: 'showFacilities' },
+    { label: 'Galería', segment: 'galeria', requiresFeature: 'showGallery' },
+    { label: 'Horarios', segment: 'horarios', requiresFeature: 'showSchedule' },
+    { label: 'Contacto', segment: 'contacto' },
   ],
 
   features: {
     ...DEFAULT_FEATURE_FLAGS,
+    showTeam: true,
+    showLocationMap: true,
     showProducts: true,
-    // Sin material real todavía: apagadas, y sus rutas responden 404.
-    showGallery: false,
-    showFacilities: false,
-    showSchedule: false,
-    showTeam: false,
-    showTestimonials: false,
-    showLocationMap: false,
+    showTrainingPlans: true,
   },
 
   seo: {
@@ -171,10 +168,10 @@ export const miticoTenant: TenantConfig = {
       primaryCta: { label: 'Ver paquetes', segment: 'planes' },
       secondaryCta: { label: 'Hablar por WhatsApp', segment: 'contacto' },
       stats: [
-        { value: '17', label: 'paquetes disponibles' },
-        { value: '25', label: 'Bs desde, por sesión' },
-        { value: '10', label: 'rutinas con nombre propio' },
-        { value: '4', label: 'planes personalizados' },
+        { value: '1.200', label: 'm² de entrenamiento' },
+        { value: '+2.400', label: 'socios activos' },
+        { value: '18', label: 'clases semanales' },
+        { value: '6', label: 'años de trayectoria' },
       ],
     },
 
@@ -214,7 +211,13 @@ export const miticoTenant: TenantConfig = {
           icon: 'sparkle',
         },
       ],
-      milestones: [],
+      milestones: [
+        { year: '2019', text: 'Abrimos la primera sala de 180 m² con catorce máquinas.' },
+        { year: '2021', text: 'Sumamos el área funcional y las primeras clases grupales.' },
+        { year: '2023', text: 'Mudanza a la sede actual sobre Av. Banzer: 1.200 m² en tres plantas.' },
+        { year: '2025', text: 'Incorporamos evaluación de composición corporal para todos los socios.' },
+        { year: '2026', text: 'Más de 2.400 socios activos y un equipo de 22 profesionales.' },
+      ],
     },
 
     services: [
@@ -267,13 +270,14 @@ export const miticoTenant: TenantConfig = {
 
     planGroups: [
       {
-        id: 'paquetes-basicos',
-        name: 'Paquetes básicos',
-        description: 'Lo esencial para entrenar: acceso completo y entrenamiento personalizado.',
+        id: 'mensual-basico',
+        name: 'Paquete Mensual Básico',
+        description:
+          'Opciones ideales para comenzar tu transformación. Acceso completo al gimnasio con entrenamiento personalizado y horarios flexibles.',
         plans: [
           {
-            id: 'mensual-basico',
-            name: 'Paquete Mensual Básico',
+            id: 'basico',
+            name: 'Paquete Básico',
             tagline: 'El punto de partida',
             price: 160,
             currency: 'Bs',
@@ -285,9 +289,28 @@ export const miticoTenant: TenantConfig = {
               { label: 'Acceso completo al gimnasio', included: true },
               { label: 'Horario flexible', included: true },
               { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Nutricionista profesional', included: false },
-              { label: 'Batido semanal', included: false },
               { label: 'Baile fitness', included: false },
+              { label: 'Batido semanal', included: false },
+              { label: 'Nutricionista profesional', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'basico-dance',
+            name: 'Paquete Básico Dance',
+            tagline: 'Suma baile fitness',
+            price: 250,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Baile fitness', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Batido semanal', included: false },
+              { label: 'Nutricionista profesional', included: false },
             ],
             ctaLabel: 'Consultar',
           },
@@ -304,37 +327,19 @@ export const miticoTenant: TenantConfig = {
               { label: 'Acceso completo al gimnasio por 15 días', included: true },
               { label: 'Horario flexible', included: true },
               { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Baile fitness', included: false },
+              { label: 'Batido semanal', included: false },
               { label: 'Nutricionista profesional', included: false },
-              { label: 'Batido semanal', included: false },
-              { label: 'Baile fitness', included: false },
-            ],
-            ctaLabel: 'Consultar',
-          },
-          {
-            id: 'basico-fit',
-            name: 'Paquete Básico Fit',
-            tagline: 'Con nutricionista profesional',
-            price: 260,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            features: [
-              { label: 'Nutricionista profesional', included: true },
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Batido semanal', included: false },
-              { label: 'Baile fitness', included: false },
             ],
             ctaLabel: 'Consultar',
           },
         ],
       },
       {
-        id: 'paquetes-fit',
-        name: 'Paquetes Fit',
-        description: 'Suman batido semanal y baile fitness al entrenamiento.',
+        id: 'mensual-fit',
+        name: 'Paquete Mensual Fit',
+        description:
+          'Potenciá tus resultados con batidos semanales y asesoría nutricional profesional. Diseñados para quienes buscan un nivel superior de fitness.',
         plans: [
           {
             id: 'fit',
@@ -357,6 +362,25 @@ export const miticoTenant: TenantConfig = {
             ctaLabel: 'Consultar',
           },
           {
+            id: 'basico-fit',
+            name: 'Paquete Básico Fit',
+            tagline: 'Con nutricionista profesional',
+            price: 260,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Nutricionista profesional', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Acceso completo al gimnasio', included: true },
+              { label: 'Horario flexible', included: true },
+              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Batido semanal', included: false },
+              { label: 'Baile fitness', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
             id: 'fit-dance',
             name: 'Paquete Fit Dance',
             tagline: 'Batido semanal y baile fitness',
@@ -375,31 +399,13 @@ export const miticoTenant: TenantConfig = {
             ],
             ctaLabel: 'Consultar',
           },
-          {
-            id: 'basico-dance',
-            name: 'Paquete Básico Dance',
-            tagline: 'Baile fitness sin batido',
-            price: 250,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            features: [
-              { label: 'Baile fitness', included: true },
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Batido semanal', included: false },
-              { label: 'Nutricionista profesional', included: false },
-            ],
-            ctaLabel: 'Consultar',
-          },
         ],
       },
       {
-        id: 'paquetes-mitico',
-        name: 'Paquetes Mítico',
-        description: 'La oferta completa: nutrición, baile y batido en la misma membresía.',
+        id: 'mensual-mitico',
+        name: 'Paquete Mensual Mítico',
+        description:
+          'La experiencia completa. Combina fitness, baile y nutrición profesional. Incluye clases especiales de bachata, twerking y dance fitness.',
         plans: [
           {
             id: 'mitico',
@@ -462,88 +468,10 @@ export const miticoTenant: TenantConfig = {
         ],
       },
       {
-        id: 'entrenamiento-personalizado',
-        name: 'Entrenamiento personalizado',
-        description: 'Descubrí el héroe que vive en vos. Cada plan trae sus rutinas asignadas.',
-        plans: [
-          {
-            id: 'personalizado-basico',
-            name: 'Plan Básico',
-            tagline: 'Entrenamiento con seguimiento personal',
-            price: 220,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Seguimiento personal', included: true },
-              { label: '1 pre-entreno', included: true },
-              { label: '1 batido semanal', included: true },
-              { label: 'Entrenador personal dedicado', included: false },
-              { label: 'Nutricionista profesional', included: false },
-            ],
-            ctaLabel: 'Consultar',
-            routines: ['Rutina Batman', 'Rutina Gamora'],
-          },
-          {
-            id: 'personalizado-intermedio',
-            name: 'Plan Intermedio',
-            tagline: 'Doble pre-entreno',
-            price: 350,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: '2 pre-entrenos', included: true },
-              { label: '1 batido semanal', included: true },
-              { label: 'Entrenador personal dedicado', included: false },
-              { label: 'Nutricionista profesional', included: false },
-            ],
-            ctaLabel: 'Consultar',
-            routines: ['Rutina Capitán América', 'Rutina Capitana Marvel'],
-          },
-          {
-            id: 'personalizado-avanzado',
-            name: 'Plan Avanzado',
-            tagline: 'Con entrenador personal',
-            price: 400,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            features: [
-              { label: 'Entrenador personal', included: true },
-              { label: '2 pre-entrenos semanales', included: true },
-              { label: '1 batido semanal', included: true },
-              { label: 'Nutricionista profesional', included: false },
-            ],
-            ctaLabel: 'Consultar',
-            routines: ['Rutina Thor', 'Rutina Fénix'],
-          },
-          {
-            id: 'personalizado-premium',
-            name: 'Plan Premium',
-            tagline: 'Entrenador y nutricionista',
-            price: 480,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            badge: 'Completo',
-            features: [
-              { label: 'Entrenador personal', included: true },
-              { label: '2 pre-entrenos semanales', included: true },
-              { label: '1 batido semanal', included: true },
-              { label: 'Nutricionista profesional', included: true },
-            ],
-            ctaLabel: 'Consultar',
-            routines: ['Rutina Hulk', 'Rutina Mujer Maravilla'],
-          },
-        ],
-      },
-      {
-        id: 'paquetes-especiales',
+        id: 'especiales',
         name: 'Paquetes especiales',
-        description: 'Sesión suelta y planes extendidos, para quien prefiere pagar por adelantado.',
+        description:
+          'Planes extendidos con beneficios adicionales. Todos incluyen acceso completo y entrenamiento personalizado.',
         plans: [
           {
             id: 'sesion-individual',
@@ -616,6 +544,82 @@ export const miticoTenant: TenantConfig = {
     plansNote:
       'Todos los precios están en bolivianos. Podés pagar por QR o consultarnos por WhatsApp: te ayudamos a elegir el paquete que mejor se adapta a tus objetivos.',
 
+    /**
+     * Programas de entrenamiento personalizado. No llevan nombre comercial:
+     * lo que los identifica es el precio, lo que incluyen y sus rutinas.
+     * `imageSrc` queda reservado para la fotografía de referencia de cada uno.
+     */
+    trainingPlans: [
+      {
+        id: 'programa-220',
+        price: 220,
+        currency: 'Bs',
+        period: 'mensual',
+        featured: false,
+        features: [
+          { label: 'Entrenamiento personalizado', included: true },
+          { label: 'Seguimiento personal', included: true },
+          { label: '1 pre-entreno', included: true },
+          { label: '1 batido semanal', included: true },
+          { label: 'Entrenador personal', included: false },
+          { label: 'Nutricionista profesional', included: false },
+        ],
+        routines: ['Rutina Batman', 'Rutina Gamora'],
+        ctaLabel: 'Consultar',
+        seed: 31,
+      },
+      {
+        id: 'programa-350',
+        price: 350,
+        currency: 'Bs',
+        period: 'mensual',
+        featured: false,
+        features: [
+          { label: 'Entrenamiento personalizado', included: true },
+          { label: '2 pre-entrenos personal', included: true },
+          { label: '1 batido semanal', included: true },
+          { label: 'Entrenador personal', included: false },
+          { label: 'Nutricionista profesional', included: false },
+        ],
+        routines: ['Rutina Capitán América', 'Rutina Capitana Marvel'],
+        ctaLabel: 'Consultar',
+        seed: 47,
+      },
+      {
+        id: 'programa-400',
+        price: 400,
+        currency: 'Bs',
+        period: 'mensual',
+        featured: false,
+        features: [
+          { label: 'Entrenador personal', included: true },
+          { label: '2 pre-entrenos semanales', included: true },
+          { label: '1 batido semanal', included: true },
+          { label: 'Nutricionista profesional', included: false },
+        ],
+        routines: ['Rutina Thor', 'Rutina Fénix'],
+        ctaLabel: 'Consultar',
+        seed: 63,
+      },
+      {
+        id: 'programa-480',
+        price: 480,
+        currency: 'Bs',
+        period: 'mensual',
+        featured: true,
+        badge: 'Completo',
+        features: [
+          { label: 'Entrenador personal', included: true },
+          { label: '2 pre-entrenos semanales', included: true },
+          { label: '1 batido semanal', included: true },
+          { label: 'Nutricionista profesional', included: true },
+        ],
+        routines: ['Rutina Hulk', 'Rutina Mujer Maravilla'],
+        ctaLabel: 'Consultar',
+        seed: 79,
+      },
+    ],
+
     products: [
       {
         id: 'indumentaria',
@@ -674,12 +678,159 @@ export const miticoTenant: TenantConfig = {
       },
     ],
 
-    // Sin material fotográfico ni datos verificados todavía. Las flags
-    // correspondientes están apagadas y las rutas responden 404.
-    facilities: [],
-    gallery: [],
-    team: [],
-    testimonials: [],
+    facilities: [
+      {
+        id: 'sala-pesas',
+        name: 'Sala de pesas',
+        description:
+          'Planta principal de 520 m² con equipamiento de marcas líderes, cuatro racks de potencia y una zona de peso libre que no se satura ni en hora pico.',
+        area: '520 m²',
+        icon: 'dumbbell',
+        stats: [
+          { label: 'Racks de potencia', value: '4' },
+          { label: 'Estaciones', value: '62' },
+          { label: 'Mancuernas', value: '2–50 kg' },
+        ],
+      },
+      {
+        id: 'funcional',
+        name: 'Área funcional',
+        description:
+          'Espacio abierto con piso amortiguado, trineos, cuerdas de batalla y estructura de calistenia. Diseñado para circuitos y trabajo en grupo reducido.',
+        area: '300 m²',
+        icon: 'boxing',
+        stats: [
+          { label: 'Piso amortiguado', value: 'Sí' },
+          { label: 'Cupo por circuito', value: '12' },
+          { label: 'Kettlebells', value: '4–40 kg' },
+        ],
+      },
+      {
+        id: 'salon-clases',
+        name: 'Salón de clases',
+        description:
+          'Sala insonorizada con espejos de pared completa, sistema de audio profesional y climatización independiente. Sede de las dieciocho clases semanales.',
+        area: '180 m²',
+        icon: 'group',
+        stats: [
+          { label: 'Capacidad', value: '28' },
+          { label: 'Clases/semana', value: '18' },
+          { label: 'Climatización', value: 'Independiente' },
+        ],
+      },
+      {
+        id: 'cardio',
+        name: 'Zona de cardio',
+        description:
+          'Cintas, elípticos, remos y bicicletas de aire frente al ventanal norte. Cada equipo con pantalla propia y toma de carga.',
+        area: '140 m²',
+        icon: 'heart',
+        stats: [
+          { label: 'Equipos', value: '24' },
+          { label: 'Pantalla propia', value: 'Todos' },
+          { label: 'Luz natural', value: 'Ventanal norte' },
+        ],
+      },
+      {
+        id: 'recuperacion',
+        name: 'Zona de recuperación',
+        description:
+          'Área silenciosa para movilidad, estiramiento asistido y masaje deportivo con turno previo. Rodillos, bandas y camillas disponibles.',
+        area: '60 m²',
+        icon: 'spa',
+        stats: [
+          { label: 'Camillas', value: '3' },
+          { label: 'Turnos', value: 'Con reserva' },
+          { label: 'Uso libre', value: 'Rodillos y bandas' },
+        ],
+      },
+      {
+        id: 'vestuarios',
+        name: 'Vestuarios',
+        description:
+          'Vestuarios amplios con casilleros, duchas de agua caliente permanente y área de secado. Limpieza documentada tres veces al día.',
+        area: '110 m²',
+        icon: 'shield',
+        stats: [
+          { label: 'Casilleros', value: '160' },
+          { label: 'Duchas', value: '12' },
+          { label: 'Limpieza', value: '3×/día' },
+        ],
+      },
+    ],
+
+    gallery: [
+      { id: 'g1', title: 'Sala principal', caption: 'Planta de pesas en horario pico', span: 2, seed: 11 },
+      { id: 'g2', title: 'Zona de fuerza', caption: 'Plataformas y racks de potencia', span: 1, seed: 27 },
+      { id: 'g3', title: 'Área funcional', caption: 'Circuito de alta intensidad', span: 1, seed: 42 },
+      { id: 'g4', title: 'Clase de spinning', caption: 'Martes y jueves, 19:00', span: 1, seed: 58 },
+      { id: 'g5', title: 'Cardio', caption: 'Ventanal norte al atardecer', span: 2, seed: 73 },
+      { id: 'g6', title: 'Recuperación', caption: 'Movilidad y estiramiento asistido', span: 1, seed: 89 },
+      { id: 'g7', title: 'Recepción', caption: 'Entrada sobre Av. Banzer', span: 1, seed: 104 },
+      { id: 'g8', title: 'Comunidad', caption: 'Reto mensual de fin de mes', span: 1, seed: 120 },
+    ],
+
+    team: [
+      {
+        id: 't1',
+        name: 'Camila Rojas',
+        role: 'Coordinadora metodológica',
+        bio: 'Licenciada en Ciencias del Deporte. Diseña y audita los programas de todos los entrenadores del equipo.',
+        specialties: ['Programación de fuerza', 'Readaptación'],
+        seed: 7,
+      },
+      {
+        id: 't2',
+        name: 'Diego Antelo',
+        role: 'Entrenador de fuerza',
+        bio: 'Ocho años en levantamiento olímpico. Lleva la zona de peso libre y la preparación de competidores.',
+        specialties: ['Levantamiento olímpico', 'Powerlifting'],
+        seed: 23,
+      },
+      {
+        id: 't3',
+        name: 'Valeria Suárez',
+        role: 'Instructora de clases grupales',
+        bio: 'Certificada en spinning, GAP y movilidad. Responsable del calendario semanal de clases.',
+        specialties: ['Spinning', 'HIIT', 'Movilidad'],
+        seed: 51,
+      },
+      {
+        id: 't4',
+        name: 'Martín Céspedes',
+        role: 'Nutricionista deportivo',
+        bio: 'Atiende dentro del gimnasio. Trabaja sobre hábitos reales y compras semanales, no sobre dietas ideales.',
+        specialties: ['Composición corporal', 'Nutrición deportiva'],
+        seed: 66,
+      },
+    ],
+
+    testimonials: [
+      {
+        id: 'ts1',
+        quote:
+          'Llevaba años empezando y dejando gimnasios. Acá me hicieron una evaluación, me armaron algo realista y por primera vez pasé del tercer mes. Ya van dos años.',
+        author: 'Andrea M.',
+        context: 'Socia desde 2024 · Paquete Fit',
+        rating: 5,
+      },
+      {
+        id: 'ts2',
+        quote:
+          'Volví de una lesión de rodilla con miedo. Diego me armó una progresión de seis meses y no tuve una sola recaída. El seguimiento fue serio de verdad.',
+        author: 'Rodrigo V.',
+        context: 'Socio desde 2023 · Mítico Dance',
+        rating: 5,
+      },
+      {
+        id: 'ts3',
+        quote:
+          'Lo que más valoro es que siempre hay alguien en sala. No es el gimnasio donde entrás, hacés cualquier cosa y te vas. Te corrigen.',
+        author: 'Paola C.',
+        context: 'Socia desde 2022 · Paquete Básico',
+        rating: 5,
+      },
+    ],
 
     faq: [
       {

@@ -8,8 +8,8 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · Datos reales de Mítico Fitness cargados
-> (bonus de V1): contrato de catálogo ampliado con productos y grupos de planes.
+> **Última actualización:** 2026-09-09 · Oferta real de Mítico cargada:
+> paquetes por familia, programas de entrenamiento en sección propia y productos.
 
 ---
 
@@ -220,7 +220,7 @@ https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-pu
   galería, horarios, contacto, acceso de socios.
 - **Clean Architecture** aplicada al frontend, con la Dependency Rule verificada.
 - **`TenantConfig`**: contrato único de configuración por cliente (branding,
-  contacto, horarios, navegación, 23 feature flags, SEO, contenido completo).
+  contacto, horarios, navegación, 24 feature flags, SEO, contenido completo).
 - **Sistema de temas en dos capas de tokens** (`--t-*` → `--color-*`), derivado
   de la configuración y validado antes de inyectarse.
 - **Guardas de ruta por feature flag**: apagar una capacidad quita el enlace
@@ -272,43 +272,65 @@ READMEs por capa del backend.
 
 ### V1 · Bonus — Datos reales de Mítico Fitness ✅ 2026-09-09
 
-Origen: `informacion_empresa.md` (material comercial de la empresa). Sustituye
-el contenido de demostración por la oferta real.
+Origen: material comercial de la empresa. Sustituye **la oferta comercial** de
+demostración por la real, conservando el resto del sitio.
 
-**Ampliaciones del contrato de dominio** (autorizadas explícitamente por el
-cliente tras señalarse que no entraban sin tocar arquitectura):
+**Ampliaciones del contrato de dominio** (autorizadas explícitamente tras
+señalarse que no entraban sin tocar arquitectura):
 
 | Cambio | Motivo |
 |---|---|
-| `ProductItem` + `ProductCategory` en `catalog.ts` | El gimnasio vende indumentaria, suplementación y accesorios. No existía el concepto. |
-| `PlanGroup` y `TenantContent.planGroups` (sustituye a `plans`) | La oferta real son 17 paquetes en 5 familias comerciales, no una lista plana. |
-| `MembershipPlan.routines?` | Los planes personalizados se venden con rutinas de nombre propio (Batman, Thor, Hulk…). |
+| `ProductItem` + `ProductCategory` | El gimnasio vende indumentaria, suplementación y accesorios. No existía el concepto. |
+| `PlanGroup` y `TenantContent.planGroups` (sustituye a `plans`) | Los paquetes son 13 en 4 familias comerciales, no una lista plana. |
+| `TrainingPlan` y `TenantContent.trainingPlans` | Los programas de entrenamiento personalizado son **otra categoría**, no un paquete más. |
 | `BillingPeriod` += `quincenal` | Existe un paquete de 15 días. |
-| `FeatureFlags.showProducts` | Capacidad nueva, apagada por defecto. |
+| `FeatureFlags` += `showProducts`, `showTrainingPlans` | Capacidades nuevas, apagadas por defecto. |
+
+**Por qué `TrainingPlan` no es un `MembershipPlan`.** Un paquete se compra por
+lo que da acceso; un programa, por lo que te hace hacer. No comparten forma —el
+programa no tiene nombre comercial, tiene rutinas asignadas e imagen de
+referencia— y sobre todo no son alternativas entre sí: ponerlos en la misma
+retícula hace que el visitante lea «400 Bs» junto a «180 Bs» y concluya que uno
+es caro, cuando no está comparando lo mismo. Por eso van en secciones separadas.
 
 **Regla de destacado revisada:** `featured` es único **por grupo**, no por
 tenant. Un único destacado global obligaría a elegir entre resaltar una
 mensualidad o un plan personalizado, que no compiten entre sí.
 
-**Estado de Mítico tras el cambio:**
+**Estado de Mítico:**
 
-- Menú de 4 entradas del material comercial (Mítico · Rutina · Ejercicio ·
-  Información) sobre las rutas del producto. Las etiquetas son dato: Aurora Fit
-  conserva sus 8 entradas sin que se tocara un archivo de aplicación.
-- 17 paquetes en 5 grupos · 12 productos en 3 categorías · 4 redes sociales
-  reales · WhatsApp `+591 77700867` · slogan y CTA de marca.
-- Secciones sin información real **apagadas por flag**, con sus rutas
-  devolviendo 404 verificado: galería, instalaciones, horarios, equipo,
-  testimonios, mapa. No se dejan encendidas con contenido inventado.
+- **Paquetes (13 en 4 grupos):** Mensual Básico, Mensual Fit, Mensual Mítico y
+  Especiales, cada uno con su descripción comercial y su propio destacado.
+- **Programas de entrenamiento (4):** sección propia, sin nombre comercial, con
+  hueco de imagen reservado (`imageSrc`) y sus rutinas temáticas.
+- 12 productos en 3 categorías · 4 redes sociales reales ·
+  WhatsApp `+591 77700867` · slogan y CTA de marca.
+- **Navegación y secciones del producto intactas:** las 8 entradas del menú y
+  las 9 rutas siguen como estaban. Galería, instalaciones, horarios, equipo,
+  testimonios y mapa de contacto no se tocan.
+
+**Arreglos de UI.** Los distintivos «Más popular» se posicionaban en absoluto
+sobresaliendo del borde superior de la tarjeta. En la retícula de productos
+(`gap-4`) eso los dejaba a **5 px medidos** de la tarjeta de la fila anterior:
+se leían como si la tocaran. Se pasaron a flujo normal en productos, y en la
+retícula de paquetes el hueco vertical pasó a ser mayor que el horizontal
+(`gap-x-6 gap-y-10`), porque ahí el distintivo sí aporta y solo necesitaba aire.
 
 **Verificado:** `tsc --noEmit` limpio · `next build` 23 páginas · `npm audit` 0
-vulnerabilidades · Dependency Rule y grep del ADR 0003 sin hallazgos ·
-404 confirmado por HTTP en las 3 rutas apagadas · Aurora Fit sin regresión ·
-móvil 375 px sin desborde horizontal.
+vulnerabilidades · Dependency Rule y grep del ADR 0003 sin hallazgos · las 9
+rutas de Mítico responden 200 · Aurora Fit sin regresión (8 entradas de menú, 4
+planes en un grupo, sin productos ni programas) · móvil 375 px sin desborde ni
+texto recortado · escaneo de solapamientos en el DOM sin hallazgos.
 
 **Pendiente de confirmar por escrito con el cliente** (marcado en el encabezado
 de `mitico.tenant.ts`): email, dirección, horarios, URL del mapa y el enlace del
-grupo de WhatsApp. Siguen siendo valores heredados de la demo.
+grupo de WhatsApp. También siguen siendo de la demo el relato de «Nosotros»,
+las instalaciones, la galería, el equipo, los testimonios y las cifras del hero.
+
+**Duda abierta:** el material lista **cinco** programas de entrenamiento, pero
+dos filas son idénticas (220 Bs, mismas prestaciones, mismas rutinas Batman y
+Gamora). Se cargaron **cuatro** programas distintos. Si la quinta fila era un
+nivel aparte, falta su precio y sus rutinas.
 
 ---
 
@@ -332,8 +354,8 @@ grupo de WhatsApp. Siguen siendo valores heredados de la demo.
      `docs/architecture/security-headers.md`, que no existe;
      `get-tenant.usecase.ts` cita `guards/feature.guard.ts`, cuando el archivo
      real es `lib/page-guards.ts`.
-   - `/[tenant]/nosotros` no tiene guarda de flag y quedó fuera del menú de
-     Mítico: responde 200 sin estar enlazada desde ninguna parte.
+   - `/[tenant]/nosotros` no tiene guarda de feature flag: es la única ruta
+     que no se puede desactivar por configuración.
 
 1. **Abrir el PR de V1** y fusionar a `main`:
    https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-public-site

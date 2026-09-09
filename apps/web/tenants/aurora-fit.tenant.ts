@@ -307,6 +307,7 @@ export const auroraFitTenant: TenantConfig = {
         ],
       },
     ],
+    trainingPlans: [],
     products: [],
 
     plansNote:

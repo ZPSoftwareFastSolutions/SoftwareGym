@@ -108,21 +108,6 @@ export function PlanCard({ plan, href }: PlanCardProps) {
         ))}
       </ul>
 
-      {plan.routines && plan.routines.length > 0 && (
-        <div className="relative mt-6 border-t border-line pt-6">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-muted">
-            Rutinas incluidas
-          </p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {plan.routines.map((routine) => (
-              <li key={routine}>
-                <Badge tone="structural">{routine}</Badge>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       <div className="relative mt-8">
         <LinkButton
           href={href}

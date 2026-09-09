@@ -22,6 +22,7 @@ import type {
   StatItem,
   TeamMember,
   Testimonial,
+  TrainingPlan,
 } from '../catalog/catalog';
 import type { TenantBranding } from './branding';
 import type { FeatureFlags } from './feature-flags';
@@ -113,6 +114,11 @@ export interface TenantContent {
    */
   readonly planGroups: readonly PlanGroup[];
   readonly plansNote: string;
+  /**
+   * Programas de entrenamiento personalizado. Categoría distinta de los
+   * paquetes: se presentan en su propia sección, nunca en la misma retícula.
+   */
+  readonly trainingPlans: readonly TrainingPlan[];
   /** Catálogo de mostrador. Vacío en los clientes que no venden productos. */
   readonly products: readonly ProductCategory[];
   readonly facilities: readonly FacilityItem[];

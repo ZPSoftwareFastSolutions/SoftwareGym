@@ -26,8 +26,11 @@ interface PlansSectionProps {
  * larga, y el resto se reparte solo.
  */
 function gridFor(count: number): string {
+  // El hueco vertical es mayor que el horizontal a propósito: la tarjeta
+  // destacada saca su distintivo por encima del borde, y con un `gap` simétrico
+  // ese distintivo queda pegado a la tarjeta de la fila anterior.
   return cn(
-    'grid gap-6',
+    'grid gap-x-6 gap-y-10',
     count === 2 && 'sm:grid-cols-2',
     count === 3 && 'md:grid-cols-3',
     count >= 4 && 'sm:grid-cols-2 xl:grid-cols-3',
@@ -61,9 +64,13 @@ export function PlansSection({
             <div key={group.id}>
               {showGroupHeadings && (
                 <Reveal>
-                  <header className="mx-auto mb-12 max-w-2xl text-center">
-                    <h3 className="t-h2">{group.name}</h3>
-                    <p className="mt-3 text-[0.95rem] text-muted">{group.description}</p>
+                  {/* `mb-14` deja sitio al distintivo de la tarjeta destacada,
+                      que sobresale 12 px por encima del borde superior. */}
+                  <header className="mx-auto mb-14 max-w-2xl text-center">
+                    <h3 className="t-h2 text-balance">{group.name}</h3>
+                    <p className="mt-3 text-pretty text-[0.95rem] leading-relaxed text-muted">
+                      {group.description}
+                    </p>
                   </header>
                 </Reveal>
               )}

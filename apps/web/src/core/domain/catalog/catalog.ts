@@ -60,12 +60,6 @@ export interface MembershipPlan {
   readonly badge?: string;
   readonly features: readonly PlanFeature[];
   readonly ctaLabel: string;
-  /**
-   * Rutinas asociadas al plan, cuando el gimnasio comercializa su
-   * entrenamiento con nombre propio. Es opcional porque la mayoría de los
-   * clientes vende acceso, no programas nombrados.
-   */
-  readonly routines?: readonly string[];
 }
 
 /**
@@ -82,6 +76,36 @@ export interface PlanGroup {
   readonly name: string;
   readonly description: string;
   readonly plans: readonly MembershipPlan[];
+}
+
+/**
+ * Programa de entrenamiento personalizado.
+ *
+ * NO es un `MembershipPlan`. Un paquete se compra por lo que da acceso; un
+ * programa se compra por lo que te hace hacer. Se modelan aparte porque no
+ * comparten forma —el programa no tiene nombre comercial, tiene rutinas
+ * asignadas e imagen de referencia— y porque mezclarlos en la misma retícula
+ * invita a comparar precios entre cosas que no son alternativas.
+ */
+export interface TrainingPlan {
+  readonly id: string;
+  readonly price: number;
+  readonly currency: string;
+  readonly period: BillingPeriod;
+  readonly features: readonly PlanFeature[];
+  /** Rutinas asignadas al programa. Es lo que lo identifica. */
+  readonly routines: readonly string[];
+  /**
+   * Imagen de referencia del programa. Vacía deja el marco generativo de
+   * marca, de modo que la tarjeta nunca se ve rota mientras falta la foto.
+   */
+  readonly imageSrc?: string;
+  readonly imageAlt?: string;
+  readonly featured: boolean;
+  readonly badge?: string;
+  readonly ctaLabel: string;
+  /** Semilla del marco generativo cuando no hay `imageSrc`. */
+  readonly seed: number;
 }
 
 /**

@@ -87,6 +87,9 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
   if (tenant.features.showProducts && tenant.content.products.length === 0) {
     issues.push('features.showProducts está activo pero content.products está vacío.');
   }
+  if (tenant.features.showTrainingPlans && tenant.content.trainingPlans.length === 0) {
+    issues.push('features.showTrainingPlans está activo pero content.trainingPlans está vacío.');
+  }
   if (tenant.features.showGallery && tenant.content.gallery.length === 0) {
     issues.push('features.showGallery está activo pero content.gallery está vacío.');
   }
@@ -126,6 +129,22 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
   const planIds = new Set(allPlans.map((p) => p.id));
   if (planIds.size !== allPlans.length) {
     issues.push('Hay identificadores de plan duplicados entre los grupos de content.planGroups.');
+  }
+
+  const trainingFeatured = tenant.content.trainingPlans.filter((p) => p.featured);
+  if (trainingFeatured.length > 1) {
+    issues.push(
+      `Solo un programa de entrenamiento puede tener featured: true (hay ${trainingFeatured.length}).`,
+    );
+  }
+  const trainingIds = new Set(tenant.content.trainingPlans.map((p) => p.id));
+  if (trainingIds.size !== tenant.content.trainingPlans.length) {
+    issues.push('Hay identificadores duplicados en content.trainingPlans.');
+  }
+  for (const program of tenant.content.trainingPlans) {
+    if (program.routines.length === 0) {
+      issues.push(`El programa "${program.id}" no declara ninguna rutina.`);
+    }
   }
 
   const productIds = new Set(tenant.content.products.flatMap((c) => c.items.map((i) => i.id)));

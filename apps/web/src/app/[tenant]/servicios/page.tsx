@@ -6,6 +6,7 @@ import { FaqSection } from '@/presentation/sections/FaqSection';
 import { PlansSection } from '@/presentation/sections/PlansSection';
 import { ProductsSection } from '@/presentation/sections/ProductsSection';
 import { ServicesSection } from '@/presentation/sections/ServicesSection';
+import { TrainingPlansSection } from '@/presentation/sections/TrainingPlansSection';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
   return tenantPageMetadata(params, 'Servicios');
@@ -43,6 +44,10 @@ export default async function ServicesPage({ params }: TenantPageParams) {
           eyebrow="Membresías"
           title="¿Qué incluye cada paquete?"
         />
+      )}
+
+      {features.showTrainingPlans && (
+        <TrainingPlansSection plans={content.trainingPlans} slug={slug} />
       )}
 
       {features.showProducts && (

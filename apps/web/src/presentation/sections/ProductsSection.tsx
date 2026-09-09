@@ -70,9 +70,12 @@ export function ProductsSection({
                 {category.items.map((item, index) => (
                   <li key={item.id}>
                     <Reveal delay={Math.min(index, 5) * 70} className="h-full">
-                      <article className="surface-card relative flex h-full flex-col gap-4 p-6">
+                      {/* El distintivo va en flujo, no absoluto sobre el borde:
+                          sobresaliendo quedaba a 5 px de la tarjeta de la fila
+                          anterior y se leía como si la tocara. */}
+                      <article className="surface-card flex h-full flex-col gap-4 p-6">
                         {item.badge && (
-                          <div className="absolute -top-3 start-6">
+                          <div>
                             <Badge>{item.badge}</Badge>
                           </div>
                         )}
