@@ -597,6 +597,66 @@ en `connect-src`, y **login real funcionando** con la cookie todavía `HttpOnly`
 > *Sensitive* y las *Shared* entre proyectos. Aun así, no configurar nada es
 > mejor que configurar bien, así que la solución se queda.
 
+### V2 · Fase 3 — Validaciones y confirmación de correo ✅ 2026-09-09
+
+#### El enlace del correo no confirmaba nada
+
+`signUp` no enviaba `emailRedirectTo` y **no existía ninguna ruta de retorno**.
+Supabase caía en la «Site URL» del panel —`http://localhost:3000`— y el socio
+recibía un enlace a su propia máquina.
+
+Ahora `signUp` envía `emailRedirectTo` apuntando a `/auth/confirmar`, un Route
+Handler nuevo que cubre las dos formas en que puede volver el enlace según la
+plantilla configurada: `?code=` (PKCE, se canjea con `exchangeCodeForSession`)
+y `?token_hash=&type=` (se verifica con `verifyOtp`). Al terminar redirige a la
+página de acceso del gimnasio con `?confirmado=1` o `0`, y el formulario
+muestra el mensaje correspondiente.
+
+**El destino se valida contra el registro de tenants.** Sin eso,
+`?gimnasio=https://sitio-malicioso` habría convertido esa ruta en un
+**redirector abierto**: un enlace que empieza en nuestro dominio —y por tanto
+parece de fiar— y termina donde quiera el atacante. Probado: redirige a `/`.
+
+> ⚠️ **Falta un ajuste en el panel de Supabase**, y sin él esto no funciona en
+> producción por más código que haya: Authentication → URL Configuration.
+> **Site URL** = `https://gym-platform-alpha.vercel.app` y en **Redirect URLs**
+> añadir `https://gym-platform-alpha.vercel.app/auth/confirmar*`. Si el destino
+> no está en esa lista, Supabase ignora `emailRedirectTo` y vuelve a la Site
+> URL. No se puede cambiar por MCP: es del panel.
+
+#### Validaciones
+
+Todas por duplicado: en el navegador para no hacer perder el tiempo, en el
+servidor porque el `pattern` se salta desactivando JavaScript. **Comprobado
+quitando `pattern`, `minlength` y `required` desde la consola**: el servidor
+rechazó los tres campos igual.
+
+| Campo | Regla |
+|---|---|
+| Nombre | Letras, espacios, apóstrofo, guion y punto. **Sin dígitos**, con mensaje propio. Admite tildes, `ñ` y `ç` |
+| Correo | Dominio de dos niveles y TLD alfabético; máx. 254 (RFC 5321) |
+| Contraseña | 8–72 caracteres; no puede ser igual al correo |
+
+El tope de 72 no es capricho: bcrypt trunca ahí, y sin el límite el usuario
+creería tener una contraseña más fuerte de la que tiene.
+
+#### Dos fallos de la interfaz que eran de seguridad
+
+**Los datos pasaban de una pestaña a otra.** Lo escrito en «Iniciar sesión»
+—contraseña incluida— aparecía al cambiar a «Crear cuenta». React reconciliaba
+los dos formularios como si fueran el mismo, porque tienen la misma estructura
+y los mismos `name`, y reutilizaba los `<input>`. Resuelto con un `key` distinto
+por pestaña, que fuerza el desmontaje.
+
+**La contraseña quedaba escrita tras el intento.** React 19 ya resetea un
+formulario con `action` al terminar —se comprobó— pero eso no cubre los caminos
+donde el componente no re-renderiza: una acción que redirige, o la vuelta atrás
+desde la caché del navegador. Se borra además de forma explícita. En el
+mostrador de un gimnasio la misma pantalla la usan varias personas.
+
+**El botón sí se desactiva durante el envío** (`useFormStatus`, con `aria-busy`
+y el texto «Un momento…»). Se verificó muestreando su estado a mitad del envío.
+
 #### Limitación aceptada, no es deuda
 
 El analizador de Supabase marca **«Leaked Password Protection Disabled»**. Se
@@ -732,7 +792,7 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 
 | Servicio | Detalle |
 |---|---|
-| **Vercel** | Proyecto `zp-software-fast-solutions/gym-platform` · Root Directory `apps/web` · alias público `gym-platform-alpha.vercel.app` |
+| **Vercel** | Equipo `zp-software-fast-solutions` (id `team_isXk9iHT5amXqAUJlB27m9uf`) · cuenta personal `zapasoftwarefastsolutions-1320` · proyecto `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`) · Root Directory `apps/web` · alias `gym-platform-alpha.vercel.app` |
 | **GitHub** | `ZPSoftwareFastSolutions/SoftwareGym` (público) · rama por defecto `main` |
 
 > **Autenticación de Git en esta máquina.** Credential Manager guarda de forma
@@ -773,7 +833,7 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 | MCP | Estado verificado 2026-09-09 | Uso en este proyecto |
 |---|---|---|
 | **Supabase** | ✅ Conectado | Org `Z&P Software Fast Solutions` · proyecto `ZPSoftwareFastSolutions's Project` (ref `dnclwawnjnzqqxgsuhpn`) · PostgreSQL 17.6.1 · `us-west-2` · **0 tablas**. Reservado para V1.5: es el candidato para sustituir el registro estático de tenants. |
-| **Vercel** | ❌ No conectado | Despliegues y logs de build, cuando esté disponible |
+| **Vercel** | ⚠️ Conectado, sin alcance | Ver la nota de abajo |
 | **GitHub** | ❌ Falló al conectar | PRs y API. Mientras tanto, git por CLI |
 | **Browser** | ✅ Conectado | Verificación visual y responsive de los sitios |
 | **Notion** | Sin usar | — |
@@ -781,6 +841,23 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 
 *n8n no está conectado. Si se incorpora para automatizar avisos de vencimiento
 de membresía (V2), documentarlo aquí.*
+
+> **Vercel: el token no alcanza el equipo.** Durante días se concluyó «no hay
+> acceso» porque `list_teams` devolvía `[]` y `get_project` daba 403. El
+> diagnóstico real apareció al probar con la cuenta personal
+> `zapasoftwarefastsolutions-1320`, que **sí** lista el proyecto:
+>
+> ```
+> Not authorized: Trying to access resource under scope
+> "zp-software-fast-solutions". You must re-authenticate to this scope.
+> ```
+>
+> El token llega a la cuenta personal pero no al **equipo** donde vive el
+> proyecto. Al reconectar el conector hay que marcar explícitamente el equipo
+> `zp-software-fast-solutions`, no solo la cuenta personal.
+>
+> Lección: un `list_teams` vacío no significa «sin permisos», significa «este
+> token no ve equipos». No es lo mismo, y confundirlo costó tres sesiones.
 
 ### Skills de arquitectura activas
 

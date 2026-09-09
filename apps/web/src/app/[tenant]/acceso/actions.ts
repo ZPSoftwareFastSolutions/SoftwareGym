@@ -25,6 +25,7 @@ import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
 import { createSupabaseServerClient } from '@infra/auth/supabase.server';
 import { isSupabaseConfigured } from '@infra/auth/supabase.config';
+import { SITE_URL } from '@/lib/site-url';
 
 export interface EstadoFormulario {
   readonly errores?: Readonly<Record<string, string>>;
@@ -102,6 +103,15 @@ export async function registrarse(
     email,
     password,
     options: {
+      // SIN ESTO el enlace del correo caía en la «Site URL» del panel de
+      // Supabase, que apuntaba a localhost: el socio recibía un enlace a su
+      // propia máquina y no había nada que confirmara la cuenta.
+      //
+      // El dominio sale de SITE_URL, que en Vercel se deduce solo. El gimnasio
+      // viaja como parámetro para devolver al socio a la página de acceso del
+      // suyo, y la ruta de retorno lo valida contra el registro antes de usarlo.
+      emailRedirectTo: `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}`,
+
       // Estos metadatos los consume el disparador `app.handle_new_auth_user`,
       // que valida el slug contra la tabla `tenants` y asigna SIEMPRE el rol
       // `customer`. Aunque alguien llamara a la API de Supabase directamente

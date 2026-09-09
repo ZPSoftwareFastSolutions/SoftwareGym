@@ -23,7 +23,33 @@ export type ResultadoValidacion =
   | { readonly ok: true }
   | { readonly ok: false; readonly errores: Readonly<Record<string, string>> };
 
-const PATRON_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
+/**
+ * Correo con dominio de al menos dos niveles y TLD alfabético. Rechaza
+ * `a@b`, `a@b.` y `a@b.1`, que el patrón anterior dejaba pasar.
+ *
+ * No pretende ser una implementación de RFC 5322: ese patrón es célebre por su
+ * tamaño y sigue aceptando direcciones que ningún servidor entrega. Aquí basta
+ * con descartar lo evidentemente mal escrito; quién existe de verdad lo decide
+ * el correo de confirmación, que es la única comprobación que no se puede
+ * falsear.
+ */
+const PATRON_EMAIL = /^[^@\s]+@[^@\s.]+(\.[^@\s.]+)*\.[A-Za-z]{2,}$/;
+
+/**
+ * Nombre de persona: letras, espacios, apóstrofo y guion.
+ *
+ * Se permiten tildes, diéresis y ñ —«Muñoz», «Peña», «Aliaga»— y también
+ * nombres compuestos con guion. Se rechazan DÍGITOS, que es lo que se pidió,
+ * y de paso los símbolos que no aparecen en un nombre real.
+ *
+ * El rango incluye los caracteres latinos extendidos en vez de una lista de
+ * letras concreta: apellidos como «Gonçalves» o «Müller» existen en Bolivia y
+ * un patrón más estrecho los rechazaría sin motivo.
+ */
+const PATRON_NOMBRE = /^[\p{L}\p{M}][\p{L}\p{M}'\-. ]*$/u;
+
+/** El mismo patrón, en la forma que entiende el atributo `pattern` del HTML. */
+export const PATRON_NOMBRE_HTML = "[\\p{L}\\p{M}][\\p{L}\\p{M}'\\-. ]*";
 
 /**
  * Mínimo de 8 caracteres, alineado con lo que exige Supabase Auth. No se
@@ -52,17 +78,28 @@ export function validarLogin(datos: CredencialesLogin): ResultadoValidacion {
 export function validarRegistro(datos: DatosRegistro): ResultadoValidacion {
   const errores: Record<string, string> = {};
 
-  if (!datos.fullName.trim()) {
+  const nombre = datos.fullName.trim();
+  if (!nombre) {
     errores.fullName = 'Escribe tu nombre completo.';
-  } else if (datos.fullName.trim().length < 3) {
+  } else if (nombre.length < 3) {
     errores.fullName = 'El nombre es demasiado corto.';
-  } else if (datos.fullName.trim().length > 120) {
+  } else if (nombre.length > 120) {
     errores.fullName = 'El nombre es demasiado largo.';
+  } else if (/\d/.test(nombre)) {
+    // Mensaje propio para el caso más frecuente: el genérico «carácter no
+    // permitido» deja al usuario buscando cuál es.
+    errores.fullName = 'El nombre no puede llevar números.';
+  } else if (!PATRON_NOMBRE.test(nombre)) {
+    errores.fullName = 'El nombre solo admite letras, espacios, apóstrofos y guiones.';
   }
 
-  if (!datos.email.trim()) {
+  const correo = datos.email.trim();
+  if (!correo) {
     errores.email = 'Escribe tu correo.';
-  } else if (!PATRON_EMAIL.test(datos.email.trim())) {
+  } else if (correo.length > 254) {
+    // Límite de la RFC 5321 para la dirección completa.
+    errores.email = 'Ese correo es demasiado largo.';
+  } else if (!PATRON_EMAIL.test(correo)) {
     errores.email = 'Ese correo no tiene un formato válido.';
   }
 
@@ -70,6 +107,12 @@ export function validarRegistro(datos: DatosRegistro): ResultadoValidacion {
     errores.password = 'Elige una contraseña.';
   } else if (datos.password.length < LARGO_MINIMO_PASSWORD) {
     errores.password = `La contraseña necesita al menos ${LARGO_MINIMO_PASSWORD} caracteres.`;
+  } else if (datos.password.length > 72) {
+    // bcrypt trunca en 72 bytes: más allá, los caracteres extra no cuentan y
+    // el usuario creería tener una contraseña más fuerte de la que tiene.
+    errores.password = 'La contraseña no puede pasar de 72 caracteres.';
+  } else if (correo && datos.password.toLowerCase() === correo.toLowerCase()) {
+    errores.password = 'La contraseña no puede ser igual a tu correo.';
   }
 
   if (!datos.tenantSlug.trim()) {

@@ -20,15 +20,24 @@ export async function generateMetadata({ params }: TenantPageParams): Promise<Me
 }
 
 const UPCOMING = [
-  { icon: 'calendar' as const, title: 'Tu rutina al día', text: 'Consultá la rutina vigente y el historial de cargas.' },
+  { icon: 'calendar' as const, title: 'Tu rutina al día', text: 'Consulta la rutina vigente y el historial de cargas.' },
   { icon: 'clock' as const, title: 'Estado de membresía', text: 'Fecha de vencimiento, pagos y comprobantes.' },
   { icon: 'group' as const, title: 'Reserva de clases', text: 'Cupos en tiempo real y lista de espera.' },
   { icon: 'heart' as const, title: 'Progreso medido', text: 'Composición corporal y evolución por período.' },
 ];
 
-export default async function MemberAccessPage({ params }: TenantPageParams) {
+interface AccessPageProps extends TenantPageParams {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function MemberAccessPage({ params, searchParams }: AccessPageProps) {
   const tenant = await loadTenantPage(params, 'memberLogin');
   const { name, slug, contact } = tenant;
+
+  // Lo deja la ruta de retorno del enlace de confirmación (`/auth/confirmar`).
+  const { confirmado } = await searchParams;
+  const confirmacion =
+    confirmado === '1' ? ('ok' as const) : confirmado === '0' ? ('fallo' as const) : undefined;
 
   return (
     <>
@@ -49,7 +58,7 @@ export default async function MemberAccessPage({ params }: TenantPageParams) {
                   Acceso de socios
                 </h2>
 
-                <AccessForm slug={slug} gymName={name} />
+                <AccessForm slug={slug} gymName={name} confirmacion={confirmacion} />
 
                 <div className="mt-8 flex flex-col gap-3 border-t border-line pt-7">
                   <p className="text-[0.88rem] text-muted">
