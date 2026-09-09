@@ -8,7 +8,7 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · V1 desplegada.
+> **Última actualización:** 2026-09-09 · V1 desplegada y publicada en GitHub.
 
 ---
 
@@ -209,7 +209,9 @@ variantes se resuelven con enums internos). Versiones **exactas** en
 | Mítico Fitness | https://gym-platform-alpha.vercel.app/mitico |
 | Aurora Fit | https://gym-platform-alpha.vercel.app/aurora-fit |
 
-**Rama:** `feat/v1-public-site` · **Commits:** 2 · **Base:** `main`
+**Rama:** `feat/v1-public-site` (publicada) · **Commits:** 3 · **Base:** `main`
+**Pull request:** pendiente de abrir en
+https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-public-site
 
 #### Qué existe
 
@@ -273,10 +275,8 @@ READMEs por capa del backend.
 
 ### 🔴 Prioridad alta — antes de sumar features
 
-1. **Push a GitHub.** Los 2 commits están en local. El push desde shell no
-   interactivo falla porque Git Credential Manager no puede pedir credenciales.
-   Ejecutar desde una terminal propia:
-   `git push -u origin feat/v1-public-site`
+1. **Abrir el PR de V1** y fusionar a `main`:
+   https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-public-site
 2. **CI en GitHub Actions**: `typecheck`, `build`, `npm audit` y el grep del
    ADR 0003 en cada PR. Sin esto, las reglas de arriba se degradan solas.
 3. **Tests.** Empezar por lo que más duele si se rompe: `tenant.validator`,
@@ -341,6 +341,13 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 |---|---|
 | **Vercel** | Proyecto `zp-software-fast-solutions/gym-platform` · Root Directory `apps/web` · alias público `gym-platform-alpha.vercel.app` |
 | **GitHub** | `ZPSoftwareFastSolutions/SoftwareGym` (público) · rama por defecto `main` |
+
+> **Autenticación de Git en esta máquina.** Credential Manager guarda de forma
+> global la cuenta `Riceious`, que no tiene permiso de escritura en este
+> repositorio. Está resuelto con configuración **local**:
+> `credential.username = ZPSoftwareFastSolutions` en `.git/config`. Los demás
+> repositorios de la máquina no se ven afectados. Si aparece
+> `Permission denied to Riceious`, esa configuración local se perdió.
 
 > **Vercel Authentication** protege las URL de despliegue con hash
 > (`gym-platform-<hash>-...`). **El enlace que se comparte con clientes es el
