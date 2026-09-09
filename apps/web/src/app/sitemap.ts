@@ -11,11 +11,9 @@ import type { MetadataRoute } from 'next';
 import { visibleNavigation } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
 import { TENANT_REGISTRY } from '@infra/tenants/tenant.registry';
+import { SITE_URL } from '@/lib/site-url';
 
-const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://gymplatform.vercel.app').replace(
-  /\/+$/,
-  '',
-);
+const BASE_URL = SITE_URL;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const slugs = await tenantRepository().listSlugs();
