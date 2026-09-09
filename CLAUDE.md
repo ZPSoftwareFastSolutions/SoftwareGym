@@ -669,13 +669,16 @@ inmutable. Detalle en `docs/architecture/overview.md`.
 > repositorios de la máquina no se ven afectados. Si aparece
 > `Permission denied to Riceious`, esa configuración local se perdió.
 >
-> **El push no se puede hacer desde una sesión de Claude Code.** Se comprobó el
-> 2026-09-09: la configuración local se había perdido, se restauró, y aun así
-> Credential Manager no tiene guardada la contraseña de
-> `ZPSoftwareFastSolutions` y abre un diálogo interactivo que la sesión no
-> puede atender. El push se queda colgado; con `GIT_TERMINAL_PROMPT=0` falla
-> con `could not read Password`. **Lo hace el usuario desde su terminal**, y
-> la primera vez GCM abrirá el navegador para autenticar.
+> **El push funciona una vez que Credential Manager tiene la credencial.**
+> El 2026-09-09 falló primero —la configuración local `credential.username` se
+> había perdido y GCM no tenía guardada la contraseña, así que abría un diálogo
+> interactivo que la sesión no puede atender; con `GIT_TERMINAL_PROMPT=0`
+> fallaba con `could not read Password`—. Tras autenticar una vez desde una
+> terminal propia, la credencial queda en caché y el push desde la sesión pasa
+> sin intervención. Se comprobó publicando `feat/v2-public-site`.
+>
+> Si vuelve a colgarse, es que la caché caducó: basta con hacer un push manual
+> una vez para renovarla.
 >
 > La lectura sí funciona sin credenciales porque el repositorio es público:
 > `git ls-remote` responde, lo que puede dar la falsa impresión de que el
