@@ -562,10 +562,40 @@ en vez de una traza.
 | Formulario sin variables | Mensaje claro, sin traza |
 | `build` y login CON variables | Igual que antes |
 
-**Variables que Vercel necesita** (Settings → Environment Variables), o el
-acceso de socios queda inhabilitado aunque el sitio funcione:
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y
-`NEXT_PUBLIC_SITE_URL`. Están en `apps/web/.env.example`.
+#### El despliegue no necesita configurar nada
+
+Segunda corrección, el mismo día. La primera versión exigía definir tres
+variables en Vercel. Se descartó ese camino y el proyecto de Supabase por
+defecto vive ahora en `src/infrastructure/auth/supabase.config.ts`.
+
+**Por qué se puede versionar esa clave.** Los dos valores llevan prefijo
+`NEXT_PUBLIC_`, así que Next.js los incrusta en el paquete que descarga el
+navegador: **cualquiera que abra el sitio desplegado ya los tiene**.
+Versionarlos no expone nada nuevo. Lo que los hace inofensivos no es el
+secreto —no lo hay— sino RLS: 12 tablas, todas protegidas, 34 políticas, cero
+desprotegidas. Sin sesión válida esa clave no devuelve una sola fila, y se
+comprobó a fondo.
+
+Las variables de entorno **siguen mandando** cuando existen, para apuntar a
+otro proyecto o rotar la clave sin tocar código. Se exigen **las dos o
+ninguna**: mezclar la URL de un proyecto con la clave de otro falla de formas
+difíciles de diagnosticar. `NEXT_PUBLIC_SITE_URL` no hace falta porque Vercel
+inyecta `VERCEL_PROJECT_PRODUCTION_URL` por su cuenta.
+
+> ⛔ **Esto NO sienta precedente para `service_role`.** Esa clave tiene
+> BYPASSRLS y se salta todo el aislamiento entre gimnasios. Nunca al
+> repositorio, nunca con prefijo `NEXT_PUBLIC_`. Las dos de arriba están
+> versionadas porque son públicas, no porque el repositorio sea sitio para
+> claves.
+
+**Verificado sin ninguna variable de entorno:** typecheck, build de 25 páginas
+con salida 0, sitio público en 200, `/panel` en 307, CSP con el origen correcto
+en `connect-src`, y **login real funcionando** con la cookie todavía `HttpOnly`.
+
+> Nota sobre el plan gratuito: las variables de entorno estándar de Vercel
+> **sí** están en Hobby (Settings → Environment Variables). Lo de pago son las
+> *Sensitive* y las *Shared* entre proyectos. Aun así, no configurar nada es
+> mejor que configurar bien, así que la solución se queda.
 
 #### Limitación aceptada, no es deuda
 

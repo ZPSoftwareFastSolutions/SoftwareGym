@@ -16,18 +16,17 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { endurecerCookie } from '@infra/auth/cookie-options';
+import { supabaseConfig } from '@infra/auth/supabase.config';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
-
   // Sin configuración de Supabase el sitio público debe seguir funcionando:
-  // V1 no depende de la base para nada.
-  if (!url || !key) return response;
+  // el sitio público no depende de la base para nada.
+  const config = supabaseConfig();
+  if (!config) return response;
 
-  const supabase = createServerClient(url, key, {
+  const supabase = createServerClient(config.url, config.publishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

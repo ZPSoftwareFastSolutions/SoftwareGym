@@ -14,12 +14,17 @@ import type { NextConfig } from 'next';
  *
  * Sin esto la CSP bloquea en silencio todas las llamadas de autenticación: el
  * formulario de acceso parece colgado y en la consola solo aparece un error de
- * red. Se toma de la variable de entorno en vez de escribirlo a mano para que
- * apuntar a otro proyecto no obligue a tocar la política.
+ * red genérico.
+ *
+ * Lleva el mismo valor por defecto que `src/infrastructure/auth/supabase.config.ts`
+ * y no puede importarlo: este archivo se evalúa antes, en la configuración de
+ * Next.js. Están duplicados a conciencia; si se cambia el proyecto hay que
+ * tocar los dos, y por eso lo natural es definir la variable de entorno, que
+ * manda sobre ambos.
  */
 const SUPABASE_ORIGIN = (() => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (!url) return '';
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || 'https://dnclwawnjnzqqxgsuhpn.supabase.co';
   try {
     return new URL(url).origin;
   } catch {
