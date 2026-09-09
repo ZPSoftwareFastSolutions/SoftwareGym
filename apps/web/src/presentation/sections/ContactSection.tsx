@@ -221,7 +221,7 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
                     id="mensaje"
                     name="mensaje"
                     rows={4}
-                    placeholder="Contanos qué estás buscando"
+                    placeholder="Cuéntanos qué estás buscando"
                     className={`${FIELD_CLASSES} resize-y`}
                   />
                 </div>

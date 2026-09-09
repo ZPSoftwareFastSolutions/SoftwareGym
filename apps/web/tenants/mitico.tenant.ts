@@ -840,7 +840,7 @@ export const miticoTenant: TenantConfig = {
         id: 'empezar',
         question: '¿Cuánto cuesta empezar?',
         answer:
-          'La sesión individual cuesta 25 Bs y te da acceso completo al gimnasio por un día. Si preferís el mes, el Paquete Mensual Básico está en 160 Bs e incluye entrenamiento personalizado, horario flexible y acceso a todas las máquinas.',
+          'La sesión individual cuesta 25 Bs y te da acceso completo al gimnasio por un día. Si prefieres el mes, el Paquete Mensual Básico está en 160 Bs e incluye entrenamiento personalizado, horario flexible y acceso a todas las máquinas.',
       },
       {
         id: 'pago',

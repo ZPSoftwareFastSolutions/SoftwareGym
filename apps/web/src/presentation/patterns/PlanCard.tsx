@@ -77,7 +77,7 @@ export function PlanCard({ plan, href }: PlanCardProps) {
             {plan.currency} {plan.compareAtPrice.toLocaleString('es-BO')}
           </span>{' '}
           <span className="font-semibold text-action">
-            Ahorrás {plan.currency} {(plan.compareAtPrice - plan.price).toLocaleString('es-BO')}
+            Ahorras {plan.currency} {(plan.compareAtPrice - plan.price).toLocaleString('es-BO')}
           </span>
         </p>
       )}

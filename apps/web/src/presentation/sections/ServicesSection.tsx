@@ -28,7 +28,7 @@ export function ServicesSection({
   services,
   slug,
   eyebrow = 'Servicios',
-  title = 'Todo lo que necesitás, bajo el mismo techo',
+  title = 'Todo lo que necesitas, bajo el mismo techo',
   lead,
   limit,
   showCta = false,

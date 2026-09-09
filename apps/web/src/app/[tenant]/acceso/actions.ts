@@ -17,7 +17,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { COOKIE_PISTA_SESION, opcionesPistaSesion } from '@infra/auth/session-hint';
+import { marcarSesionAbierta, marcarSesionCerrada } from '@infra/auth/session-hint';
 import {
   mensajeDeErrorDeAcceso,
   validarLogin,
@@ -79,6 +79,14 @@ export async function iniciarSesion(
     // qué correos están registrados en el gimnasio.
     return { mensaje: mensajeDeErrorDeAcceso(error.code) };
   }
+
+  // La pista de la cabecera se escribe AQUÍ y no se deja al middleware.
+  //
+  // La respuesta de esta acción ya trae renderizado el panel al que redirige:
+  // el navegador no pide una página nueva, el middleware no se ejecuta y la
+  // pista no se escribía. El socio entraba, veía su panel, y la cabecera
+  // seguía ofreciéndole «Acceso socios» hasta que navegaba a otra parte.
+  marcarSesionAbierta(await cookies());
 
   revalidatePath(`/${slug}`, 'layout');
   redirect(`/${slug}/panel`);
@@ -145,16 +153,11 @@ export async function cerrarSesion(form: FormData): Promise<void> {
     await supabase.auth.signOut();
   }
 
-  // La pista de la cabecera se retira AQUÍ y no se deja al middleware.
-  //
-  // Al cerrar sesión, el middleware ya se había ejecutado para esta petición
-  // —con la sesión todavía viva— y la navegación posterior la resuelve el
-  // enrutador del cliente sin volver a pasar por él. Resultado observado: la
-  // sesión se cerraba de verdad pero la cabecera seguía ofreciendo «Mi panel».
-  (await cookies()).set(COOKIE_PISTA_SESION, '', {
-    ...opcionesPistaSesion(process.env.NODE_ENV === 'production'),
-    maxAge: 0,
-  });
+  // La pista de la cabecera se retira AQUÍ y no se deja al middleware, por el
+  // mismo motivo simétrico que al entrar: el middleware ya se ejecutó para
+  // esta petición —con la sesión todavía viva— y la respuesta de la acción
+  // trae ya renderizado el destino, sin petición nueva que lo vuelva a pasar.
+  marcarSesionCerrada(await cookies());
 
   if (slug) revalidatePath(`/${slug}`, 'layout');
   redirect(slug ? `/${slug}/acceso` : '/');

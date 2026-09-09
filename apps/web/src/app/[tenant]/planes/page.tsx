@@ -27,7 +27,7 @@ export default async function PlansPage({ params }: TenantPageParams) {
         slug={slug}
         eyebrow="Planes"
         title="Precios claros, sin letra chica"
-        lead="Lo que ves es lo que pagás. Sin matrícula oculta, sin cargos por cancelar y sin cláusulas que aparecen recién al firmar."
+        lead="Lo que ves es lo que pagas. Sin matrícula oculta, sin cargos por cancelar y sin cláusulas que aparecen solo al firmar."
         breadcrumb={breadcrumb}
       />
 

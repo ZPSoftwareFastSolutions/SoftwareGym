@@ -9,7 +9,8 @@
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
 > **Última actualización:** 2026-09-09 · V2 con login y registro funcionales,
-> ubicación en La Paz y textos en español neutro. Rama
+> cabecera que cambia a «Mi panel» en el mismo instante en que se entra, y
+> español neutro también en los textos por defecto de los componentes. Rama
 > `feat/v2-public-site`.
 
 ---
@@ -701,6 +702,57 @@ Ninguno aparecía leyendo el código; salieron al hacer entrar → salir.
 
 Verificado el ciclo entero: sin sesión «Acceso socios» → tras entrar «Mi
 panel» → tras salir «Acceso socios» y cookie retirada.
+
+#### Tercer fallo: al entrar, la cabecera no cambiaba hasta irse del panel
+
+Reportado tras probarlo a mano y **reproducido midiendo cada 200 ms**: el socio
+entraba, el panel se pintaba correctamente —y la cabecera seguía ofreciendo
+«Acceso socios» encima. Solo cambiaba al navegar a otra página.
+
+La causa es la misma que la del fallo del cierre de sesión, vista desde el
+otro lado: **la respuesta de una acción de servidor ya trae renderizado el
+destino de su `redirect`**. El navegador no emite una petición nueva, así que
+el middleware no vuelve a ejecutarse y la pista no llegaba a escribirse. El
+`revalidatePath` no ayuda: revalida el contenido del servidor, no las cookies.
+
+Corregido escribiendo la pista **en la propia acción** `iniciarSesion`, igual
+que `cerrarSesion` ya la retiraba. Las dos operaciones viven ahora en
+`marcarSesionAbierta()` / `marcarSesionCerrada()` (`session-hint.ts`), para que
+el invariante quede en un solo sitio: *toda ruta que abra o cierre sesión
+mantiene la pista*. El middleware sigue haciendo su parte —caducidad, cierre
+en otra pestaña—, pero ya no es el único que la escribe.
+
+`/auth/confirmar` no necesita el mismo arreglo: es un Route Handler que
+responde con un `NextResponse.redirect` de verdad, y esa sí es una petición
+nueva que pasa por el middleware.
+
+**Medido sobre el build de producción, muestreando cada 60 ms:** en el primer
+fotograma en que el panel está en pantalla la cabecera ya dice «Mi panel». No
+existe ninguna ventana en la que el socio vea su panel y un botón invitándolo
+a acceder.
+
+> Queda a propósito un detalle: `/[tenant]/acceso` sigue siendo alcanzable
+> escribiendo la URL con la sesión abierta. Redirigir desde ahí obligaría a
+> leer la sesión en una página prerenderizada y la sacaría del CDN, que es
+> justo lo que la cookie de pista existe para evitar. La cabecera ya no lleva
+> a esa página, que era lo pedido.
+
+#### Restos de voseo que quedaban vivos
+
+El cambio a español neutro se había hecho sobre el contenido de los tenants,
+pero **cinco textos vivían en el código de los componentes**, donde el repaso
+anterior no miró: «pagás» y «recién al firmar» en la cabecera de Planes,
+«Ahorrás» en la tarjeta de plan, «Contanos» en el formulario de contacto,
+«necesitás» en el título por defecto de Servicios y «si preferís» en una
+respuesta del FAQ de Mítico. Corregidos. El barrido queda como comando:
+
+```bash
+grep -rnE "(pagás|tenés|querés|podés|hacés|necesitás|preferís|ahorrás|contanos|sos|recién)"   apps/web/src apps/web/tenants --include=*.ts --include=*.tsx
+```
+
+Lección: el idioma de un producto enlatado no vive solo en la configuración.
+Los valores por defecto de los componentes también son texto visible, y son
+los que hereda el próximo gimnasio que no los sobrescriba.
 
 ### V2 · Cuentas de demostración
 
