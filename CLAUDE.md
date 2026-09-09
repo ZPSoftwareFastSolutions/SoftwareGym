@@ -702,6 +702,50 @@ Ninguno aparecía leyendo el código; salieron al hacer entrar → salir.
 Verificado el ciclo entero: sin sesión «Acceso socios» → tras entrar «Mi
 panel» → tras salir «Acceso socios» y cookie retirada.
 
+### V2 · Cuentas de demostración
+
+Una por rol. **Todas verificadas contra el endpoint de autenticación**, no solo
+insertadas en la base.
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Super administrador | `admin@gymplatform.bo` | `Demo.Super.2026` |
+| Gerente (Mítico) | `gerencia@miticofitness.com` | `Demo.Manager.2026` |
+| Recepcionista (Mítico) | `recepcion@miticofitness.com` | `Demo.Receptionist.2026` |
+| Socio (Mítico) | `juan.perez@demo.miticofitness.com` | `Demo.Mitico.2026` |
+
+Los otros nueve socios usan el mismo patrón `nombre.apellido@demo.miticofitness.com`
+con `Demo.Mitico.2026`.
+
+**Alcance real de cada rol, medido con la sesión simulada:**
+
+| | Super admin | Gerente | Recepción | Socio |
+|---|---|---|---|---|
+| Socios visibles | 0 | 10 | 10 | 1 (el suyo) |
+| Pagos visibles | 0 | 10 | 10 | 1 (el suyo) |
+| Usuarios visibles | 15 | 14 | 1 | 1 |
+| Gimnasios | 2 | 1 | 1 | 1 |
+| Cobrar | no | sí | sí | no |
+| Configuración | no | **sí** | **no** | no |
+| Administrar gimnasios | **sí** | no | no | no |
+
+Dos cosas que confirman el diseño: el **super administrador no ve un solo socio
+ni un solo pago** —administrar la plataforma no es leer los datos personales de
+los clientes de un gimnasio (§39, §112)— y **recepción no llega a la
+configuración** ni al listado de personal, solo a su propia ficha.
+
+> ⚠️ **No existe todavía interfaz de gestión.** Estas cuentas entran y sus
+> permisos se aplican en la base, pero la única pantalla privada es
+> `/[tenant]/panel`, pensada para el socio. Gerente y recepción verán el aviso
+> de «cuenta sin ficha vinculada», y el super administrador el de «cuenta sin
+> gimnasio», porque ambos son literalmente ciertos. El panel de gestión es la
+> siguiente fase.
+
+> ⚠️ **Contraseñas de demostración, con patrón predecible.** Sirven para
+> enseñar el producto en esta rama. Antes de cualquier uso real hay que
+> borrarlas: un `Demo.Manager.2026` en un gimnasio con datos de socios reales
+> es una cuenta de gerente regalada.
+
 #### Limitación aceptada, no es deuda
 
 El analizador de Supabase marca **«Leaked Password Protection Disabled»**. Se
