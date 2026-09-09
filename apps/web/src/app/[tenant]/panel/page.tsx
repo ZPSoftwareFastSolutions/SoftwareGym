@@ -68,6 +68,18 @@ export default async function PanelPage({ params }: TenantPageParams) {
     .select('full_name, email, tenant_slug, tenant_name, customer_id, roles, permissions')
     .maybeSingle<Perfil>();
 
+  // El panel de OTRO gimnasio no es el panel de este socio.
+  //
+  // RLS ya impedía que se filtrara un solo dato ajeno —se comprobó—, pero sin
+  // esta guarda `/otro-gimnasio/panel` respondía 200 y pintaba los datos del
+  // socio bajo la marca del gimnasio equivocado. No era una fuga; era una
+  // página que mentía sobre dónde estaba el usuario, y ese tipo de descuido es
+  // el que termina convirtiéndose en fuga cuando alguien añade una consulta
+  // nueva confiando en que la ruta ya está validada.
+  if (perfil?.tenant_slug && perfil.tenant_slug !== slug) {
+    redirect(tenantHref(perfil.tenant_slug, 'panel'));
+  }
+
   // Una cuenta cuyo perfil no resolvió gimnasio queda inerte por diseño: puede
   // entrar, pero la base no le devuelve ningún dato. Se dice con claridad en
   // vez de mostrar un panel vacío que parece un error.

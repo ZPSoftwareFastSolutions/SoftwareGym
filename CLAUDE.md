@@ -516,15 +516,41 @@ Dos tropiezos que costaron encontrar y conviene no repetir:
 | Socio se vincula a la ficha de otro | Sin fila actualizable |
 | Socio crea un permiso nuevo | Bloqueado por RLS |
 | Alta con metadatos falsificados | Rol `customer`, ficha nula |
+| Socio abre el panel de OTRO gimnasio | Redirige al suyo (corregido en la pasada final) |
+| Cierre de sesión | Cookie borrada; el panel vuelve a 307 |
+| Socio borra sus propios pagos | Bloqueado (no hay política de DELETE) |
+| Socio cambia el precio de los planes | Bloqueado |
+| Socio crea un gimnasio | Bloqueado |
 | Fuerza bruta contra el alta | Cortada por el rate limit de Supabase |
 | `get_advisors(security)` | 1 aviso, abajo |
 
-#### Pendiente de seguridad
+#### Limitación aceptada, no es deuda
 
-**Activar «Leaked Password Protection»** en el panel de Supabase
-(Authentication → Policies). Comprueba las contraseñas contra
-HaveIBeenPwned y hoy está desactivado; es el único hallazgo abierto del
-analizador. No se puede cambiar desde esta sesión: es un ajuste del panel.
+El analizador de Supabase marca **«Leaked Password Protection Disabled»**. Se
+revisó: es una función del **plan Pro**, y el proyecto está en el plan gratuito.
+Queda **descartada a conciencia**, no pendiente.
+
+Consecuencia real: no se comprueban las contraseñas contra HaveIBeenPwned, así
+que un socio puede elegir una que ya apareció en una filtración. Lo que sí hay
+es el mínimo de 8 caracteres de Supabase y su limitador de intentos, que se
+comprobó funcionando. Si el proyecto pasa a Pro, activarlo es un interruptor.
+
+> No volver a levantarlo como hallazgo en cada auditoría: está decidido.
+
+#### Verificación previa al push (2026-09-09)
+
+Se repitió todo sobre una instalación limpia (`npm ci` desde el lockfile):
+typecheck, build de 25 páginas, `npm audit` en 0, Dependency Rule y grep del
+ADR 0003 sin hallazgos. Base: 12 tablas, **todas** con RLS, 34 políticas, cero
+tablas desprotegidas.
+
+**Defecto encontrado y corregido en esa pasada:** con sesión de un socio de
+Mítico, `/aurora-fit/panel` respondía **200** y pintaba sus datos bajo la marca
+del otro gimnasio. No era fuga —RLS aguantó y no se expuso ni un dato de
+Aurora— pero era una página mintiendo sobre dónde estaba el usuario, y ese
+descuido es el que se convierte en fuga cuando alguien añade una consulta nueva
+dando por hecho que la ruta ya está validada. Ahora el panel compara el tenant
+del perfil con el de la ruta y redirige al propio.
 
 ---
 
