@@ -31,6 +31,13 @@ export async function loadTenantPage(
   const tenant = await getTenantBySlug(tenantRepository(), slug);
 
   if (!tenant) notFound();
+
+  // `publicSite` apagada deja al gimnasio SIN sitio público: un cliente que
+  // contrató solo la gestión no debe tener vitrina publicada. Se comprueba
+  // aquí y en el layout del tenant, porque una guarda que solo vive en el
+  // layout deja de aplicarse si mañana una ruta se monta fuera de él.
+  if (tenant.features.publicSite !== true) notFound();
+
   if (requiredFeature && tenant.features[requiredFeature] !== true) notFound();
 
   return tenant;

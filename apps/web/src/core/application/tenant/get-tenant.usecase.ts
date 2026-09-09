@@ -50,7 +50,7 @@ export async function listTenantSummaries(
  * Filtra la navegación según las feature flags del tenant.
  *
  * Un enlace cuya capacidad está apagada no se renderiza. La página
- * correspondiente además responde 404 (ver `guards/feature.guard.ts`): ocultar
+ * correspondiente además responde 404 (ver `lib/page-guards.ts`): ocultar
  * el enlace sin cerrar la ruta deja la sección accesible escribiendo la URL.
  */
 export function visibleNavigation(

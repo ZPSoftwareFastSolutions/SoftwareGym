@@ -37,6 +37,12 @@ export async function generateStaticParams() {
   return slugs.map((tenant) => ({ tenant }));
 }
 
+/**
+ * Un slug fuera del registro no se renderiza bajo demanda: responde 404.
+ * Sin esto, cualquier ruta `/loquesea` intentaría resolverse en cada petición.
+ */
+export const dynamicParams = false;
+
 export async function generateMetadata({ params }: TenantLayoutProps): Promise<Metadata> {
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(tenantRepository(), slug);
@@ -76,6 +82,10 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
 
   // Un slug inexistente responde 404 real, no una página vacía con el armazón.
   if (!tenant) notFound();
+
+  // Un gimnasio sin sitio público contratado no tiene vitrina: la capacidad se
+  // apaga entera, no se esconden los enlaces.
+  if (tenant.features.publicSite !== true) notFound();
 
   const navigation = visibleNavigation(tenant.navigation, tenant.features);
   const themeCss = buildThemeVariables(tenant.branding);

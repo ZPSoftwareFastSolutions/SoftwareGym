@@ -1,0 +1,13 @@
+Los archivos .sql de las migraciones todavía no están aquí.
+
+El historial vive en el proyecto Supabase (tabla
+supabase_migrations.schema_migrations). Para materializarlo en el repositorio:
+
+    npx supabase link --project-ref dnclwawnjnzqqxgsuhpn
+    npx supabase db pull
+
+Requiere autenticación interactiva de la CLI, por eso quedó pendiente.
+Hasta que se haga, el esquema está versionado en el servidor pero no en el
+repositorio, que es justo lo que la regla §47 del documento maestro pide evitar.
+
+Ver ../README.md para el detalle de qué hace cada migración.

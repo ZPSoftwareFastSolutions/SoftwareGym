@@ -422,24 +422,27 @@ Lo construido es la base sobre la que todo eso se apoya.
 
 ### 🔴 Prioridad alta — antes de sumar features
 
-0. **Deuda detectada en la auditoría del 2026-09-09** (ninguna rompe hoy, todas
-   se cobran solas más adelante):
-   - `publicSite` está declarada y **no se usa en ningún sitio**: ponerla en
-     `false` no apaga nada. O se aplica como guarda global o se elimina.
-   - `DEFAULT_FEATURE_FLAGS` dice en su comentario que toda flag nace en
-     `false`, pero tiene 10 en `true`, y **se usa como base de spread** en los
-     dos tenants. Cuando la configuración llegue de la API (V1.5), un
-     `{ ...DEFAULT, ...remoto }` con respuesta parcial encendería capacidades
-     por omisión. Contradice el principio de fallar cerrado.
-   - `next: "^16.3.4"` lleva caret; la regla §2.9 exige versión exacta.
-   - `DEFAULT_TENANT_SLUG` cae a `'mitico'` hardcodeado en `tenant.registry.ts`.
-     Sobrevive al grep del ADR 0003 solo porque el grep excluye ese archivo.
-   - Deriva de documentación: `next.config.ts` cita
-     `docs/architecture/security-headers.md`, que no existe;
-     `get-tenant.usecase.ts` cita `guards/feature.guard.ts`, cuando el archivo
-     real es `lib/page-guards.ts`.
-   - `/[tenant]/nosotros` no tiene guarda de feature flag: es la única ruta
-     que no se puede desactivar por configuración.
+0. **Deuda de la auditoría del 2026-09-09.** Cerrada en su mayor parte el
+   mismo día; queda lo que sigue:
+   - ✅ `publicSite` ya se aplica como guarda en el layout del tenant y en
+     `loadTenantPage`. Apagarla hace 404 el sitio completo del gimnasio.
+     Verificado apagándola en Aurora sin afectar a Mítico.
+   - ✅ `next` pasa a versión exacta `16.3.4`. No queda ningún caret.
+   - ✅ Deriva de documentación resuelta: se escribió
+     `docs/architecture/security-headers.md` y se corrigió la referencia a
+     `lib/page-guards.ts`.
+   - ✅ `dynamicParams = false`: un slug fuera del registro responde 404 en vez
+     de intentar resolverse en cada petición.
+   - ⚠️ **Pendiente:** `DEFAULT_FEATURE_FLAGS` dice en su comentario que toda
+     flag nace en `false`, pero tiene 10 en `true` y **se usa como base de
+     spread** en los dos tenants. Cuando la configuración llegue de la base,
+     un `{ ...DEFAULT, ...remoto }` con respuesta parcial encendería
+     capacidades por omisión. Contradice el fallar cerrado.
+   - ⚠️ **Pendiente:** `DEFAULT_TENANT_SLUG` cae a `'mitico'` hardcodeado en
+     `tenant.registry.ts`. Sobrevive al grep del ADR 0003 solo porque el grep
+     excluye ese archivo.
+   - ⚠️ **Pendiente:** `/[tenant]/nosotros` no tiene guarda de feature flag: es
+     la única ruta que no se puede desactivar por configuración.
 
 1. **Abrir el PR de V1** y fusionar a `main`:
    https://github.com/ZPSoftwareFastSolutions/SoftwareGym/compare/main...feat/v1-public-site
