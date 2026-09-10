@@ -400,6 +400,37 @@ ol {
   animation: marquee-x 38s linear infinite;
 }
 
+/* Bloqueo del fondo mientras hay una ventana modal abierta.
+   
+   ESTÁ EN CSS Y NO EN JAVASCRIPT A PROPÓSITO, y costó un fallo encontrarlo.
+   La primera versión ponía y quitaba `overflow: hidden` desde el componente,
+   atado al evento `close` del <dialog>. Ese evento NO se dispara en todos los
+   entornos —se comprobó con un <dialog> sintético en el navegador embebido de
+   las pruebas, donde no llega nunca— y cuando no llega, el fondo se queda
+   bloqueado para siempre: se cierra la ventana de pago y la página no vuelve
+   a desplazarse.
+   
+   Con `:has()` la regla se evalúa sola: en cuanto el atributo `open`
+   desaparece del <dialog>, el bloqueo desaparece con él. No hay dos fuentes de
+   verdad que puedan discrepar porque solo hay una, y es el propio DOM. */
+html:has(dialog[open]) {
+  overflow: hidden;
+}
+
+/* Entrada de la ventana modal. Corta —220 ms— porque una modal que tarda en
+   aparecer se siente rota, no elegante. La preferencia de movimiento reducido
+   de más abajo la desactiva junto con todo lo demás. */
+@keyframes modal-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* `prefers-reduced-motion` no es una preferencia estética: el movimiento
    provoca mareo y migraña en personas con trastornos vestibulares. */
 @media (prefers-reduced-motion: reduce) {
@@ -502,5 +533,45 @@ ol {
   body {
     background: #fff;
     color: #000;
+  }
+
+  /* Un reporte se imprime para archivarlo o para llevarlo a una reunión, y
+     ahí «guardar como PDF» del navegador es la exportación: sale con las
+     tipografías del sistema, respeta los saltos de página y no obliga a
+     meter un generador de PDF de 300 KB en el servidor.
+
+     El cristal esmerilado y las sombras se van: en papel, un fondo
+     translúcido sale como una mancha gris y gasta tinta sin aportar nada. */
+  .surface-card,
+  .surface-raised {
+    background: #fff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: #d4d4d4 !important;
+    box-shadow: none !important;
+  }
+
+  .shell,
+  .shell-wide {
+    max-width: none;
+    padding: 0;
+  }
+
+  .section {
+    padding-block: 0.75rem;
+  }
+
+  /* Una fila de tabla partida entre dos páginas es un dato que se lee mal. */
+  tr,
+  article {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  a[href]::after {
+    content: '';
   }
 }

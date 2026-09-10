@@ -137,6 +137,17 @@ export const miticoTenant: TenantConfig = {
     showLocationMap: true,
     showProducts: true,
     showTrainingPlans: true,
+
+    // Capacidades de operación (V2.1). Mítico tiene contratado el plan
+    // `professional`; Aurora Fit sigue en `starter` de prueba y las mantiene
+    // apagadas. Es la demostración de que son capacidades CONTRATADAS y no
+    // código: encender una es cambiar esta línea, y apagarla hace que su ruta
+    // responda 404, no que se esconda el enlace.
+    enableAttendance: true,
+    enableQrAttendance: true,
+    enableNotifications: true,
+    enableReports: true,
+    enablePayments: true,
   },
 
   seo: {
@@ -873,6 +884,15 @@ export const miticoTenant: TenantConfig = {
           'Sí, en el mostrador del gimnasio. Tenemos proteína, creatina, pre-entrenos, hidratación, shakers, tomatodos y las poleras de la casa. Consúltanos por WhatsApp y te decimos qué hay disponible.',
       },
     ],
+
+    // El QR del banco todavía no lo entregó el gimnasio: la ventana reserva
+    // su hueco y mientras tanto explica cómo se paga. Ver `PaymentQrInfo`.
+    paymentQr: {
+      holder: 'Mítico Fitness',
+      note:
+        'Pide el QR en recepción o escríbenos por WhatsApp y te lo enviamos. ' +
+        'Envía el comprobante con tu nombre completo para activar tu paquete el mismo día.',
+    },
 
     closingCta: {
       title: '¡Vamos con todo!',

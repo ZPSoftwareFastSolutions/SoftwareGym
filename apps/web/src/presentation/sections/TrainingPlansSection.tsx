@@ -18,6 +18,8 @@ import { tenantHref } from '@/lib/tenant-links';
 import { Icon } from '../icons/Icon';
 import { ArtFrame } from '../ui/ArtFrame';
 import { Badge } from '../ui/Badge';
+import type { CobroPorQr } from '@/lib/cobro';
+import { PaymentQrModal } from '../patterns/PaymentQrModal';
 import { LinkButton } from '../ui/Button';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from '../ui/SectionHeading';
@@ -38,6 +40,8 @@ interface TrainingPlansSectionProps {
   readonly title?: string;
   readonly lead?: string;
   readonly note?: string;
+  /** Cobro por QR. Ausente cuando el gimnasio no tiene la capacidad contratada. */
+  readonly cobro?: CobroPorQr;
 }
 
 export function TrainingPlansSection({
@@ -47,6 +51,7 @@ export function TrainingPlansSection({
   title = 'Descubre el héroe que vive en ti',
   lead = 'Planes de entrenamiento con temática de superhéroes. Cada programa trae sus rutinas asignadas.',
   note,
+  cobro,
 }: TrainingPlansSectionProps) {
   if (plans.length === 0) return null;
 
@@ -159,15 +164,30 @@ export function TrainingPlansSection({
                   </div>
 
                   <div className="mt-7">
-                    <LinkButton
-                      href={href}
-                      variant={plan.featured ? 'primary' : 'secondary'}
-                      size="lg"
-                      fullWidth
-                      glow={plan.featured}
-                    >
-                      {plan.ctaLabel}
-                    </LinkButton>
+                    {cobro ? (
+                      /* Estos programas no tienen nombre comercial —es una
+                         decisión de V1, no un olvido— así que la ventana se
+                         titula con el periodo, que es lo que los distingue. */
+                      <PaymentQrModal
+                        nombreDelPaquete={`Entrenamiento personalizado · ${plan.period}`}
+                        precio={`${plan.currency} ${plan.price.toLocaleString('es-BO')}`}
+                        etiquetaDelBoton={plan.ctaLabel}
+                        destacado={plan.featured}
+                        pago={cobro.pago}
+                        whatsappHref={cobro.whatsappHref}
+                        gimnasio={cobro.gimnasio}
+                      />
+                    ) : (
+                      <LinkButton
+                        href={href}
+                        variant={plan.featured ? 'primary' : 'secondary'}
+                        size="lg"
+                        fullWidth
+                        glow={plan.featured}
+                      >
+                        {plan.ctaLabel}
+                      </LinkButton>
+                    )}
                   </div>
                 </div>
               </article>

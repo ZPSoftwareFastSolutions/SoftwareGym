@@ -8,10 +8,9 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · V2 con login y registro funcionales,
-> cabecera que cambia a «Mi panel» en el mismo instante en que se entra, y
-> español neutro también en los textos por defecto de los componentes. Rama
-> `feat/v2-public-site`.
+> **Última actualización:** 2026-09-09 · V2.1: dashboards por rol, asistencia
+> con QR, notificaciones y reportes exportables. Rama
+> `feat/v2.1-operacion`, para fusionar en `feat/v2-public-site`.
 
 ---
 
@@ -39,7 +38,8 @@ discusiones cuando dos opciones parecen igual de buenas.
 ```text
 V1   ✅  Sitio público multi-tenant, configurable, estático
 V1.5     Base de datos en Supabase ✅ · la configuración pasará de archivos a BD
-V2   🔨  Autenticación, clientes, membresías, pagos, dashboard, auditoría
+V2   ✅  Autenticación y sesión
+V2.1 🔨  Dashboards por rol, asistencia con QR, notificaciones, reportes
 V3       Asistencia, QR, reservas, entrenadores, rutinas, clases
 V4       Multi-sucursal, suscripciones, licencias, facturación, integraciones
 ```
@@ -805,6 +805,206 @@ no se pueden tocar desde la sesión: **apagar Comments/Toolbar** en el proyecto
 | Primer fotograma tras salir | «Acceso socios» y pista retirada |
 | Cookies visibles a JavaScript | solo `gp-sesion=1`; ningún token |
 | `service_role` / JWT en los 10 scripts servidos | ninguno |
+
+## V2.1 · Operación del gimnasio 🔨 2026-09-09
+
+Rama `feat/v2.1-operacion`, pensada para fusionarse en `feat/v2-public-site`
+cuando esté completa.
+
+El cliente pidió adelantar la parte administrativa **solo hasta el dashboard y
+los reportes**: nada de altas de socios, cobros ni renovaciones todavía. Eso
+marca el límite de esta fase y explica por qué el panel lee mucho y escribe
+poco —lo único que escribe es la asistencia y la marca de leído de un aviso—.
+
+### Lo que hay
+
+| Pantalla | Ruta | Quién entra |
+|---|---|---|
+| Panel del socio | `/[tenant]/panel/socio` | quien no tiene `dashboard.read` |
+| Resumen del gimnasio | `/[tenant]/panel/gimnasio` | `dashboard.read` |
+| Panel de la plataforma | `/[tenant]/panel/plataforma` | `tenants.manage` |
+| Control de asistencia | `/[tenant]/panel/asistencia` | `attendance.read` |
+| Reportes | `/[tenant]/panel/reportes[/clave]` | `reports.read` + el permiso del reporte |
+| Descarga CSV | `.../reportes/[clave]/csv` | las mismas guardas que la página |
+
+`/[tenant]/panel` no pinta nada: reparte. **El destino sale de los PERMISOS,
+no del nombre del rol.** Un producto enlatado va a querer un rol «encargado de
+turno» que hoy no existe; si el enrutado mirase `rol === 'manager'` habría que
+tocar código para darlo de alta, y con permisos el rol nuevo llega solo a su
+sitio.
+
+### Las capacidades son contratadas, no código
+
+Las banderas `enableAttendance`, `enableQrAttendance`, `enableNotifications`,
+`enableReports` y `enablePayments` estaban declaradas desde V1 «para que el
+contrato no cambie de forma». Ahora se usan de verdad.
+
+Mítico las tiene encendidas (plan `professional`); Aurora Fit sigue en
+`starter` de prueba y las tiene apagadas. **Y apagada significa 404, no un
+enlace escondido:** `/aurora-fit/panel/asistencia`, `/aurora-fit/panel/reportes`
+y hasta la ruta de descarga CSV responden 404. Verificado.
+
+La navegación del panel exige **las dos cosas**: capacidad contratada y permiso
+de la persona. Son preguntas distintas —«¿lo compró este gimnasio?» y «¿le
+toca a este usuario?»— y confundirlas es lo que acaba enseñando una sección
+que el cliente no pagó.
+
+### Decisiones que conviene no revisitar
+
+- **Los gráficos son SVG propio, sin librería.** Las habituales pesan entre 40
+  y 150 KB, arrastran D3 y obligan a convertir el dashboard en componente de
+  cliente. Aquí hacen falta rectángulos con una escala lineal. Cada gráfico
+  lleva su alternativa textual —una `<table>` real oculta visualmente— porque
+  un gráfico sin cifras leíbles es un adorno para quien usa lector de pantalla.
+- **El QR SÍ usa librería** (`qrcode-generator`, versión exacta, sin
+  dependencias) y la regla de V1 se respeta igual: **se ejecuta solo en el
+  servidor**, de ahí sale una matriz de booleanos y **no entra en el paquete
+  del navegador** —comprobado grepeando los chunks—. Escribir un codificador
+  QR son ~400 líneas de aritmética en GF(256), y equivocarse produce un código
+  que se ve perfecto y no escanea; sin decodificador con el que probarlo, ese
+  fallo se descubre en el mostrador.
+- **El aviso de vencimiento NO se guarda.** Es derivado de `end_date`, igual que
+  `effective_status`. Guardarlo obligaría a un proceso diario y permitiría que
+  la fila contradiga a la fecha. Solo se persisten los avisos que alguien
+  escribe a mano, que son los únicos que no se pueden deducir.
+- **El QR del socio lleva un identificador opaco y rotable**, no su id ni su
+  nombre. Quien fotografíe la pantalla de un socio consigue marcar la
+  asistencia DE ESE SOCIO, nada más, y deja de servir en cuanto se rota.
+- **Un código inexistente y uno de otro gimnasio dan la misma respuesta.**
+  Distinguirlos convertiría el mostrador en un comprobador de qué códigos
+  existen en la instalación.
+- **La entrada de un socio con membresía vencida SE REGISTRA igual**, y lo que
+  cambia es el aviso al mostrador. Quien llegó, llegó: no registrarlo sería
+  falsear la asistencia.
+- **La exportación a PDF es la impresión del navegador**, con hojas de estilo
+  de impresión preparadas. Un generador de PDF en el servidor añadiría cientos
+  de kilobytes para producir un archivo peor maquetado.
+- **El CSV cita todos los campos y lleva BOM de UTF-8.** Sin comillas, un
+  «Pérez, Juan» parte la fila en dos columnas; sin BOM, Excel en Windows abre
+  el archivo con la página de códigos del sistema y los acentos salen rotos.
+  Es el detalle que decide si el reporte se usa o se descarta.
+- **«Hoy» se calcula en la zona horaria DEL GIMNASIO**, no del servidor. En La
+  Paz (UTC-4) toda entrada posterior a las 20:00 caería al día siguiente medida
+  en UTC. La conversión vive en las vistas, que es el único sitio donde esa
+  zona se conoce sin adivinarla.
+
+### Cinco defectos que aparecieron PROBANDO, no leyendo el código
+
+Ninguno se veía en una revisión del código. Los cinco salieron al usar la
+aplicación o al medir la base con sesiones simuladas.
+
+**1. Dar de alta un socio nuevo reventaba siempre.** El disparador que emite el
+identificador de check-in usaba `gen_random_bytes`, de pgcrypto, que en Supabase
+vive en el esquema `extensions`; el `search_path` fijado de la función no lo
+alcanza. La siembra inicial funcionó porque corrió con el search_path por
+omisión. **No se arregló añadiendo `extensions` al search_path** —fijarlo es
+justo lo que protege a una función `SECURITY DEFINER`— sino dejando de depender
+de la extensión: `gen_random_uuid()` está en el núcleo desde PostgreSQL 13.
+
+**2. Una fila podía tener un socio de OTRO gimnasio.** Recepción de Mítico
+consiguió insertar una asistencia con `tenant_id` = Mítico y `customer_id` = un
+socio de Aurora. Las políticas comprueban «¿puedes escribir en ESE gimnasio?»
+pero nada comprobaba que el socio fuera de ese gimnasio. No es una fuga —no
+puede leer al socio ajeno y la fila no la ve nadie— pero rompe el invariante
+sobre el que se apoya el modelo entero. Corregido con **claves foráneas
+compuestas** `(tenant_id, customer_id) → customers(tenant_id, id)` en
+`attendance_records`, `memberships`, `payments` y `check_in_tokens`: lo hace
+cumplir el motor, no una política que alguien pueda escribir mal. Es el mismo
+argumento por el que el aislamiento vive en RLS y no en el código.
+
+**3. Al cerrar la ventana modal la página quedaba congelada.** El bloqueo del
+desplazamiento del fondo estaba en un `useEffect` atado al estado de React. El
+`<dialog>` tiene su propio estado en el DOM y los dos se desincronizan; además
+**el evento `close` no se dispara en todos los entornos** —se comprobó con un
+`<dialog>` sintético en el navegador de las pruebas, donde no llega nunca—.
+Cuando no llega, la limpieza no corre y el `overflow: hidden` se queda para
+siempre. Ahora el bloqueo es **una regla de CSS**, `html:has(dialog[open])`,
+que se evalúa sola: no hay dos fuentes de verdad que puedan discrepar.
+
+**4. El botón de acceso navegaba en vez de abrir la ventana.** El disparador es
+un `<Link>` de Next a propósito —para que `/acceso` siga funcionando sin
+JavaScript y en otra pestaña—, y su manejador vive en el ancla, que es el
+destino del evento. En la fase de burbujeo la navegación ya está lanzada y el
+`preventDefault()` llega tarde. Se intercepta en **fase de captura**.
+
+**5. El reporte de pagos salía vacío y el de membresías mentía.** El de pagos
+incrustaba `customers(...)` y PostgREST resuelve esos embebidos por la clave
+foránea: al añadir la clave compuesta del punto 2 pasaron a existir DOS
+relaciones, no pudo elegir y devolvió error —que el código trataba como «cero
+filas»—. El de membresías se servía desde `v_expiring_memberships`, limitada a
+±30 días, mientras su descripción decía «membresías vendidas»: enseñaba 7 de
+10 sin avisar. Los dos tienen ahora su propia vista.
+
+**Y un número que mentía:** el panel de plataforma decía «0 planes
+publicados», cuando lo cierto era «no puedo verlos» —el administrador no tiene
+`plans.read` y las vistas corren con derechos de invocador—. Se quitó el dato
+en vez de ampliarle el alcance: el precio de los paquetes es configuración
+comercial del cliente.
+
+### Aislamiento verificado sobre las tablas nuevas
+
+Con sesiones simuladas (`request.jwt.claims`), por rol:
+
+| Prueba | Socio | Recepción | Gerencia | Super admin |
+|---|---|---|---|---|
+| Tokens de check-in visibles | solo el suyo | los de su gimnasio | los de su gimnasio | 0 |
+| Token de OTRO socio por id exacto | 0 filas | — | — | — |
+| Token de un socio de OTRO gimnasio | — | 0 filas | 0 filas | 0 filas |
+| Avisos visibles | solo los de socios | todos | todos | 0 |
+| Registrar asistencia | bloqueado | sí | sí | bloqueado |
+| Registrar asistencia de otro gimnasio | — | bloqueado | bloqueado | — |
+| Arrastrar un socio ajeno al propio gimnasio | — | bloqueado (23503) | bloqueado (23503) | — |
+| Publicar un aviso | bloqueado | bloqueado | sí | bloqueado |
+| Marcar leído en nombre de otro | bloqueado | — | — | — |
+| Crearse un token de check-in | bloqueado | — | — | — |
+| Socios / pagos / asistencias | los suyos | los de su gimnasio | los de su gimnasio | **0 / 0 / 0** |
+| Descarga CSV de cualquier reporte | 403 | **403** | 200 | 403 |
+
+Recepción obtiene **403 en las cinco descargas** aunque pueda leer casi todos
+esos datos en pantalla: la capacidad de reportes es una cosa distinta de la de
+consulta.
+
+> ⚠️ **Dos falsos positivos propios, anotados para no repetirlos.**
+> El primero: una escritura «en nombre de otro» pareció PERMITIDA porque el
+> subselect que buscaba al otro usuario no devolvía filas bajo RLS —el INSERT
+> afectaba a cero filas y no fallaba—. **Los identificadores del ataque se
+> resuelven ANTES de cambiar de rol y se usan como literales.**
+> El segundo: dos roles medidos en una sola sentencia con `UNION ALL` dieron
+> ceros en el segundo, porque las funciones de contexto son `STABLE` y
+> PostgreSQL cachea su resultado dentro de la misma sentencia. **Cada rol se
+> mide en su propia llamada.**
+
+### Verificado
+
+| Prueba | Resultado |
+|---|---|
+| `tsc --noEmit` · `next build` · `npm audit` | limpio · 26 páginas · 0 vulnerabilidades |
+| Sitio público tras añadir el panel | sigue estático; solo `/panel/*` y `/auth/confirmar` son dinámicas |
+| Dependency Rule y grep del ADR 0003 | sin hallazgos |
+| `service_role` o codificador QR en los chunks | no aparecen |
+| Check-in: socio al día | «Entrada registrada · le quedan N días» |
+| Check-in: mismo socio dos veces | «Ya tenía su entrada de hoy» (unicidad de la base) |
+| Check-in: membresía vencida | queda registrada + aviso de renovación |
+| Check-in: código inexistente o mal formado | misma respuesta neutra; **el código tecleado se conserva** para corregirlo |
+| Ventana modal: abrir, X, Escape, reabrir | el bloqueo del fondo sigue exactamente al `<dialog>` |
+| Acceso desde la cabecera | abre ventana, no navega; el formulario baja al abrir (+2 KB) |
+| JS inicial del sitio público | 144 KB medidos en producción |
+| Móvil 375 px | sin desborde horizontal; las tablas se desplazan dentro de su caja |
+| `get_advisors(security)` | solo el aviso de plan Pro ya aceptado |
+
+### Deuda que deja esta fase
+
+- El pie de página de V1 tiene enlaces de 36 px de alto, por debajo de los 44
+  que pide §2.7. Es anterior a V2.1 y no se tocó aquí.
+- La prueba de aislamiento sigue siendo manual. Con las tablas nuevas, el
+  argumento de automatizarla en CI es más fuerte que antes.
+- Las migraciones siguen viviendo solo en el servidor (§47).
+- Los datos de demostración se sembraron a mano: 143 asistencias de 90 días,
+  35 cobros de 6 meses, 4 avisos y códigos `MF-001..010`. Se borraron tres
+  cobros fechados en el futuro que venían de una siembra anterior y hacían que
+  el reporte de pagos empezara con dinero que nadie había pagado.
+
+---
 
 ### V2 · Cuentas de demostración
 

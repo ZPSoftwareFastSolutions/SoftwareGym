@@ -19,6 +19,7 @@ import type { NavItem } from '@core/domain/tenant/tenant-config';
 import { cn } from '@/lib/cn';
 import { tenantHref } from '@/lib/tenant-links';
 import { COOKIE_PISTA_SESION } from '@infra/auth/session-hint';
+import { AccessModal } from './AccessModal';
 import { Icon } from '../icons/Icon';
 import { LinkButton } from '../ui/Button';
 import { Logo } from '../ui/Logo';
@@ -174,15 +175,37 @@ export function SiteHeader({
           */}
           {showLogin && (
             <span className="hidden md:contents">
-              <LinkButton
-                href={tenantHref(slug, sesionAbierta ? 'panel' : 'acceso')}
-                variant="ghost"
-                size="sm"
-                icon={sesionAbierta ? 'trainer' : 'lock'}
-                iconPosition="start"
-              >
-                {sesionAbierta ? 'Mi panel' : 'Acceso socios'}
-              </LinkButton>
+              {sesionAbierta ? (
+                <LinkButton
+                  href={tenantHref(slug, 'panel')}
+                  variant="ghost"
+                  size="sm"
+                  icon="trainer"
+                  iconPosition="start"
+                >
+                  Mi panel
+                </LinkButton>
+              ) : (
+                /* Sin sesión, el acceso se abre en una ventana y no se pierde
+                   la página en la que estaba el visitante. El disparador
+                   sigue siendo el enlace real a `/acceso`: sin JavaScript, o
+                   abriéndolo en otra pestaña, funciona como siempre. */
+                <AccessModal
+                  slug={slug}
+                  gymName={name}
+                  disparador={
+                    <LinkButton
+                      href={tenantHref(slug, 'acceso')}
+                      variant="ghost"
+                      size="sm"
+                      icon="lock"
+                      iconPosition="start"
+                    >
+                      Acceso socios
+                    </LinkButton>
+                  }
+                />
+              )}
             </span>
           )}
 
@@ -250,18 +273,36 @@ export function SiteHeader({
             <LinkButton href={tenantHref(slug, ctaSegment)} size="lg" fullWidth glow>
               {ctaLabel}
             </LinkButton>
-            {showLogin && (
-              <LinkButton
-                href={tenantHref(slug, sesionAbierta ? 'panel' : 'acceso')}
-                variant="secondary"
-                size="lg"
-                icon={sesionAbierta ? 'trainer' : 'lock'}
-                iconPosition="start"
-                fullWidth
-              >
-                {sesionAbierta ? 'Mi panel' : 'Acceso socios'}
-              </LinkButton>
-            )}
+            {showLogin &&
+              (sesionAbierta ? (
+                <LinkButton
+                  href={tenantHref(slug, 'panel')}
+                  variant="secondary"
+                  size="lg"
+                  icon="trainer"
+                  iconPosition="start"
+                  fullWidth
+                >
+                  Mi panel
+                </LinkButton>
+              ) : (
+                <AccessModal
+                  slug={slug}
+                  gymName={name}
+                  disparador={
+                    <LinkButton
+                      href={tenantHref(slug, 'acceso')}
+                      variant="secondary"
+                      size="lg"
+                      icon="lock"
+                      iconPosition="start"
+                      fullWidth
+                    >
+                      Acceso socios
+                    </LinkButton>
+                  }
+                />
+              ))}
           </div>
         </nav>
       </div>

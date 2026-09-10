@@ -7,6 +7,7 @@
  */
 
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
+import { cobroDeTenant } from '@/lib/cobro';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
 import { HeroSection } from '@/presentation/sections/HeroSection';
@@ -18,6 +19,7 @@ import { TestimonialsSection } from '@/presentation/sections/TestimonialsSection
 
 export default async function TenantHomePage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params);
+  const cobro = cobroDeTenant(tenant);
   const { content, features, slug, contact } = tenant;
 
   return (
@@ -36,6 +38,7 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
 
       {features.showPlans && (
         <PlansSection
+          cobro={cobro}
           // El inicio muestra solo la familia principal: la comparativa
           // completa vive en /planes. Una portada con todo el tarifario
           // obliga a decidir antes de haber terminado de leer quiénes somos.

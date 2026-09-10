@@ -8,6 +8,7 @@
  * la conversación incómoda en recepción.
  */
 
+import type { ReactNode } from 'react';
 import type { MembershipPlan } from '@core/domain/catalog/catalog';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
@@ -26,9 +27,11 @@ const PERIOD_LABEL: Record<MembershipPlan['period'], string> = {
 interface PlanCardProps {
   readonly plan: MembershipPlan;
   readonly href: string;
+  /** Acción del pie. Si falta, se usa el enlace de `href`. */
+  readonly accion?: ReactNode;
 }
 
-export function PlanCard({ plan, href }: PlanCardProps) {
+export function PlanCard({ plan, href, accion }: PlanCardProps) {
   const featured = plan.featured;
 
   return (
@@ -109,15 +112,21 @@ export function PlanCard({ plan, href }: PlanCardProps) {
       </ul>
 
       <div className="relative mt-8">
-        <LinkButton
-          href={href}
-          variant={featured ? 'primary' : 'secondary'}
-          size="lg"
-          fullWidth
-          glow={featured}
-        >
-          {plan.ctaLabel}
-        </LinkButton>
+        {/* Composición sobre configuración (§2.5): en vez de añadir props
+            —«¿abre modal?», «¿qué modal?»— la tarjeta acepta la acción ya
+            construida. Sin `accion` sigue siendo el enlace de siempre, así
+            que ningún consumidor anterior se entera del cambio. */}
+        {accion ?? (
+          <LinkButton
+            href={href}
+            variant={featured ? 'primary' : 'secondary'}
+            size="lg"
+            fullWidth
+            glow={featured}
+          >
+            {plan.ctaLabel}
+          </LinkButton>
+        )}
       </div>
     </article>
   );

@@ -4,9 +4,11 @@
  */
 
 import type { PlanGroup } from '@core/domain/catalog/catalog';
+import type { CobroPorQr } from '@/lib/cobro';
 import { cn } from '@/lib/cn';
 import { tenantHref } from '@/lib/tenant-links';
 import { Icon } from '../icons/Icon';
+import { PaymentQrModal } from '../patterns/PaymentQrModal';
 import { PlanCard } from '../patterns/PlanCard';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from '../ui/SectionHeading';
@@ -18,6 +20,12 @@ interface PlansSectionProps {
   readonly eyebrow?: string;
   readonly title?: string;
   readonly lead?: string;
+  /**
+   * Cobro por QR. Cuando llega, el botón del paquete abre la ventana de pago
+   * en vez de mandar al formulario de contacto. Ausente en los gimnasios que
+   * no tienen la capacidad contratada, y entonces el botón es el de siempre.
+   */
+  readonly cobro?: CobroPorQr;
 }
 
 /**
@@ -44,6 +52,7 @@ export function PlansSection({
   eyebrow = 'Planes',
   title = 'Elige cómo quieres entrenar',
   lead,
+  cobro,
 }: PlansSectionProps) {
   const withPlans = groups.filter((g) => g.plans.length > 0);
   if (withPlans.length === 0) return null;
@@ -78,7 +87,23 @@ export function PlansSection({
               <div className={gridFor(group.plans.length)}>
                 {group.plans.map((plan, index) => (
                   <Reveal key={plan.id} delay={Math.min(index, 4) * 90} className="h-full">
-                    <PlanCard plan={plan} href={href} />
+                    <PlanCard
+                      plan={plan}
+                      href={href}
+                      accion={
+                        cobro ? (
+                          <PaymentQrModal
+                            nombreDelPaquete={plan.name}
+                            precio={`${plan.currency} ${plan.price.toLocaleString('es-BO')}`}
+                            etiquetaDelBoton={plan.ctaLabel}
+                            destacado={plan.featured}
+                            pago={cobro.pago}
+                            whatsappHref={cobro.whatsappHref}
+                            gimnasio={cobro.gimnasio}
+                          />
+                        ) : undefined
+                      }
+                    />
                   </Reveal>
                 ))}
               </div>

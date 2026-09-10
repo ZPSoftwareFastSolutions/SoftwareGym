@@ -50,6 +50,39 @@ export interface ContactInfo {
   readonly mapLinkUrl?: string;
 }
 
+/**
+ * Datos de cobro por QR.
+ *
+ * Es CONFIGURACIÓN, no código: cada gimnasio tiene su propio QR de banco, su
+ * propio titular y su propia nota. Un componente que supiera qué QR pintar
+ * dejaría de ser enlatado en el primer cliente nuevo (§1).
+ *
+ * `imageSrc` puede faltar a propósito. Mientras el gimnasio no entregue su
+ * imagen, la ventana reserva el hueco y explica que se paga en recepción, en
+ * vez de esconder la sección: un espacio vacío que se rellena luego es una
+ * decisión; una sección que aparece de la nada al mes siguiente es una
+ * sorpresa para quien ya conocía la página.
+ */
+export interface PaymentQrInfo {
+  /**
+   * Imagen del QR del banco. Ausente mientras el cliente no la entregue.
+   *
+   * TIENE QUE SER UNA RUTA DEL PROPIO SITIO —`/tenants/<slug>/qr-pago.png`—,
+   * no una URL externa. La política de seguridad de contenido declara
+   * `img-src 'self' data: blob:`, así que una imagen alojada en otro dominio
+   * no se carga y NO avisa: el navegador la bloquea en silencio y en la
+   * ventana de pago aparece un hueco. El archivo se coloca en
+   * `apps/web/public/tenants/<slug>/`.
+   */
+  readonly imageSrc?: string;
+  readonly imageAlt?: string;
+  /** Titular de la cuenta, para que quien paga confirme a quién le paga. */
+  readonly holder?: string;
+  readonly bank?: string;
+  /** Instrucción breve: qué poner en el concepto, a quién enviar el comprobante. */
+  readonly note?: string;
+}
+
 export interface DaySchedule {
   readonly day: string;
   readonly open: string;
@@ -131,6 +164,8 @@ export interface TenantContent {
     readonly subtitle: string;
     readonly label: string;
   };
+  /** Cobro por QR. Ausente en gimnasios que solo cobran en mostrador. */
+  readonly paymentQr?: PaymentQrInfo;
 }
 
 /**

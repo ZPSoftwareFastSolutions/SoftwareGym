@@ -25,7 +25,7 @@ export interface TenantPageParams {
  */
 export async function loadTenantPage(
   params: TenantPageParams['params'],
-  requiredFeature?: keyof FeatureFlags,
+  requiredFeature?: keyof FeatureFlags | readonly (keyof FeatureFlags)[],
 ): Promise<TenantConfig> {
   const { tenant: slug } = await params;
   const tenant = await getTenantBySlug(tenantRepository(), slug);
@@ -38,7 +38,16 @@ export async function loadTenantPage(
   // layout deja de aplicarse si mañana una ruta se monta fuera de él.
   if (tenant.features.publicSite !== true) notFound();
 
-  if (requiredFeature && tenant.features[requiredFeature] !== true) notFound();
+  // Se admite una lista porque las pantallas del panel dependen de DOS
+  // capacidades: la que abre el panel (`memberLogin`) y la del módulo
+  // concreto (`enableAttendance`, `enableReports`). Exigirlas por separado en
+  // cada página acabaría con alguna comprobando solo una.
+  if (requiredFeature) {
+    const exigidas = Array.isArray(requiredFeature) ? requiredFeature : [requiredFeature];
+    for (const bandera of exigidas as readonly (keyof FeatureFlags)[]) {
+      if (tenant.features[bandera] !== true) notFound();
+    }
+  }
 
   return tenant;
 }
