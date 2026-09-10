@@ -1095,6 +1095,24 @@ amplió el alcance: ahora sí se escriben socios, membresías y cobros.
 Las pruebas de escritura corrieron dentro de un bloque que termina en
 excepción: **no dejaron filas**.
 
+### Desplegado en producción (2026-09-10, commit `406dd68`)
+
+`npx vercel deploy --prod --yes` desde `apps/web` → `READY`, alias
+`gym-platform-alpha.vercel.app` actualizado. La CLI volvió a tener sesión
+(`vercel whoami` → `zapasoftwarefastsolutions-1320`); el token que había
+caducado en V2.1 ya no bloquea.
+
+| Prueba sobre el alias | Resultado |
+|---|---|
+| Sitio público de los dos gimnasios | 200 |
+| `/mitico/pago/datos` | 200, `disponible: false` (falta subir el QR) |
+| `/mitico/pago/qr` sin QR subido | 404 |
+| `/aurora-fit/pago/datos`, `/aurora-fit/panel/socios`, `.../comprobantes` | 404 (capacidades apagadas) |
+| Las 7 rutas de gestión de Mítico sin sesión | 307 al acceso |
+| `Permissions-Policy` | `camera=(self)` |
+| Pie del sitio en `/mitico/planes` | `data-print="hide"` |
+| `service_role` en los scripts servidos | no aparece |
+
 > ⚠️ **No se recorrieron en el navegador las pantallas con sesión.** Iniciar
 > sesión escribiendo contraseñas no lo hace el asistente, ni con cuentas de
 > demostración. Los permisos y el flujo están medidos en la base; la revisión
