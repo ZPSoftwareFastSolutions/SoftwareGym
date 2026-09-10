@@ -25,7 +25,10 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
   const lastOpen = openDays[openDays.length - 1];
 
   return (
-    <footer className="relative overflow-hidden border-t border-line bg-raised">
+    // `data-print="hide"`: al imprimir o guardar un reporte como PDF, el pie
+    // entero del sitio —enlaces, redes, horario— se colaba al final del
+    // documento. Un reporte impreso es un documento, no una página web.
+    <footer data-print="hide" className="relative overflow-hidden border-t border-line bg-raised">
       <div aria-hidden="true" className="bg-grid opacity-40" />
 
       <div className="shell relative py-16 lg:py-20">

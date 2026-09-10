@@ -11,6 +11,7 @@ import type { PaymentQrInfo, TenantConfig } from '@core/domain/tenant/tenant-con
 import { whatsappHref } from './tenant-links';
 
 export interface CobroPorQr {
+  readonly slug: string;
   readonly pago: PaymentQrInfo;
   readonly whatsappHref: string;
   readonly gimnasio: string;
@@ -23,6 +24,7 @@ export function cobroDeTenant(tenant: TenantConfig): CobroPorQr | undefined {
   if (!pago) return undefined;
 
   return {
+    slug: tenant.slug,
     pago,
     whatsappHref: whatsappHref(tenant.contact),
     gimnasio: tenant.name,

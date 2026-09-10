@@ -93,9 +93,13 @@ export function PlansSection({
                       accion={
                         cobro ? (
                           <PaymentQrModal
+                            slug={cobro.slug}
+                            codigoDePlan={plan.id}
                             nombreDelPaquete={plan.name}
                             precio={`${plan.currency} ${plan.price.toLocaleString('es-BO')}`}
-                            etiquetaDelBoton={plan.ctaLabel}
+                            // Con cobro por QR contratado, el botón dice lo que
+                            // hace: pagar. «Consultar» mandaba a un formulario.
+                            etiquetaDelBoton="Pagar con QR"
                             destacado={plan.featured}
                             pago={cobro.pago}
                             whatsappHref={cobro.whatsappHref}

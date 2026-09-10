@@ -52,3 +52,15 @@ select version, name from supabase_migrations.schema_migrations order by version
 Las tres marcadas como **Corrige** salieron de probar la aplicación, no de
 revisar el código. El detalle de cada una está en `CLAUDE.md`, sección
 «V2.1 · Operación del gimnasio».
+
+## V2.2 · Gestión de socios y cobro por QR (2026-09-10)
+
+| Versión | Nombre | Qué introduce |
+|---|---|---|
+| 20260910134747 | `v22_planes_con_codigo_y_recepcion_solo_crea` | `membership_plans.code` para enlazar el plan público con el cobro; recepción pierde `customers.update` y `memberships.update` |
+| 20260910134844 | `v22_comprobantes_almacenamiento_y_cobro_por_qr` | `payment_receipts`, `tenant_payment_settings`, buckets `comprobantes` (privado) y `qr-pagos` (público) con sus políticas |
+| 20260910135144 | `v22_operaciones_atomicas_vinculo_de_cuenta_y_vistas` | RPC `registrar_socio`, `vender_membresia`, `revisar_comprobante` (invocador); vínculo cuenta↔ficha por correo confirmado; vistas `v_customer_detail`, `v_receipts`, `v_users_roles` |
+| 20260910135355 | `v22_rotar_qr_sin_security_definer` | **Corrige** un aviso del analizador: la rotación del QR deja de ser `SECURITY DEFINER`; un disparador fuerza el token aleatorio |
+| 20260910140118 | `v22_ajustes_de_cobro_con_slug` | El slug en los ajustes de cobro, para servir el QR sin sesión |
+| 20260910140432 | `v22_columnas_insertables_y_autoria_desde_la_sesion` | Permisos por columna; la autoría sale de la sesión, no del formulario |
+| 20260910191501 | `v22_comprobante_aprobado_exige_pago` | **Corrige** integridad: un comprobante aprobado sin cobro era dinero invisible para los dashboards |

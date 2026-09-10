@@ -96,21 +96,7 @@ export async function exigirPermiso(slug: string, permiso: string): Promise<Cont
   return contexto;
 }
 
-/** Formatea un importe con la moneda del gimnasio. */
-export function importe(valor: number, moneda: string): string {
-  return `${valor.toLocaleString('es-BO', { maximumFractionDigits: 0 })} ${moneda === 'BOB' ? 'Bs' : moneda}`;
-}
-
-/** Fecha corta y legible a partir de un ISO `YYYY-MM-DD`. */
-export function fechaCorta(iso: string): string {
-  const fecha = new Date(`${iso}T12:00:00Z`);
-  if (Number.isNaN(fecha.getTime())) return iso;
-  return fecha.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
-}
-
-/** Hora local a partir de un instante ISO completo. */
-export function hora(iso: string): string {
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return '';
-  return fecha.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
-}
+// El formato vive en `lib/formato.ts` para poder usarlo también desde
+// componentes de cliente —la ficha de socio, la descarga en ZIP— sin arrastrar
+// hasta el navegador este módulo, que importa el composition root.
+export { fechaCorta, hora, importe } from '@/lib/formato';

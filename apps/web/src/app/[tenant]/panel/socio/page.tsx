@@ -1,296 +1,371 @@
 /**
  * CAPA: Presentation / App — panel del socio.
  *
- * Lo que un socio necesita ver de sí mismo: qué le avisan, cuánto le queda de
- * membresía, su QR para entrar y cómo va su constancia.
+ * Lo que un socio necesita de sí mismo: qué le avisan, qué plan tiene y cuánto
+ * le queda, su QR para entrar, su racha, sus datos y cómo pagar la mensualidad.
+ * Cada tarjeta lleva a algo: un número que no se puede tocar es un número que
+ * el socio tiene que ir a buscar a otra parte.
  *
- * Todos los datos salen de vistas con RLS. Aunque esta página tuviera un fallo
- * de lógica, la base solo devuelve lo que la política permite: su ficha y
- * nada más. La interfaz no es la que decide, es la que muestra.
+ * Todo sale de vistas con RLS. Aunque esta página tuviera un fallo, la base
+ * solo devuelve su ficha, sus pagos y sus comprobantes.
  */
 
 import type { Metadata } from 'next';
-import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
+import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { construirNotificaciones } from '@core/domain/operations/notifications';
-import { NOMBRE_DE_METODO, rachaDeDias } from '@core/domain/operations/attendance';
-import type { PuntoDeSerie } from '@core/domain/operations/dashboard';
+import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
+import { calcularRacha, diasCerradosDelHorario } from '@core/domain/operations/streak';
+import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
+import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
+import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
 import { matrizQr } from '@infra/operations/qr';
 import { NotificationsPanel } from '@/presentation/patterns/NotificationsPanel';
-import { BarChart } from '@/presentation/ui/BarChart';
+import { RachaCalendario } from '@/presentation/patterns/RachaCalendario';
+import { SubirComprobanteForm } from '@/presentation/patterns/ComprobanteForms';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
+import { Modal } from '@/presentation/ui/Modal';
 import { QrCode } from '@/presentation/ui/QrCode';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
-import { LinkButton } from '@/presentation/ui/Button';
+import { Button, LinkButton } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
-import { exigirPerfil, fechaCorta, hora } from '../_datos';
+import { exigirPerfil, fechaCorta, hora, importe } from '../_datos';
 
-export const metadata: Metadata = {
-  title: 'Mi panel',
-  robots: { index: false, follow: false },
-};
-
+export const metadata: Metadata = { title: 'Mi panel', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
-const ETIQUETA_ESTADO: Record<string, { texto: string; tono: 'action' | 'neutral' | 'structural' }> = {
-  active: { texto: 'Activa', tono: 'action' },
-  expiring_soon: { texto: 'Por vencer', tono: 'structural' },
-  expired: { texto: 'Vencida', tono: 'neutral' },
-  suspended: { texto: 'Suspendida', tono: 'neutral' },
-  cancelled: { texto: 'Cancelada', tono: 'neutral' },
-};
-
-/** Agrupa los días de asistencia en semanas, de la más antigua a la más reciente. */
-function porSemanas(dias: readonly string[], hoy: string, semanas: number): readonly PuntoDeSerie[] {
-  const conjunto = new Set(dias);
-  const base = new Date(`${hoy}T12:00:00Z`);
-  const puntos: PuntoDeSerie[] = [];
-
-  for (let indice = semanas - 1; indice >= 0; indice -= 1) {
-    let visitas = 0;
-    const inicio = new Date(base);
-    inicio.setUTCDate(inicio.getUTCDate() - indice * 7 - 6);
-
-    for (let desplazamiento = 0; desplazamiento < 7; desplazamiento += 1) {
-      const dia = new Date(inicio);
-      dia.setUTCDate(dia.getUTCDate() + desplazamiento);
-      if (conjunto.has(dia.toISOString().slice(0, 10))) visitas += 1;
-    }
-
-    const fin = new Date(inicio);
-    fin.setUTCDate(fin.getUTCDate() + 6);
-    puntos.push({
-      etiqueta: indice === 0 ? 'Esta' : `${indice}`,
-      valor: visitas,
-      detalle: `Semana del ${fechaCorta(inicio.toISOString().slice(0, 10))} al ${fechaCorta(
-        fin.toISOString().slice(0, 10),
-      )}: ${visitas} ${visitas === 1 ? 'visita' : 'visitas'}`,
-    });
-  }
-
-  return puntos;
+interface SocioPageProps {
+  readonly params: Promise<{ tenant: string }>;
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function PanelDeSocioPage({ params }: TenantPageParams) {
+function Dato({ etiqueta, valor }: { readonly etiqueta: string; readonly valor: string | null | undefined }) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-line/60 py-2.5 last:border-0">
+      <dt className="text-[0.84rem] text-muted">{etiqueta}</dt>
+      <dd className="min-w-0 break-words text-end text-[0.9rem] text-ink">{valor || '—'}</dd>
+    </div>
+  );
+}
+
+export default async function PanelDeSocioPage({ params, searchParams }: SocioPageProps) {
   const tenant = await loadTenantPage(params, 'memberLogin');
   const { slug, name, features } = tenant;
   const { perfil, repo } = await exigirPerfil(slug);
 
-  const sinGimnasio = !perfil.tenantSlug;
-  const sinFicha = !perfil.customerId;
+  const consulta = await searchParams;
+  const pagarCrudo = Array.isArray(consulta.pagar) ? consulta.pagar[0] : consulta.pagar;
+  const codigoAPagar = typeof pagarCrudo === 'string' ? pagarCrudo.slice(0, 40) : '';
 
-  // En paralelo: son cuatro consultas independientes y encadenarlas sumaría
-  // sus latencias sin ganar nada.
-  const [hoy, membresia, avisos, token, dias, historial] = await Promise.all([
-    // «Hoy» según el reloj DEL GIMNASIO, no el del servidor. Ver el puerto.
+  const customerId = perfil.customerId;
+  const socios = await membersRepository();
+  const conPagos = features.enablePayments === true;
+
+  const [hoy, avisos, ficha, dias, historial, planes, pagos, comprobantes] = await Promise.all([
     repo.hoyDelGimnasio(slug),
-    repo.miMembresia(),
     repo.avisos(),
-    features.enableQrAttendance ? repo.miTokenDeCheckIn() : Promise.resolve(null),
-    repo.misDiasDeAsistencia(90),
+    customerId ? socios.ficha(customerId) : Promise.resolve(null),
+    customerId ? socios.diasDeAsistencia(customerId, 365) : Promise.resolve([] as readonly string[]),
     repo.historialDeAsistencia({ limite: 8 }),
+    conPagos ? socios.planesVendibles() : Promise.resolve([]),
+    customerId ? socios.pagos(customerId) : Promise.resolve([]),
+    conPagos && customerId ? (await receiptsRepository()).listar({ customerId, limite: 10 }) : Promise.resolve([]),
   ]);
 
-  // Sin la capacidad de notificaciones contratada no se construye ninguna:
-  // ni siquiera la derivada del vencimiento. Es la diferencia entre esconder
-  // una sección y no tenerla.
-  const notificaciones = features.enableNotifications
-    ? construirNotificaciones(membresia, avisos, sinFicha)
-    : [];
-  const racha = rachaDeDias(dias, hoy);
-  const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
-  const estado = membresia ? ETIQUETA_ESTADO[membresia.effectiveStatus] : undefined;
-  const matriz = token ? matrizQr(token) : null;
+  const membresia =
+    ficha?.membershipStatus && ficha.endDate && ficha.daysRemaining !== null
+      ? { endDate: ficha.endDate, effectiveStatus: ficha.membershipStatus, daysRemaining: ficha.daysRemaining }
+      : null;
 
-  // Barra de progreso de la membresía. Se acota a [0, 100]: una membresía
-  // vencida da días negativos y sin el tope la barra se saldría de su caja.
-  const progreso = membresia
-    ? Math.max(0, Math.min(100, Math.round((membresia.daysRemaining / 30) * 100)))
-    : 0;
+  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId) : [];
+  const racha = calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
+  const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
+  const token = features.enableQrAttendance ? ficha?.checkinToken ?? null : null;
+  const matriz = token ? matrizQr(token) : null;
+  const planAPagar = planes.find((plan) => plan.code === codigoAPagar) ?? planes.find((plan) => plan.id === ficha?.planId);
+  const pendientes = comprobantes.filter((c) => c.status === 'pendiente').length;
+  const años = edad(ficha?.birthDate ?? null, hoy);
+
+  if (!perfil.tenantSlug) {
+    return (
+      <section className="surface-card">
+        <EmptyState icono="shield" titulo="Tu cuenta todavía no está asociada a un gimnasio" descripcion={`Acércate a recepción de ${name} para completarla.`} />
+      </section>
+    );
+  }
+
+  const formularioDePago =
+    conPagos && customerId ? (
+      <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
+    ) : null;
 
   return (
     <div className="flex flex-col gap-6">
       <NotificationsPanel slug={slug} notificaciones={notificaciones} />
 
-      {sinGimnasio ? (
+      {codigoAPagar && formularioDePago && (
+        <section className="surface-card border-action/40 p-6 sm:p-7" aria-labelledby="titulo-pago-directo">
+          <h2 id="titulo-pago-directo" className="flex items-center gap-2 t-h3">
+            <Icon name="upload" size={18} className="text-action" />
+            Sube tu comprobante{planAPagar ? ` · ${planAPagar.name}` : ''}
+          </h2>
+          <p className="mt-1.5 text-[0.88rem] text-muted">
+            Adjunta la captura del pago que hiciste con el QR. Recepción la verifica y tu plan se activa.
+          </p>
+          <div className="mt-6">{formularioDePago}</div>
+        </section>
+      )}
+
+      {!customerId ? (
         <section className="surface-card">
           <EmptyState
-            icono="shield"
-            titulo="Tu cuenta todavía no está asociada a un gimnasio"
-            descripcion={`Acércate a recepción de ${name} para completarla. Hasta entonces no hay información que mostrarte.`}
+            icono="idcard"
+            titulo="Falta vincular tu ficha de socio"
+            descripcion="Tu cuenta está creada. Cuando recepción te registre con este mismo correo, aquí verás tu plan, tu QR y tu racha."
           />
         </section>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              etiqueta="Membresía"
-              valor={membresia ? `${Math.max(membresia.daysRemaining, 0)}` : '—'}
+              href="#mi-membresia"
+              etiqueta={ficha?.planName ?? 'Membresía'}
+              valor={ficha?.daysRemaining !== null && ficha?.daysRemaining !== undefined ? String(Math.max(ficha.daysRemaining, 0)) : '—'}
               icono="shield"
-              tono={
-                !membresia
-                  ? 'neutro'
-                  : membresia.effectiveStatus === 'expired'
-                    ? 'alerta'
-                    : membresia.effectiveStatus === 'expiring_soon'
-                      ? 'alerta'
-                      : 'accion'
+              tono={ficha?.membershipStatus === 'active' ? 'accion' : ficha?.membershipStatus ? 'alerta' : 'neutro'}
+              comparacion={ficha?.endDate ? `días restantes · vence ${fechaCorta(ficha.endDate)}` : 'sin membresía registrada'}
+              accion="Ver mi plan"
+            />
+            <StatCard href="#mis-entradas" etiqueta="Este mes" valor={String(esteMes)} icono="calendar" comparacion={esteMes === 1 ? 'visita registrada' : 'visitas registradas'} accion="Ver mis entradas" />
+            <Modal
+              titulo="Tu racha"
+              descripcion="Los días que el gimnasio cierra no la cortan."
+              anchoMaximo="md"
+              disparador={
+                <StatCard boton etiqueta="Racha" valor={`${racha.actual}`} icono="fire" tono={racha.actual >= 3 ? 'accion' : 'neutro'} comparacion={`mejor racha: ${racha.mejor} días`} accion="Ver calendario" />
               }
-              comparacion={membresia ? `días restantes · vence el ${membresia.endDate}` : 'sin membresía registrada'}
-            />
-            <StatCard
-              etiqueta="Este mes"
-              valor={`${esteMes}`}
-              icono="calendar"
-              comparacion={esteMes === 1 ? 'visita registrada' : 'visitas registradas'}
-            />
-            <StatCard
-              etiqueta="Racha"
-              valor={`${racha}`}
-              icono="sparkle"
-              tono={racha >= 3 ? 'accion' : 'neutro'}
-              comparacion={racha === 1 ? 'día seguido' : 'días seguidos'}
-            />
-            <StatCard
-              etiqueta="Últimos 90 días"
-              valor={`${dias.length}`}
-              icono="dumbbell"
-              comparacion="entradas registradas"
-            />
+            >
+              <RachaCalendario racha={racha} />
+            </Modal>
+            {token && matriz ? (
+              <Modal
+                titulo="Tu QR de entrada"
+                descripcion="Enséñalo en recepción."
+                anchoMaximo="md"
+                disparador={<StatCard boton etiqueta="QR de entrada" valor="Mostrar" icono="qr" tono="accion" comparacion="ábrelo grande en el mostrador" accion="Abrir QR" />}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-full max-w-[26rem] rounded-[var(--t-radius-md)] bg-white p-4">
+                    <QrCode matriz={matriz} descripcion="Tu QR personal de entrada al gimnasio" className="max-w-none" />
+                  </div>
+                  <p className="font-mono text-[0.9rem] tracking-[0.14em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
+                </div>
+              </Modal>
+            ) : (
+              <StatCard href="#mis-entradas" etiqueta="Últimos 12 meses" valor={String(dias.length)} icono="dumbbell" comparacion="entradas registradas" />
+            )}
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-constancia">
-              <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,21rem)]">
+            <section id="mi-membresia" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-membresia">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 id="titulo-constancia" className="t-h3">
-                    Tu constancia
-                  </h2>
-                  <p className="mt-1.5 text-[0.86rem] text-muted">
-                    Visitas por semana en los últimos tres meses.
-                  </p>
+                  <p className="text-[0.74rem] font-semibold uppercase tracking-[0.14em] text-muted">Tu membresía</p>
+                  <h2 id="titulo-membresia" className="mt-1 t-h3">{ficha?.planName ?? 'Sin plan activo'}</h2>
                 </div>
-                {estado && <Badge tone={estado.tono}>{estado.texto}</Badge>}
+                {ficha?.membershipStatus && (
+                  <Badge tone={ficha.membershipStatus === 'active' ? 'action' : ficha.membershipStatus === 'expiring_soon' ? 'structural' : 'neutral'}>
+                    {NOMBRE_DE_ESTADO_DE_MEMBRESIA[ficha.membershipStatus]}
+                  </Badge>
+                )}
               </div>
 
-              {membresia && (
-                <div className="mt-6">
-                  <div className="flex items-baseline justify-between gap-3 text-[0.82rem]">
-                    <span className="text-muted">Vigencia</span>
-                    <span className="font-semibold text-ink">
-                      {Math.max(membresia.daysRemaining, 0)} de 30 días
-                    </span>
-                  </div>
-                  <div
-                    className="mt-2 h-2 overflow-hidden rounded-full bg-raised"
-                    role="progressbar"
-                    aria-valuenow={progreso}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label="Vigencia de tu membresía"
-                  >
-                    <div
-                      className="h-full rounded-full bg-action transition-[width] duration-500"
-                      style={{ width: `${progreso}%` }}
-                    />
-                  </div>
-                </div>
+              {ficha?.startDate && ficha.endDate && (
+                <>
+                  <dl className="mt-5 grid gap-x-8 sm:grid-cols-2">
+                    <div>
+                      <Dato etiqueta="Inicio" valor={fechaCorta(ficha.startDate)} />
+                      <Dato etiqueta="Vence" valor={fechaCorta(ficha.endDate)} />
+                    </div>
+                    <div>
+                      <Dato etiqueta="Precio" valor={ficha.membershipPrice !== null ? importe(ficha.membershipPrice) : null} />
+                      <Dato etiqueta="Días restantes" valor={String(Math.max(ficha.daysRemaining ?? 0, 0))} />
+                    </div>
+                  </dl>
+                  {(() => {
+                    const total = Math.max(1, Math.round((Date.parse(`${ficha.endDate}T12:00:00Z`) - Date.parse(`${ficha.startDate}T12:00:00Z`)) / 86_400_000));
+                    const progreso = Math.max(0, Math.min(100, Math.round(((ficha.daysRemaining ?? 0) / total) * 100)));
+                    return (
+                      <div
+                        className="mt-5 h-2.5 overflow-hidden rounded-full bg-raised"
+                        role="progressbar"
+                        aria-valuenow={progreso}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Vigencia restante de tu membresía"
+                      >
+                        <div className="h-full rounded-full bg-action transition-[width] duration-500" style={{ width: `${progreso}%` }} />
+                      </div>
+                    );
+                  })()}
+                </>
               )}
 
-              <BarChart
-                titulo="Visitas por semana"
-                puntos={porSemanas(dias, hoy, 12)}
-                unidad="visitas"
-                alto={150}
-                saltoDeEtiqueta={3}
-                className="mt-7"
-              />
+              <div className="mt-6 flex flex-wrap gap-3">
+                {formularioDePago && (
+                  <Modal
+                    titulo="Pagar mi mensualidad"
+                    descripcion="Paga con el QR del gimnasio y sube la captura del comprobante."
+                    anchoMaximo="lg"
+                    montarSoloAbierto
+                    disparador={
+                      <Button variant="primary" size="md" icon="upload" iconPosition="start" glow>
+                        {ficha?.membershipId ? 'Renovar / subir comprobante' : 'Pagar mi plan'}
+                      </Button>
+                    }
+                  >
+                    <div className="flex flex-col gap-5">
+                      <div className="flex items-center gap-4 rounded-[var(--t-radius-md)] border border-line p-4">
+                        <img src={`/${slug}/pago/qr`} alt={`QR de cobro de ${name}`} className="h-28 w-28 rounded bg-white object-contain p-1" />
+                        <p className="text-[0.86rem] text-muted">
+                          1. Escanea este QR con la app de tu banco. 2. Paga el importe de tu plan. 3. Sube aquí la captura.
+                        </p>
+                      </div>
+                      <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
+                    </div>
+                  </Modal>
+                )}
+                <LinkButton href={tenantHref(slug, 'planes')} variant="secondary" size="md">
+                  Ver paquetes
+                </LinkButton>
+              </div>
+
+              {conPagos && comprobantes.length > 0 && (
+                <div className="mt-6 border-t border-line pt-5">
+                  <p className="mb-3 flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-muted">
+                    <Icon name="receipt" size={15} className="text-action" />
+                    Mis comprobantes {pendientes > 0 ? `· ${pendientes} en revisión` : ''}
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {comprobantes.map((c) => (
+                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] bg-raised px-4 py-2.5 text-[0.86rem]">
+                        <a href={`/${slug}/panel/comprobantes/${c.id}/imagen`} target="_blank" rel="noopener noreferrer" className="text-ink underline-offset-4 hover:text-action hover:underline">
+                          {fechaCorta(c.receiptDate)} · {importe(c.amount, c.currency)} · {c.planName ?? 'sin plan'}
+                        </a>
+                        <span className={c.status === 'aprobado' ? 'text-action' : c.status === 'rechazado' ? 'text-structural' : 'text-muted'}>
+                          {NOMBRE_DE_ESTADO_DE_COMPROBANTE[c.status]}
+                          {c.status === 'rechazado' && c.reviewNote ? ` · ${c.reviewNote}` : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
 
-            <section className="surface-card flex flex-col items-center gap-4 p-6 text-center sm:p-7" aria-labelledby="titulo-qr">
-              <h2 id="titulo-qr" className="t-h3">
-                Tu QR de entrada
-              </h2>
-
+            <section className="surface-card flex flex-col items-center gap-3 p-6 text-center sm:p-7" aria-labelledby="titulo-qr">
+              <h2 id="titulo-qr" className="t-h3">Tu QR de entrada</h2>
               {matriz && token ? (
                 <>
-                  <p className="text-[0.84rem] text-muted">
-                    Enséñalo en recepción para registrar tu entrada.
-                  </p>
+                  <p className="text-[0.84rem] text-muted">Enséñalo en recepción para registrar tu entrada.</p>
                   <div className="rounded-[var(--t-radius-md)] bg-white p-3">
-                    <QrCode
-                      matriz={matriz}
-                      descripcion="Código QR personal para registrar tu entrada al gimnasio"
-                      className="max-w-[13rem]"
-                    />
+                    <QrCode matriz={matriz} descripcion="Código QR personal para registrar tu entrada al gimnasio" className="max-w-[13rem]" />
                   </div>
-                  {/* El código en texto no es decoración: si la pantalla está
-                      rayada o el lector falla, recepción lo teclea y la cola
-                      sigue avanzando. */}
-                  <p className="break-all font-mono text-[0.72rem] tracking-[0.12em] text-muted">
-                    {token.match(/.{1,6}/g)?.join(' ')}
-                  </p>
+                  <p className="break-all font-mono text-[0.72rem] tracking-[0.12em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
+                  {/* Mismo QR, a pantalla casi completa: en el mostrador, con el
+                      brillo bajo o el teléfono lejos, un QR pequeño no se lee. */}
+                  <Modal
+                    titulo="Tu QR de entrada"
+                    descripcion="Súbele el brillo a la pantalla si el lector no lo capta."
+                    anchoMaximo="md"
+                    disparador={
+                      <Button variant="primary" size="md" icon="qr" iconPosition="start" fullWidth>
+                        Mostrar QR
+                      </Button>
+                    }
+                  >
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-full max-w-[26rem] rounded-[var(--t-radius-md)] bg-white p-4">
+                        <QrCode matriz={matriz} descripcion="Tu QR personal de entrada al gimnasio" className="max-w-none" />
+                      </div>
+                      <p className="font-mono text-[0.9rem] tracking-[0.14em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
+                    </div>
+                  </Modal>
                   <p className="flex items-start gap-2 text-start text-[0.76rem] text-muted">
                     <Icon name="lock" size={14} className="mt-0.5 shrink-0 text-action" />
-                    <span>
-                      Este código solo sirve para marcar tu asistencia. No lleva tus datos ni da
-                      acceso a tu cuenta.
-                    </span>
+                    <span>Solo sirve para marcar tu asistencia. No lleva tus datos ni da acceso a tu cuenta.</span>
                   </p>
                 </>
               ) : (
-                <EmptyState
-                  icono="lock"
-                  titulo="Todavía no tienes QR"
-                  descripcion={
-                    sinFicha
-                      ? 'Tu QR se genera cuando recepción vincula tu cuenta con tu ficha de socio.'
-                      : 'Pídelo en recepción y quedará disponible aquí.'
-                  }
-                />
+                <EmptyState icono="lock" titulo="Todavía no tienes QR" descripcion="Pídelo en recepción y quedará disponible aquí." />
               )}
             </section>
           </div>
 
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-historial">
-            <h2 id="titulo-historial" className="t-h3">
-              Tus últimas entradas
-            </h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-constancia">
+              <h2 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
+                <Icon name="fire" size={18} className="text-action" />
+                Tu constancia
+              </h2>
+              <RachaCalendario racha={racha} />
+            </section>
 
-            <DataTable
-              titulo="Historial de tus entradas al gimnasio"
-              columnas={[
-                { clave: 'fecha', titulo: 'Fecha', celda: (fila) => fechaCorta(fila.attendanceDate) },
-                { clave: 'hora', titulo: 'Hora', celda: (fila) => hora(fila.checkedInAt) },
-                {
-                  clave: 'metodo',
-                  titulo: 'Método',
-                  secundaria: true,
-                  celda: (fila) => NOMBRE_DE_METODO[fila.method],
-                },
-              ]}
-              filas={historial}
-              claveDeFila={(fila) => fila.id}
-              className="mt-5"
-              vacio={
-                <EmptyState
-                  icono="calendar"
-                  titulo="Aún no hay entradas registradas"
-                  descripcion="En cuanto registres tu primera entrada con el QR, aparecerá aquí."
-                />
-              }
-            />
-          </section>
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-datos">
+              <h2 id="titulo-datos" className="flex items-center gap-2 t-h3">
+                <Icon name="idcard" size={18} className="text-action" />
+                Información personal
+              </h2>
+              <dl className="mt-4">
+                <Dato etiqueta="Nombre" valor={ficha?.fullName ?? perfil.fullName} />
+                <Dato etiqueta="Código de socio" valor={ficha?.code} />
+                <Dato etiqueta="Documento" valor={ficha?.documentId} />
+                <Dato etiqueta="Teléfono" valor={ficha?.phone} />
+                <Dato etiqueta="Correo de la ficha" valor={ficha?.email} />
+                <Dato etiqueta="Nacimiento" valor={ficha?.birthDate ? `${fechaCorta(ficha.birthDate)} ${ficha.birthDate.slice(0, 4)}${años !== null ? ` · ${años} años` : ''}` : null} />
+                <Dato etiqueta="Socio desde" valor={ficha ? `${fechaCorta(ficha.createdAt.slice(0, 10))} ${ficha.createdAt.slice(0, 4)}` : null} />
+                <Dato etiqueta="Cuenta de acceso" valor={perfil.email} />
+                <Dato etiqueta="Gimnasio" valor={perfil.tenantName ?? name} />
+              </dl>
+              <p className="mt-4 text-[0.78rem] text-muted">¿Algún dato está mal? Pide en recepción que lo corrijan: tu ficha la gestiona el gimnasio.</p>
+            </section>
+          </div>
 
-          <div className="flex flex-wrap gap-3" data-print="hide">
-            <LinkButton href={tenantHref(slug, 'planes')} variant="secondary" size="md">
-              Ver paquetes
-            </LinkButton>
-            <LinkButton href={tenantHref(slug, 'horarios')} variant="ghost" size="md">
-              Horarios
-            </LinkButton>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section id="mis-entradas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-historial">
+              <h2 id="titulo-historial" className="t-h3">Tus últimas entradas</h2>
+              <DataTable
+                titulo="Historial de tus entradas al gimnasio"
+                className="mt-5"
+                columnas={[
+                  { clave: 'fecha', titulo: 'Fecha', celda: (fila) => fechaCorta(fila.attendanceDate) },
+                  { clave: 'hora', titulo: 'Hora', celda: (fila) => hora(fila.checkedInAt) },
+                  { clave: 'metodo', titulo: 'Método', celda: (fila) => NOMBRE_DE_METODO[fila.method] },
+                ]}
+                filas={historial}
+                claveDeFila={(fila) => fila.id}
+                vacio={<EmptyState icono="calendar" titulo="Aún no hay entradas registradas" descripcion="En cuanto registres tu primera entrada con el QR, aparecerá aquí." />}
+              />
+            </section>
+
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-pagos">
+              <h2 id="titulo-pagos" className="t-h3">Tus pagos</h2>
+              <DataTable
+                titulo="Tus pagos registrados"
+                className="mt-5"
+                columnas={[
+                  { clave: 'fecha', titulo: 'Fecha', celda: (p) => fechaCorta(p.paidDate) },
+                  { clave: 'plan', titulo: 'Plan', celda: (p) => p.planName ?? '—' },
+                  { clave: 'metodo', titulo: 'Método', secundaria: true, celda: (p) => NOMBRE_DE_METODO_DE_PAGO[p.method] },
+                  { clave: 'importe', titulo: 'Importe', numerica: true, celda: (p) => importe(p.amount, p.currency) },
+                ]}
+                filas={pagos.slice(0, 8)}
+                claveDeFila={(p) => p.id}
+                vacio={<EmptyState icono="wallet" titulo="Sin pagos registrados" />}
+              />
+            </section>
           </div>
         </>
       )}

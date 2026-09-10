@@ -148,6 +148,7 @@ export const miticoTenant: TenantConfig = {
     enableNotifications: true,
     enableReports: true,
     enablePayments: true,
+    enableMemberManagement: true,
   },
 
   seo: {

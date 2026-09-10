@@ -3,26 +3,34 @@
 /**
  * CAPA: Presentation / Patterns (organismo)
  *
- * Mostrador de check-in.
+ * Mostrador de check-in: por CÁMARA o por TECLADO.
  *
- * Está pensado para usarse de pie y con prisa: un solo campo, foco automático
- * y respuesta grande y de un color que se entiende de reojo. Un lector de QR
- * de los baratos escribe el código y pulsa Enter, así que el formulario se
- * envía con Enter sin tocar nada más.
+ * Pensado para usarse de pie y con prisa: un campo con foco automático,
+ * respuesta grande y de un color que se entiende de reojo. Un lector de QR
+ * físico escribe el código y pulsa Enter, así que también funciona sin tocar
+ * nada más. Y quien no tiene lector usa la cámara del propio dispositivo: al
+ * leer el QR se registra solo.
  *
- * Tras un registro correcto el campo se vacía y recupera el foco solo: en una
- * cola de diez personas, tener que hacer clic entre socio y socio es lo que
- * hace que el mostrador acabe apuntando en un cuaderno.
+ * El lector de cámara se descarga al pulsar el botón (`next/dynamic`): el
+ * decodificador pesa, y quien solo teclea no tiene por qué cargarlo.
  */
 
-import { useActionState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { useActionState, useCallback, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { registrarCheckIn, type EstadoDeCheckIn } from '@/app/[tenant]/panel/actions';
 
+const QrScanner = dynamic(() => import('./QrScanner').then((modulo) => modulo.QrScanner), {
+  ssr: false,
+  loading: () => <div className="aspect-[4/3] w-full animate-pulse rounded-[var(--t-radius-md)] bg-raised" />,
+});
+
 interface CheckInPanelProps {
   readonly slug: string;
+  /** Abre directamente con la cámara, para el tótem o el acceso rápido. */
+  readonly empezarConCamara?: boolean;
 }
 
 const ESTADO_INICIAL: EstadoDeCheckIn = {};
@@ -35,7 +43,7 @@ function BotonRegistrar() {
       disabled={pending}
       aria-busy={pending}
       className={cn(
-        'inline-flex h-14 shrink-0 items-center justify-center gap-2.5 px-7',
+        'inline-flex h-14 shrink-0 items-center justify-center gap-2.5 px-6',
         'rounded-[var(--t-radius-md)] bg-action font-semibold text-on-action',
         'transition-colors hover:bg-action-strong',
         'disabled:pointer-events-none disabled:opacity-50',
@@ -47,36 +55,44 @@ function BotonRegistrar() {
   );
 }
 
-export function CheckInPanel({ slug }: CheckInPanelProps) {
+export function CheckInPanel({ slug, empezarConCamara = false }: CheckInPanelProps) {
   const [estado, accion] = useActionState(registrarCheckIn, ESTADO_INICIAL);
+  const [camara, setCamara] = useState(empezarConCamara);
   const campo = useRef<HTMLInputElement>(null);
+  const formulario = useRef<HTMLFormElement>(null);
   const resultado = estado.resultado;
 
   useEffect(() => {
     if (!resultado) return;
-
     const elemento = campo.current;
     if (elemento) {
-      // React 19 resetea por su cuenta un formulario con `action` al terminar
-      // —comprobado— y eso está bien cuando el socio quedó registrado: el
-      // siguiente de la cola empieza con el campo limpio.
-      //
-      // Pero con un código mal tecleado ese reseteo obliga a escribirlo entero
-      // otra vez para corregir una letra. Ahí se devuelve lo que se intentó y
-      // el cursor queda al final, listo para arreglarlo.
+      // React 19 resetea el formulario al terminar la acción. Con un registro
+      // correcto eso está bien; con un código mal tecleado obligaría a
+      // escribirlo entero otra vez para corregir una letra.
       const seEquivocaron = resultado.tipo === 'desconocido' || resultado.tipo === 'error';
       elemento.value = seEquivocaron ? (estado.intentado ?? '') : '';
     }
+    if (!camara) campo.current?.focus();
+  }, [resultado, estado.intentado, camara]);
 
-    // El foco vuelve SIEMPRE al campo: en una cola de diez personas, tener que
-    // hacer clic entre socio y socio es lo que acaba con el mostrador
-    // apuntando en un cuaderno.
-    campo.current?.focus();
-  }, [resultado, estado.intentado]);
+  // Estable a propósito: el lector reinicia la cámara si cambia la función que
+  // recibe, y un re-render del panel no debe apagar y encender la cámara.
+  const alDetectar = useCallback((codigo: string) => {
+    if (campo.current) campo.current.value = codigo;
+    setCamara(false);
+    formulario.current?.requestSubmit();
+  }, []);
+
+  const alCancelar = useCallback(() => {
+    setCamara(false);
+    setTimeout(() => campo.current?.focus(), 0);
+  }, []);
 
   return (
     <div className="flex flex-col gap-5">
-      <form action={accion} className="flex flex-col gap-3 sm:flex-row">
+      {camara && <QrScanner alDetectar={alDetectar} alCancelar={alCancelar} />}
+
+      <form ref={formulario} action={accion} className={cn('flex flex-col gap-3 sm:flex-row', camara && 'sr-only')}>
         <input type="hidden" name="tenantSlug" value={slug} />
         <div className="flex-1">
           <label htmlFor="codigo-check-in" className="sr-only">
@@ -87,15 +103,12 @@ export function CheckInPanel({ slug }: CheckInPanelProps) {
             id="codigo-check-in"
             name="codigo"
             type="text"
-            autoFocus
+            autoFocus={!empezarConCamara}
             autoComplete="off"
             spellCheck={false}
-            // El lector físico escribe muy rápido: sin `autoCapitalize` y
-            // `autoCorrect` apagados, un teclado táctil puede alterar el código.
             autoCapitalize="characters"
             autoCorrect="off"
-            inputMode="text"
-            placeholder="Escanea el QR o teclea el código"
+            placeholder="Escanea con el lector o teclea el código"
             className={cn(
               'h-14 w-full rounded-[var(--t-radius-md)] border border-line bg-raised px-5',
               'font-mono text-[1rem] tracking-[0.08em] text-ink placeholder:text-muted/70',
@@ -104,15 +117,37 @@ export function CheckInPanel({ slug }: CheckInPanelProps) {
             )}
           />
         </div>
+        <button
+          type="button"
+          onClick={() => setCamara(true)}
+          className={cn(
+            'inline-flex h-14 shrink-0 items-center justify-center gap-2.5 px-5',
+            'rounded-[var(--t-radius-md)] border border-line font-semibold text-ink',
+            'transition-colors hover:border-action hover:text-action',
+          )}
+        >
+          <Icon name="camera" size={18} />
+          Cámara
+        </button>
         <BotonRegistrar />
       </form>
 
-      {/* `aria-live` para que el lector de pantalla anuncie el resultado sin
-          que haya que ir a buscarlo: quien atiende el mostrador no está
-          mirando esta zona, está mirando a la persona que tiene delante. */}
+      {/* `aria-live`: quien atiende el mostrador está mirando a la persona que
+          tiene delante, no esta zona. El lector de pantalla lo anuncia solo. */}
       <div aria-live="polite" aria-atomic="true">
         {resultado && <Resultado resultado={resultado} />}
       </div>
+
+      {resultado && !camara && (
+        <button
+          type="button"
+          onClick={() => setCamara(true)}
+          className="inline-flex h-11 items-center justify-center gap-2 self-center rounded-[var(--t-radius-md)] px-4 text-[0.86rem] font-medium text-action transition-colors hover:bg-action/10"
+        >
+          <Icon name="qr" size={16} />
+          Escanear al siguiente
+        </button>
+      )}
     </div>
   );
 }
@@ -135,33 +170,26 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
           </span>
         </p>
       );
-
     case 'repetido':
       return (
         <p className={cn(base, 'border-line bg-raised')}>
           <Icon name="clock" size={20} className="mt-0.5 shrink-0 text-muted" />
           <span>
             <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
-            <span className="text-[0.88rem] text-muted">
-              Ya tenía su entrada de hoy. No se registra dos veces el mismo día.
-            </span>
+            <span className="text-[0.88rem] text-muted">Ya tenía su entrada de hoy. No se registra dos veces el mismo día.</span>
           </span>
         </p>
       );
-
     case 'sin-membresia':
       return (
         <p className={cn(base, 'border-structural/50 bg-structural/10')}>
           <Icon name="shield" size={20} className="mt-0.5 shrink-0 text-structural" />
           <span>
             <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
-            <span className="text-[0.88rem] text-muted">
-              Entrada registrada, pero su membresía está vencida. Ofrécele la renovación.
-            </span>
+            <span className="text-[0.88rem] text-muted">Entrada registrada, pero su membresía está vencida. Ofrécele la renovación.</span>
           </span>
         </p>
       );
-
     case 'desconocido':
       return (
         <p className={cn(base, 'border-line bg-raised')}>
@@ -171,7 +199,6 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
           </span>
         </p>
       );
-
     case 'error':
       return (
         <p className={cn(base, 'border-structural/50 bg-structural/10')}>

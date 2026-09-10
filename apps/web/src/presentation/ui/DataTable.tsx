@@ -33,6 +33,12 @@ interface DataTableProps<T> {
   readonly filas: readonly T[];
   readonly claveDeFila: (fila: T, indice: number) => string;
   readonly vacio?: ReactNode;
+  /**
+   * Fila de totales, por clave de columna. Va en `<tfoot>`: al imprimir, el
+   * navegador la repite al pie de cada página y un lector de pantalla la
+   * anuncia como resumen, no como un registro más.
+   */
+  readonly filaDeTotales?: Readonly<Record<string, ReactNode>>;
   readonly className?: string;
 }
 
@@ -43,6 +49,7 @@ export function DataTable<T>({
   filas,
   claveDeFila,
   vacio,
+  filaDeTotales,
   className,
 }: DataTableProps<T>) {
   if (filas.length === 0 && vacio) return <>{vacio}</>;
@@ -74,7 +81,10 @@ export function DataTable<T>({
           {filas.map((fila, indice) => (
             <tr
               key={claveDeFila(fila, indice)}
-              className="border-b border-line/60 last:border-0 hover:bg-raised/60"
+              // `relative`: un botón de ficha dentro de la fila extiende su zona
+              // pulsable a la fila entera con un pseudo-elemento absoluto. Sin
+              // un ancestro posicionado, ese pseudo-elemento cubriría la página.
+              className="relative border-b border-line/60 last:border-0 hover:bg-raised/60"
             >
               {columnas.map((columna, posicion) => {
                 const contenido = columna.celda(fila);
@@ -100,6 +110,29 @@ export function DataTable<T>({
             </tr>
           ))}
         </tbody>
+        {filaDeTotales && (
+          <tfoot>
+            <tr className="border-t-2 border-line">
+              {columnas.map((columna, posicion) => {
+                const valor = filaDeTotales[columna.clave];
+                const Celda = posicion === 0 ? 'th' : 'td';
+                return (
+                  <Celda
+                    key={columna.clave}
+                    {...(posicion === 0 ? { scope: 'row' as const } : {})}
+                    className={cn(
+                      'px-3 py-3 text-[0.82rem] font-semibold text-ink',
+                      columna.numerica ? 'text-end tabular-nums' : 'text-start',
+                      columna.secundaria && 'hidden sm:table-cell',
+                    )}
+                  >
+                    {valor ?? (posicion === 0 ? 'Total' : '')}
+                  </Celda>
+                );
+              })}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );

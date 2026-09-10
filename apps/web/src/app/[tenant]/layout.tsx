@@ -121,7 +121,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
         }}
       />
 
-      <a href="#contenido" className="skip-link">
+      <a href="#contenido" className="skip-link" data-print="hide">
         Saltar al contenido
       </a>
 

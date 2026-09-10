@@ -23,6 +23,7 @@ import {
 import { DashboardNav, type EntradaDePanel } from '@/presentation/patterns/DashboardNav';
 import { Badge } from '@/presentation/ui/Badge';
 import { Button } from '@/presentation/ui/Button';
+import { receiptsRepository } from '@infra/config/composition-root';
 import { cerrarSesion } from '../acceso/actions';
 import { perfilActual } from './_datos';
 
@@ -64,20 +65,35 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
   // CONTRATADA por el gimnasio y la persona tiene que tener PERMISO. Una flag
   // apagada no es «esta persona no puede», es «este gimnasio no lo compró», y
   // por eso la ruta responde 404 y no un aviso de permisos.
-  if (tenant.features.enableAttendance && tienePermiso(perfil, PERMISO.verAsistencia)) {
+  const { features } = tenant;
+  const esPersonal = espacio === 'gimnasio';
+
+  if (esPersonal && features.enableMemberManagement && tienePermiso(perfil, PERMISO.verSocios)) {
+    entradas.push({ href: tenantHref(slug, 'panel/socios'), etiqueta: 'Socios', icono: 'group' });
+  }
+
+  if (features.enableAttendance && tienePermiso(perfil, PERMISO.verAsistencia)) {
+    entradas.push({ href: tenantHref(slug, 'panel/asistencia'), etiqueta: 'Asistencia', icono: 'calendar' });
+  }
+
+  if (esPersonal && features.enablePayments && tienePermiso(perfil, PERMISO.verPagos)) {
+    // El contador sale de una consulta de solo cabeceras (`count`, sin filas):
+    // la pestaña avisa de que hay trabajo sin traerse los comprobantes.
+    const pendientes = await (await receiptsRepository()).contarPendientes();
     entradas.push({
-      href: tenantHref(slug, 'panel/asistencia'),
-      etiqueta: 'Asistencia',
-      icono: 'calendar',
+      href: tenantHref(slug, 'panel/comprobantes'),
+      etiqueta: 'Comprobantes',
+      icono: 'receipt',
+      insignia: pendientes,
     });
   }
 
-  if (tenant.features.enableReports && tienePermiso(perfil, PERMISO.verReportes)) {
-    entradas.push({
-      href: tenantHref(slug, 'panel/reportes'),
-      etiqueta: 'Reportes',
-      icono: 'toggle',
-    });
+  if (features.enableReports && tienePermiso(perfil, PERMISO.verReportes)) {
+    entradas.push({ href: tenantHref(slug, 'panel/reportes'), etiqueta: 'Reportes', icono: 'chart' });
+  }
+
+  if (esPersonal && features.enablePayments && tienePermiso(perfil, PERMISO.configurar)) {
+    entradas.push({ href: tenantHref(slug, 'panel/cobros'), etiqueta: 'Cobro QR', icono: 'qr' });
   }
 
   return (

@@ -1,25 +1,27 @@
 /**
  * CAPA: Presentation / Patterns (organismo)
  *
- * Ventana de pago por QR de un paquete.
+ * «Pagar con QR» de un paquete.
  *
- * ANTES el botón de un paquete llevaba a «Contacto», que obligaba al visitante
- * a salir de la página de precios, rellenar un formulario y esperar. Ahora se
- * abre aquí mismo, con el precio delante y la forma de pagar a la vista.
+ * La página de planes es estática y se sirve desde CDN, pero el QR lo cambia
+ * gerencia cuando quiere. Por eso esta ventana no lleva el QR incrustado del
+ * build: al abrirse pide los datos vigentes y la imagen a nuestras propias
+ * rutas (`/pago/datos`, `/pago/qr`). El QR nuevo se ve al instante y la página
+ * de planes sigue siendo estática.
  *
- * El QR sale de la CONFIGURACIÓN del gimnasio, no de este componente: cada
- * cliente tiene el suyo, y un componente que supiera cuál pintar dejaría de
- * ser enlatado en el primer cliente nuevo. Mientras el gimnasio no entregue su
- * imagen, se reserva el hueco con su medida final y se explica cómo pagar; así
- * la ventana no cambia de tamaño el día que llegue la imagen.
+ * Y cierra el círculo del pago: pagar, subir el comprobante desde el panel,
+ * recepción lo aprueba y la membresía se activa —y los dashboards cambian
+ * solos, porque se calculan de los cobros—.
  */
 
 import type { PaymentQrInfo } from '@core/domain/tenant/tenant-config';
 import { Modal } from '../ui/Modal';
-import { Button, LinkButton } from '../ui/Button';
-import { Icon } from '../icons/Icon';
+import { Button } from '../ui/Button';
+import { ContenidoDePagoQr } from './ContenidoDePagoQr';
 
 interface PaymentQrModalProps {
+  readonly slug: string;
+  readonly codigoDePlan: string;
   readonly nombreDelPaquete: string;
   readonly precio: string;
   readonly etiquetaDelBoton: string;
@@ -30,6 +32,8 @@ interface PaymentQrModalProps {
 }
 
 export function PaymentQrModal({
+  slug,
+  codigoDePlan,
   nombreDelPaquete,
   precio,
   etiquetaDelBoton,
@@ -41,65 +45,25 @@ export function PaymentQrModal({
   return (
     <Modal
       titulo={nombreDelPaquete}
-      descripcion={`${precio} · pago por QR o en recepción`}
+      descripcion={`${precio} · pago por QR`}
       anchoMaximo="sm"
+      // Los datos se piden al abrir, no al cargar la página: una lista de trece
+      // paquetes no debe disparar trece peticiones que nadie ha pedido.
+      montarSoloAbierto
       disparador={
-        <Button
-          variant={destacado ? 'primary' : 'secondary'}
-          size="lg"
-          fullWidth
-          glow={destacado}
-          icon="whatsapp"
-          iconPosition="start"
-        >
+        <Button variant={destacado ? 'primary' : 'secondary'} size="lg" fullWidth glow={destacado} icon="qr" iconPosition="start">
           {etiquetaDelBoton}
         </Button>
       }
     >
-      <div className="flex flex-col items-center gap-5 text-center">
-        <p className="text-[2rem] font-bold leading-none text-action">{precio}</p>
-
-        {pago.imageSrc ? (
-          <img
-            src={pago.imageSrc}
-            alt={pago.imageAlt ?? `Código QR para pagar en ${gimnasio}`}
-            width={240}
-            height={240}
-            className="h-auto w-[15rem] rounded-[var(--t-radius-md)] bg-white p-3"
-          />
-        ) : (
-          /* El hueco reservado tiene ya la medida final del QR: cuando llegue
-             la imagen, la ventana no cambiará de alto y nadie tendrá que
-             reajustar nada. */
-          <div
-            className="grid h-[15rem] w-[15rem] place-items-center rounded-[var(--t-radius-md)] border border-dashed border-line bg-raised"
-            aria-hidden="true"
-          >
-            <div className="flex flex-col items-center gap-2 px-6 text-center">
-              <Icon name="sparkle" size={22} className="text-muted" />
-              <span className="text-[0.78rem] leading-relaxed text-muted">
-                Aquí irá el QR de pago de {gimnasio}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {pago.holder && (
-          <p className="text-[0.86rem] text-ink">
-            <span className="text-muted">A nombre de </span>
-            <strong className="font-semibold">{pago.holder}</strong>
-            {pago.bank && <span className="text-muted"> · {pago.bank}</span>}
-          </p>
-        )}
-
-        {pago.note && (
-          <p className="max-w-[40ch] text-[0.85rem] leading-relaxed text-muted">{pago.note}</p>
-        )}
-
-        <LinkButton href={whatsappHref} external variant="primary" size="md" icon="whatsapp" iconPosition="start" fullWidth>
-          Escribir por WhatsApp
-        </LinkButton>
-      </div>
+      <ContenidoDePagoQr
+        slug={slug}
+        codigoDePlan={codigoDePlan}
+        precio={precio}
+        respaldo={pago}
+        whatsappHref={whatsappHref}
+        gimnasio={gimnasio}
+      />
     </Modal>
   );
 }

@@ -24,6 +24,8 @@ export interface EntradaDePanel {
   readonly href: string;
   readonly etiqueta: string;
   readonly icono: AnyIconKey;
+  /** Contador visible junto a la pestaña: comprobantes por revisar, por ejemplo. */
+  readonly insignia?: number;
 }
 
 interface DashboardNavProps {
@@ -60,6 +62,12 @@ export function DashboardNav({ entradas }: DashboardNavProps) {
               >
                 <Icon name={entrada.icono} size={16} />
                 {entrada.etiqueta}
+                {typeof entrada.insignia === 'number' && entrada.insignia > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-structural px-1.5 text-[0.66rem] font-bold text-white">
+                    {entrada.insignia}
+                    <span className="sr-only"> pendientes</span>
+                  </span>
+                )}
                 <span
                   aria-hidden="true"
                   className={cn(

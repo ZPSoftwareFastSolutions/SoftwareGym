@@ -38,6 +38,14 @@ export interface FeatureFlags {
   readonly enablePayments: boolean;
   readonly enableReports: boolean;
   readonly enableMultiBranch: boolean;
+
+  // --- V2.2 ---
+  /**
+   * Gestión de socios desde el panel: alta, ficha completa, edición, archivo
+   * y renovación. Apagada, el gimnasio sigue teniendo dashboard y asistencia,
+   * pero sus socios se gestionan fuera del sistema.
+   */
+  readonly enableMemberManagement: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -66,6 +74,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   enablePayments: false,
   enableReports: false,
   enableMultiBranch: false,
+  enableMemberManagement: false,
 };
 
 export type FeatureFlagKey = keyof FeatureFlags;

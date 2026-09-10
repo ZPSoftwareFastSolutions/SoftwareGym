@@ -2,8 +2,9 @@
  * CAPA: Presentation / Icons (átomo)
  *
  * Set de iconos propio en SVG inline. Se elige frente a una librería de iconos
- * porque el sitio usa doce y una dependencia entera costaría más KB que todo
- * este archivo, sin ganar nada.
+ * porque el sitio usa unas decenas y una dependencia entera costaría más KB que
+ * todo este archivo, sin ganar nada. Cada icono es una lista de caminos de un
+ * lienzo de 24×24; añadir uno son dos líneas, no una dependencia.
  *
  * Todos heredan `currentColor`: se tiñen solos con el tema del tenant.
  */
@@ -65,6 +66,33 @@ const PATHS: Record<IconKey | SocialKey | UiKey, PathSet> = {
   layers: ['M12 3.5 3.5 8l8.5 4.5L20.5 8 12 3.5Z', 'M3.5 12.5 12 17l8.5-4.5', 'M3.5 16.5 12 21l8.5-4.5'],
   palette: ['M12 21a9 9 0 1 1 9-9c0 2-1.6 2.6-3 2.6h-1.4a2 2 0 0 0-1.2 3.6A1.8 1.8 0 0 1 12 21Z', 'M8 10.5h.01M11 7.5h.01M15.5 8.5h.01'],
   toggle: ['M8 7.5h8a4.5 4.5 0 0 1 0 9H8a4.5 4.5 0 0 1 0-9Z', 'M8 14.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4Z'],
+
+  // --- Panel de gestión (V2.2) ---
+  camera: ['M4 8h3l1.6-2.5h6.8L17 8h3v11H4z', 'M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z'],
+  qr: [
+    'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z',
+    'M14 14h2.5v2.5H14zM18.5 14H20M14 18.5V20M17.5 17.5H20V20h-2.5z',
+    'M6.5 6.5h1v1h-1zM16.5 6.5h1v1h-1zM6.5 16.5h1v1h-1z',
+  ],
+  upload: ['M12 16V4', 'M7 9l5-5 5 5', 'M4.5 16.5v3h15v-3'],
+  download: ['M12 4v12', 'M7 11l5 5 5-5', 'M4.5 16.5v3h15v-3'],
+  edit: ['M4 20h4L19 9l-4-4L4 16v4Z', 'M13.5 6.5l4 4'],
+  search: ['M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z', 'M15.5 15.5 20 20'],
+  user: ['M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z', 'M5 20a7 7 0 0 1 14 0'],
+  receipt: ['M6 3.5h12V21l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3L6 21z', 'M9 8h6M9 11.5h6M9 15h3.5'],
+  archive: ['M3.5 5h17v4h-17z', 'M5 9v10.5h14V9', 'M10 13h4'],
+  refresh: ['M19.5 12a7.5 7.5 0 1 1-2.2-5.3', 'M19.5 4.5v4h-4'],
+  printer: ['M7 9V3.5h10V9', 'M7 17H3.5v-6.5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5V17H17', 'M7 14h10v6.5H7z'],
+  fire: ['M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.4-5.4 3.6-8.3.3 2 1.5 3.1 2.6 3.6-.2-2.8 1-5.3 3.4-7.1.1 3.3 3.4 5.2 3.4 9.3 0 4.8-2.8 8.7-6.5 8.7Z'],
+  cake: ['M4 20h16', 'M5.5 20v-7h13v7', 'M5.5 16c1.5 1 3 1 4.3 0 1.4 1 3 1 4.4 0 1.3 1 2.8 1 4.3 0', 'M12 13V9', 'M12 6.5c.8-.6 1-1.5 0-3-1 1.5-.8 2.4 0 3Z'],
+  alert: ['M12 3.5 21 19.5H3z', 'M12 10v4.5M12 17h.01'],
+  wallet: ['M4 7h14.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 18.5z', 'M4 7l11.5-3.5V7', 'M15.5 13.5h2'],
+  idcard: ['M3.5 5.5h17v13h-17z', 'M8.5 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z', 'M5.8 16c.4-1.6 1.4-2.3 2.7-2.3s2.3.7 2.7 2.3', 'M14 9.5h4M14 13h3'],
+  plus: ['M12 5v14M5 12h14'],
+  chart: ['M4 20V4', 'M4 20h16', 'M8 16v-4M12 16V8M16 16v-6'],
+  eye: ['M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z', 'M12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6Z'],
+  filter: ['M4 5h16l-6.2 7.5V19l-3.6-1.8v-4.7z'],
+  image: ['M4 5h16v14H4z', 'M4 16l4.5-4.5 3.5 3.5 2.5-2.5L20 17', 'M15.5 9.5h.01'],
 };
 
 type SocialKey = 'instagram' | 'facebook' | 'tiktok' | 'youtube' | 'x' | 'linkedin';
@@ -85,7 +113,28 @@ type UiKey =
   | 'calendar'
   | 'layers'
   | 'palette'
-  | 'toggle';
+  | 'toggle'
+  | 'camera'
+  | 'qr'
+  | 'upload'
+  | 'download'
+  | 'edit'
+  | 'search'
+  | 'user'
+  | 'receipt'
+  | 'archive'
+  | 'refresh'
+  | 'printer'
+  | 'fire'
+  | 'cake'
+  | 'alert'
+  | 'wallet'
+  | 'idcard'
+  | 'plus'
+  | 'chart'
+  | 'eye'
+  | 'filter'
+  | 'image';
 
 export type AnyIconKey = IconKey | SocialKey | UiKey;
 

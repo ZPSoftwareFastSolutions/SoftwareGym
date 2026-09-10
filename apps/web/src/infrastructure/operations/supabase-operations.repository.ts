@@ -94,12 +94,14 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
   async perfil(): Promise<PerfilOperativo | null> {
     const { data } = await this.supabase
       .from('v_my_profile')
-      .select('full_name, email, tenant_slug, tenant_name, customer_id, roles, permissions')
+      .select('id, tenant_id, full_name, email, tenant_slug, tenant_name, customer_id, roles, permissions')
       .maybeSingle();
 
     if (!data) return null;
 
     return {
+      appUserId: String(data.id),
+      tenantId: texto(data.tenant_id),
       fullName: texto(data.full_name) ?? 'Cuenta',
       email: texto(data.email) ?? '',
       tenantSlug: texto(data.tenant_slug),
@@ -411,85 +413,5 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       hora: ahora.toISOString(),
       diasRestantes: numero(membresia.days_remaining, 0),
     };
-  }
-
-  async filasDeReporte(clave: ClaveDeReporte): Promise<readonly FilaDeReporte[]> {
-    switch (clave) {
-      case 'asistencia': {
-        const { data } = await this.supabase
-          .from('v_attendance_log')
-          .select('attendance_date, checked_in_local, customer_name, customer_code, method')
-          .order('checked_in_local', { ascending: false })
-          .limit(TOPE_DE_FILAS);
-        return (data ?? []).map((fila) => ({
-          fecha: texto(fila.attendance_date) ?? '',
-          // Se recorta del texto, en 24 horas. Un reporte que dice «10:00 p.
-          // m.» se ordena mal en la hoja de calculo y se lee peor.
-          hora: String(fila.checked_in_local).slice(11, 16),
-          socio: texto(fila.customer_name) ?? '',
-          codigo: texto(fila.customer_code) ?? '',
-          metodo: NOMBRE_DE_METODO[metodo(fila.method)],
-        }));
-      }
-
-      case 'membresias': {
-        const { data } = await this.supabase
-          .from('v_memberships_report')
-          .select('customer_name, plan_name, start_date, end_date, effective_status, price')
-          .order('end_date', { ascending: false })
-          .limit(TOPE_DE_FILAS);
-        return (data ?? []).map((fila) => ({
-          socio: texto(fila.customer_name) ?? '',
-          plan: texto(fila.plan_name) ?? '',
-          inicio: texto(fila.start_date) ?? '',
-          fin: texto(fila.end_date) ?? '',
-          estado: ESTADO_LEGIBLE[String(fila.effective_status)] ?? String(fila.effective_status),
-          precio: numero(fila.price),
-        }));
-      }
-
-      case 'pagos': {
-        const { data } = await this.supabase
-          .from('v_payments_report')
-          .select('paid_date, customer_name, amount, method, notes')
-          .order('paid_date', { ascending: false })
-          .limit(TOPE_DE_FILAS);
-        return (data ?? []).map((fila) => ({
-          fecha: texto(fila.paid_date) ?? '',
-          socio: texto(fila.customer_name) ?? '',
-          importe: numero(fila.amount),
-          metodo: METODO_DE_PAGO_LEGIBLE[String(fila.method)] ?? String(fila.method),
-          nota: texto(fila.notes) ?? '',
-        }));
-      }
-
-      case 'clientes': {
-        const { data } = await this.supabase
-          .from('v_customer_overview')
-          .select('code, full_name, document_id, phone, email, status')
-          .order('full_name', { ascending: true })
-          .limit(TOPE_DE_FILAS);
-        return (data ?? []).map((fila) => ({
-          codigo: texto(fila.code) ?? '',
-          socio: texto(fila.full_name) ?? '',
-          documento: texto(fila.document_id) ?? '',
-          telefono: texto(fila.phone) ?? '',
-          correo: texto(fila.email) ?? '',
-          estado: ESTADO_DE_SOCIO_LEGIBLE[String(fila.status)] ?? String(fila.status),
-        }));
-      }
-
-      case 'vencimientos': {
-        const vencimientos = await this.vencimientos();
-        return vencimientos.map((v) => ({
-          fin: v.endDate,
-          socio: v.customerName,
-          plan: v.planName ?? '',
-          dias: v.daysRemaining,
-          estado: ESTADO_LEGIBLE[v.effectiveStatus] ?? v.effectiveStatus,
-          telefono: v.phone ?? '',
-        }));
-      }
-    }
   }
 }

@@ -51,11 +51,24 @@ export const PERMISO = {
   verSocios: 'customers.read',
   verPagos: 'payments.read',
   configurar: 'settings.manage',
+  // --- V2.2 · gestión ---
+  crearSocios: 'customers.create',
+  editarSocios: 'customers.update',
+  archivarSocios: 'customers.archive',
+  verMembresias: 'memberships.read',
+  venderMembresias: 'memberships.create',
+  editarMembresias: 'memberships.update',
+  cobrar: 'payments.create',
+  verUsuarios: 'users.read',
+  gestionarUsuarios: 'users.manage',
 } as const;
 
 export type CodigoDePermiso = (typeof PERMISO)[keyof typeof PERMISO];
 
 export interface PerfilOperativo {
+  readonly appUserId: string;
+  /** Id del gimnasio. Las rutas de archivos empiezan por él. */
+  readonly tenantId: string | null;
   readonly fullName: string;
   readonly email: string;
   readonly tenantSlug: string | null;

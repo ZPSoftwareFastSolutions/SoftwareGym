@@ -12,7 +12,13 @@
  * línea, y solo esta línea.
  */
 
+import type { MembersRepositoryPort } from '@core/application/ports/members-repository.port';
 import type { OperationsRepositoryPort } from '@core/application/ports/operations-repository.port';
+import type {
+  PaymentSettingsPort,
+  ReceiptsRepositoryPort,
+} from '@core/application/ports/receipts-repository.port';
+import type { ReportsRepositoryPort } from '@core/application/ports/reports-repository.port';
 import type { TenantRepositoryPort } from '@core/application/ports/tenant-repository.port';
 import { StaticTenantRepository } from '../tenants/static-tenant.repository';
 
@@ -42,4 +48,40 @@ export async function operationsRepository(): Promise<OperationsRepositoryPort> 
     '../operations/supabase-operations.repository'
   );
   return new SupabaseOperationsRepository(await createSupabaseServerClient());
+}
+
+/**
+ * Repositorios de gestión (V2.2). Mismo motivo que el de operación para no
+ * cachearlos: llevan el cliente con las cookies de QUIEN pregunta, y es esa
+ * sesión la que RLS usa para decidir qué filas existen.
+ */
+export async function membersRepository(): Promise<MembersRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseMembersRepository } = await import('../operations/supabase-members.repository');
+  return new SupabaseMembersRepository(await createSupabaseServerClient());
+}
+
+export async function receiptsRepository(): Promise<ReceiptsRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseReceiptsRepository } = await import('../operations/supabase-receipts.repository');
+  return new SupabaseReceiptsRepository(await createSupabaseServerClient());
+}
+
+export async function reportsRepository(): Promise<ReportsRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseReportsRepository } = await import('../operations/supabase-reports.repository');
+  return new SupabaseReportsRepository(await createSupabaseServerClient());
+}
+
+/**
+ * Ajustes de cobro. Lo usa también el sitio público SIN sesión: el cliente de
+ * servidor sin cookie actúa como visitante anónimo, que es exactamente el
+ * alcance que tiene la política de lectura de esos ajustes.
+ */
+export async function paymentSettingsRepository(): Promise<PaymentSettingsPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabasePaymentSettingsRepository } = await import(
+    '../operations/supabase-receipts.repository'
+  );
+  return new SupabasePaymentSettingsRepository(await createSupabaseServerClient());
 }

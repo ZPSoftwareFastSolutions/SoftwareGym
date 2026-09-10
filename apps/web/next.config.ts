@@ -39,7 +39,12 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   {
     key: 'Permissions-Policy',
-    value: 'geolocation=(), camera=(), microphone=(), payment=(), interest-cohort=()',
+    // `camera=(self)`: el mostrador escanea el QR del socio con la cámara del
+    // propio sitio. Estaba en `camera=()`, que la bloquea en TODO el sitio:
+    // `getUserMedia` fallaba con un error de permisos que ni siquiera llega a
+    // preguntar al usuario. Solo el propio origen; ningún iframe incrustado
+    // —el mapa de Google, por ejemplo— puede pedirla.
+    value: 'geolocation=(), camera=(self), microphone=(), payment=(), interest-cohort=()',
   },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   {
@@ -68,6 +73,14 @@ const nextConfig: NextConfig = {
 
   experimental: {
     optimizePackageImports: [],
+    serverActions: {
+      // Las fotos de comprobantes se reducen en el navegador antes de subir
+      // (~200-600 KB), pero una foto que no se pudo reducir no debe romper
+      // con un error opaco de Next. 4 MB queda por debajo del límite de 4,5 MB
+      // de las funciones de Vercel: por encima, la plataforma corta antes de
+      // que llegue a la aplicación y el error no se puede explicar.
+      bodySizeLimit: '4mb',
+    },
   },
 
   async headers() {

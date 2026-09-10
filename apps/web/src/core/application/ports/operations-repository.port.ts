@@ -34,7 +34,6 @@ import type {
   ResultadoDeCheckIn,
 } from '../../domain/operations/attendance';
 import type { AvisoInterno, MembresiaParaAvisar } from '../../domain/operations/notifications';
-import type { ClaveDeReporte, FilaDeReporte } from '../../domain/operations/reports';
 import type { PerfilOperativo } from '../../domain/operations/workspace';
 
 export interface SerieDiaria {
@@ -113,7 +112,4 @@ export interface OperationsRepositoryPort {
    * enseñe un código que no existe es un caso de uso, no una avería.
    */
   registrarCheckIn(token: string): Promise<ResultadoDeCheckIn>;
-
-  /** Filas de un reporte, ya proyectadas a las columnas de su definición. */
-  filasDeReporte(clave: ClaveDeReporte): Promise<readonly FilaDeReporte[]>;
 }

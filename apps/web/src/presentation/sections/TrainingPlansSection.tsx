@@ -169,6 +169,8 @@ export function TrainingPlansSection({
                          decisión de V1, no un olvido— así que la ventana se
                          titula con el periodo, que es lo que los distingue. */
                       <PaymentQrModal
+                        slug={cobro.slug}
+                        codigoDePlan={plan.id}
                         nombreDelPaquete={`Entrenamiento personalizado · ${plan.period}`}
                         precio={`${plan.currency} ${plan.price.toLocaleString('es-BO')}`}
                         etiquetaDelBoton={plan.ctaLabel}

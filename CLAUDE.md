@@ -8,9 +8,9 @@
 > al final de cada sesión. Las secciones **3. Estado actual** y **4. Pendientes**
 > son las que cambian; las demás solo cuando cambia una decisión de fondo.
 >
-> **Última actualización:** 2026-09-09 · V2.1: dashboards por rol, asistencia
-> con QR, notificaciones y reportes exportables. Rama
-> `feat/v2.1-operacion`, para fusionar en `feat/v2-public-site`.
+> **Última actualización:** 2026-09-10 · V2.2: gestión de socios, cobro por QR
+> con comprobantes, check-in con cámara, racha y reportes híbridos. Rama
+> `feat/v2.2-gestion`, sobre `feat/v2.1-operacion`.
 
 ---
 
@@ -39,7 +39,8 @@ discusiones cuando dos opciones parecen igual de buenas.
 V1   ✅  Sitio público multi-tenant, configurable, estático
 V1.5     Base de datos en Supabase ✅ · la configuración pasará de archivos a BD
 V2   ✅  Autenticación y sesión
-V2.1 🔨  Dashboards por rol, asistencia con QR, notificaciones, reportes
+V2.1 ✅  Dashboards por rol, asistencia con QR, notificaciones, reportes
+V2.2 🔨  Gestión de socios, cobro por QR con comprobantes, racha, reportes híbridos
 V3       Asistencia, QR, reservas, entrenadores, rutinas, clases
 V4       Multi-sucursal, suscripciones, licencias, facturación, integraciones
 ```
@@ -1003,6 +1004,115 @@ consulta.
   35 cobros de 6 meses, 4 avisos y códigos `MF-001..010`. Se borraron tres
   cobros fechados en el futuro que venían de una siembra anterior y hacían que
   el reporte de pagos empezara con dinero que nadie había pagado.
+
+## V2.2 · Gestión de socios y cobro por QR 🔨 2026-09-10
+
+Rama `feat/v2.2-gestion`, creada sobre `feat/v2.1-operacion`. El cliente
+amplió el alcance: ahora sí se escriben socios, membresías y cobros.
+
+### Lo que hay
+
+| Pantalla | Ruta | Capacidad + permiso |
+|---|---|---|
+| Socios (lista con filtros rápidos) | `/[tenant]/panel/socios` | `enableMemberManagement` + `customers.read` |
+| Alta de socio con plan, cobro y QR | `.../socios/nuevo` | + `customers.create` |
+| Ficha completa (editar, vender, corregir, archivar) | `.../socios/[id]` | lectura para todo el personal; escritura según permiso |
+| Bandeja de comprobantes + ZIP | `/[tenant]/panel/comprobantes` | `enablePayments` + `payments.read` |
+| QR de cobro del banco | `/[tenant]/panel/cobros` | `enablePayments` + `settings.manage` |
+| Datos e imagen públicos del QR | `/[tenant]/pago/datos`, `/[tenant]/pago/qr` | `enablePayments` (sin sesión) |
+| Reportes híbridos (9) | `/[tenant]/panel/reportes[/clave]` | filtros por periodo, estado, plan, método, origen, rol |
+
+- **Check-in con cámara**: botón «Cámara» en recepción y en la tarjeta del
+  dashboard. `BarcodeDetector` nativo y, si no existe, `jsqr` cargado solo al
+  abrir la cámara. La política `camera=(self)` lo permite solo en el propio
+  origen.
+- **Racha** real (`core/domain/operations/streak.ts`): los días que el gimnasio
+  cierra según su horario no la cortan, y hoy sin entrada todavía tampoco.
+- **Panel del socio**: plan con nombre y barra de vigencia, «Mostrar QR» en
+  grande, calendario de racha, información personal, pagar con QR y subir
+  comprobante, estado de sus comprobantes.
+- **Tarjetas funcionales en todas partes**: cada `StatCard` es enlace o botón
+  que abre un modal. Las filas de historial abren la ficha del socio.
+- **Asistencia**: mapa de calor día × hora, reparto por método, por hora y
+  por día.
+- **Impresión a PDF sin el pie del sitio**: pie, botón de WhatsApp y enlace de
+  salto llevan `data-print="hide"`.
+
+### El flujo del cobro por QR
+
+1. Gerencia sube la imagen del QR del banco con su vencimiento en `/panel/cobros`.
+2. En `/planes`, cada paquete dice **«Pagar con QR»**: abre un modal con el QR,
+   el importe y los pasos. Un QR vencido responde **410** y no se muestra.
+3. El socio paga y sube la captura desde su panel (`?pagar=<código de plan>`
+   preselecciona el paquete). Recepción puede adjuntarla también, incluso al
+   dar de alta a alguien que pagó por QR.
+4. Recepción o gerencia **aprueba** → `revisar_comprobante` crea la membresía
+   (a continuación de la vigente, si la hay) y el pago en una sola transacción.
+   Ese pago es el que suman los dashboards y reportes.
+5. Descarga en un **ZIP** de los comprobantes filtrados (hoy, ayer, rango,
+   estado, origen, método) con un `resumen.csv`, para enviarlo al titular del QR.
+
+### Decisiones que conviene no revisitar
+
+- **Recepción crea, gerencia corrige.** La restricción vive en los permisos de
+  la base (`customers.update`, `memberships.update` retirados a recepción), no
+  en ocultar botones. Medido: el UPDATE de recepción afecta 0 filas.
+- **La membresía pagada por QR se activa al aprobar, no al subir la captura.**
+  Una captura es una afirmación; el cobro es un hecho que alguien verificó.
+- **Las operaciones de varias tablas son RPC `SECURITY INVOKER`.** Atómicas y
+  bajo RLS: la función no concede nada que la sesión no tuviera.
+- **El ZIP se arma en el navegador.** Vercel corta respuestas de más de 4,5 MB
+  y veinte capturas lo superan. Las imágenes se reducen a 1600 px antes de
+  subir, y el servidor verifica la firma binaria (no el `Content-Type`).
+- **El QR del banco no se versionó**: se sube desde el panel. Es dato del
+  cliente, con vencimiento, y cambia sin desplegar.
+- **La cuenta se vincula a la ficha solo con correo CONFIRMADO** y un único
+  candidato. Sin confirmar, cualquiera se registraría con el correo de un
+  socio y vería su ficha.
+- **Capacidad contratada**: `enableMemberManagement` (nueva, `false` por
+  omisión) y `enablePayments`. Apagadas, las rutas responden 404 y la
+  navegación no las ofrece. Aurora Fit sigue sin ellas.
+
+### Verificado
+
+| Prueba | Resultado |
+|---|---|
+| `tsc --noEmit` · `next build` · `npm audit` | limpio · 44 páginas · 0 vulnerabilidades |
+| Dependency Rule, grep del ADR 0003 y de voseo | sin hallazgos |
+| `get_advisors(security)` | solo el aviso de plan Pro ya aceptado |
+| Recepción da de alta con plan | ficha, código `MF-011`, QR y membresía |
+| Recepción edita socio / alarga membresía | 0 filas |
+| Recepción finge un comprobante «subido por el socio» | bloqueado (42501) |
+| Socio ve el comprobante de otro | 0 filas |
+| Socio aprueba un comprobante / se lo inserta aprobado / sube por otro / da de alta | bloqueados |
+| Gerencia aprueba | membresía + pago; aparece en `v_payments_report` |
+| Revisar dos veces el mismo comprobante | bloqueado (`comprobante_ya_revisado`) |
+| Marcar «aprobado» con UPDATE directo, sin pago | bloqueado por `payment_receipts_aprobado_con_pago` |
+| `/mitico/planes` | 13 botones «Pagar con QR»; el modal abre centrado |
+| `/aurora-fit/pago/datos` | `no_disponible` (capacidad apagada) |
+| Rutas de gestión sin sesión | 307 al acceso |
+
+Las pruebas de escritura corrieron dentro de un bloque que termina en
+excepción: **no dejaron filas**.
+
+> ⚠️ **No se recorrieron en el navegador las pantallas con sesión.** Iniciar
+> sesión escribiendo contraseñas no lo hace el asistente, ni con cuentas de
+> demostración. Los permisos y el flujo están medidos en la base; la revisión
+> visual de socios, comprobantes, cobros y paneles con sesión queda para una
+> persona.
+
+### Pendiente de esta fase
+
+- **Subir el QR real del banco** en `/mitico/panel/cobros` con su vencimiento
+  (la imagen del cliente vence el 10/09/2028). Mientras no esté, el modal de
+  pago dice que se pide en recepción.
+- **Dos archivos huérfanos de prueba** en el bucket `comprobantes`
+  (`.../ba80b8c5.../rls-recepcion-1789049433.png` y
+  `.../bdd26a0b.../rls-prueba-1789049520.png`, 5 KB cada uno). Supabase impide
+  borrarlos por SQL (`storage.protect_delete`); se borran desde el panel de
+  Storage.
+- Datos de demo: se añadieron entradas diarias de Juan Pérez del 24/08 al
+  10/09 (salvo domingos) para que la racha tenga algo que enseñar.
 
 ---
 
