@@ -225,7 +225,11 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
                       <p className="mt-1 text-[0.8rem] text-ink">
                         <span className="text-muted">Plan propuesto: </span>
                         {c.planName ?? 'sin plan'}
+                        {c.expectedAmount !== null && <span className="text-muted"> · precio {importe(c.expectedAmount, c.currency)}</span>}
                       </p>
+                      {c.verifiedAmount !== null && c.verifiedAmount !== c.amount && (
+                        <p className="text-[0.78rem] text-muted">Verificado en el banco: {importe(c.verifiedAmount, c.currency)}</p>
+                      )}
                       {c.note && <p className="mt-1 text-[0.78rem] text-muted">«{c.note}»</p>}
                       {c.reviewNote && (
                         <p className={cn('mt-1 text-[0.78rem]', c.status === 'rechazado' ? 'text-structural' : 'text-muted')}>
@@ -236,7 +240,7 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
                   </div>
                   {c.status === 'pendiente' && puedeCobrar && (
                     <div className="relative z-10">
-                      <RevisarComprobante slug={slug} receiptId={c.id} />
+                      <RevisarComprobante slug={slug} receiptId={c.id} declarado={c.amount} esperado={c.expectedAmount} moneda={c.currency} />
                     </div>
                   )}
                 </li>

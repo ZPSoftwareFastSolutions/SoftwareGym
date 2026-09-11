@@ -248,15 +248,8 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                       </Button>
                     }
                   >
-                    <div className="flex flex-col gap-5">
-                      <div className="flex items-center gap-4 rounded-[var(--t-radius-md)] border border-line p-4">
-                        <img src={`/${slug}/pago/qr`} alt={`QR de cobro de ${name}`} className="h-28 w-28 rounded bg-white object-contain p-1" />
-                        <p className="text-[0.86rem] text-muted">
-                          1. Escanea este QR con la app de tu banco. 2. Paga el importe de tu plan. 3. Sube aquí la captura.
-                        </p>
-                      </div>
-                      <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
-                    </div>
+                    {/* El QR del plan elegido lo enseña el propio formulario. */}
+                    <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
                   </Modal>
                 )}
                 <LinkButton href={tenantHref(slug, 'planes')} variant="secondary" size="md">

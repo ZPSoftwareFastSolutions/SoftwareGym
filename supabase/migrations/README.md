@@ -73,6 +73,13 @@ revisar el código. El detalle de cada una está en `CLAUDE.md`, sección
 | 20260911043415 | `v3_vistas_por_sucursal` | `v_attendance_log` + `branch_id`, `branch_code`, `branch_name` y `membership_id` **derivado**; vistas nuevas `v_attendance_branch_daily`, `v_branch_overview`, `v_mis_sucursales`; `v_platform_overview` + `sucursales` |
 | 20260911050002 | `v3_semilla_sucursales` | Mítico: **Prado** (principal, Plaza del Estudiante) y **Miraflores** (Edificio Torre Vicenta, Av. Argentina 1843); Aurora Fit: **Recoleta** (sede única); recepción de demostración de Mítico asignada a las dos sedes |
 | 20260911053257 | `v3_sucursal_principal_solo_por_rpc` | **Corrige** integridad: la marca de sede principal solo cambia por la RPC (se retira `UPDATE (is_primary)`; el cambio lo hace `app.fijar_sucursal_primaria`) |
+| 20260911144537 | `v3_cobro_qr_por_plan_e_importe_verificado` | **Corrige** «gerencia no puede guardar el QR» (el `upsert` de PostgREST escribía `tenant_id` sin grant → 42501): RPC invocador `guardar_ajustes_de_cobro`, `guardar_qr_de_cobro`, `eliminar_qr_de_cobro` (el gimnasio sale de la sesión). `tenant_payment_settings.qr_mode` (`global`/`por_plan`); tabla `payment_qr_codes` (QR general o por plan, monto `libre`/`exacto`, vencimiento; FK compuesta al plan; RLS por `settings.manage`); se migran y retiran `qr_path`/`expires_on` de los ajustes. Planes activos legibles por anónimo (columnas públicas). Comprobantes: `expected_amount` (precio del plan fijado por disparador al subir) y `verified_amount`; CHECK e disparador que impiden aprobar o enlazar un pago por debajo del precio (`monto_insuficiente`, `pago_no_valido`); un pago por comprobante; `revisar_comprobante(…, p_monto_verificado)` |
+| 20260911144622 | `v3_venta_y_alta_con_qr_exigen_importe_completo` | `vender_membresia` y `registrar_socio` rechazan un cobro con método `qr` menor que el precio del plan (`monto_insuficiente`); efectivo, tarjeta y transferencia no cambian |
+
+**Cobro por QR (corrección V3.0).** Pruebas por rol, gimnasio ajeno, anónimo e
+importes 180/179/181 en [`docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`](../../docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql).
+Los 6 intentos fallidos de gerencia dejaron 6 imágenes huérfanas en
+`qr-pagos/4b79e41f…/qr-*.jpg`: se borran desde el panel de Storage (SQL no puede).
 
 **Histórico sin sucursal.** Las 154 entradas anteriores a V3.0 no guardaron
 dónde ocurrieron y no hay dato fiable para deducirlo: se dejaron con

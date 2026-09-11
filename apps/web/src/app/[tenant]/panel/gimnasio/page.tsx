@@ -28,6 +28,7 @@ import { variacion, type PuntoDeSerie } from '@core/domain/operations/dashboard'
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { cumpleEsteMes, diasDesde } from '@core/domain/operations/members';
 import { ETIQUETA_SIN_SUCURSAL } from '@core/domain/operations/branches';
+import { estadoDeQr, NOMBRE_DE_MODO_DE_QR } from '@core/domain/operations/cobro-qr';
 import { branchesRepository, membersRepository, paymentSettingsRepository, receiptsRepository } from '@infra/config/composition-root';
 import { TarjetaDeSucursal } from '@/presentation/patterns/TarjetaDeSucursal';
 import { Icon } from '@/presentation/icons/Icon';
@@ -48,6 +49,13 @@ export const metadata: Metadata = { title: 'Resumen del gimnasio', robots: { ind
 export const dynamic = 'force-dynamic';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** Modalidad y QR guardados, para la tarjeta de cobro de gerencia. */
+async function resumenDeCobroQr(slug: string) {
+  const ajustesRepo = await paymentSettingsRepository();
+  const [ajustes, { qrs }] = await Promise.all([ajustesRepo.porSlug(slug), ajustesRepo.qrsPorSlug(slug)]);
+  return { modo: ajustes?.qrMode ?? 'global', qrs } as const;
+}
 
 interface DashboardProps extends TenantPageParams {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -87,7 +95,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
     repo.historialDeAsistencia({ limite: 8, ...(sedeVista ? { sucursal: sedeVista.id } : {}) }),
     gestionSocios ? (await membersRepository()).listar({}, '') : Promise.resolve([]),
     conComprobantes ? (await receiptsRepository()).contarPendientes() : Promise.resolve(0),
-    features.enablePayments && puede(PERMISO.configurar) ? (await paymentSettingsRepository()).porSlug(slug) : Promise.resolve(null),
+    features.enablePayments && puede(PERMISO.configurar) ? resumenDeCobroQr(slug) : Promise.resolve(null),
     sucursales ? sucursales.indicadores() : Promise.resolve([]),
     sucursales && sedeVista ? sucursales.serieDiaria(30) : Promise.resolve([]),
   ]);
@@ -146,7 +154,8 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const inactivos = fichas.filter((f) => (f.membershipStatus === 'active' || f.membershipStatus === 'expiring_soon') && (diasDesde(f.lastVisit, hoy) ?? 999) >= 7).length;
   const cumpleaneros = fichas.filter((f) => cumpleEsteMes(f.birthDate, hoy));
   const sinMembresia = fichas.filter((f) => f.membershipId === null).length;
-  const qrVencido = Boolean(ajustes?.expiresOn && ajustes.expiresOn < hoy);
+  const qrVigentes = ajustes ? ajustes.qrs.filter((qr) => estadoDeQr(qr, null, hoy) === 'vigente').length : 0;
+  const qrVencidos = ajustes ? ajustes.qrs.length - qrVigentes : 0;
 
   return (
     <FichaDeSocioProvider slug={slug} rutaDeFicha={gestionSocios ? socios : undefined}>
@@ -335,19 +344,20 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
               accion="Ver cumpleaños"
             />
           )}
-          {ajustes !== null && puede(PERMISO.configurar) && features.enablePayments && (
+          {ajustes !== null && (
             <StatCard
               href={tenantHref(slug, 'panel/cobros')}
               etiqueta="QR de cobro"
-              valor={!ajustes?.qrPath ? 'Sin QR' : qrVencido ? 'Vencido' : 'Publicado'}
+              valor={ajustes.qrs.length === 0 ? 'Sin QR' : qrVigentes === 0 ? 'Vencido' : 'Publicado'}
               icono="qr"
-              tono={!ajustes?.qrPath || qrVencido ? 'alerta' : 'accion'}
-              comparacion={ajustes?.expiresOn ? `vence ${fechaCorta(ajustes.expiresOn)} ${ajustes.expiresOn.slice(0, 4)}` : 'súbelo para cobrar por QR'}
+              tono={qrVigentes === 0 || qrVencidos > 0 ? 'alerta' : 'accion'}
+              comparacion={
+                ajustes.qrs.length === 0
+                  ? 'súbelo para activar «Pagar con QR»'
+                  : `${NOMBRE_DE_MODO_DE_QR[ajustes.modo]} · ${qrVigentes} vigente${qrVigentes === 1 ? '' : 's'}${qrVencidos > 0 ? ` · ${qrVencidos} vencido${qrVencidos === 1 ? '' : 's'}` : ''}`
+              }
               accion="Configurar"
             />
-          )}
-          {features.enablePayments && puede(PERMISO.configurar) && ajustes === null && (
-            <StatCard href={tenantHref(slug, 'panel/cobros')} etiqueta="QR de cobro" valor="Sin QR" icono="qr" tono="alerta" comparacion="súbelo para activar «Pagar con QR»" accion="Configurar" />
           )}
         </div>
 

@@ -4,7 +4,7 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-11 · cierre de **V3.0 multisucursal**.
+> - **Última actualización:** 2026-09-11 · V3.0 multisucursal + **corrección de cobro por QR** (QR por plan, importe completo, autorización de gerencia).
 > - **Rama de trabajo vigente:** `feat/v3.0-multisucursal` → de ella sale V3.1.
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md).
@@ -224,7 +224,7 @@ propio en `presentation/icons/Icon.tsx`), de animación, `tailwind-merge`, de ZI
                         ▼
                Supabase  (proyecto dnclwawnjnzqqxgsuhpn · us-west-2)
                ├─ Auth ─────── cuentas; disparadores asignan tenant, rol y vínculo a la ficha
-               ├─ PostgreSQL ─ 19 tablas con RLS, 17 vistas security_invoker, 5 RPC invocador
+               ├─ PostgreSQL ─ 20 tablas con RLS, 17 vistas security_invoker, 8 RPC invocador
                └─ Storage ──── comprobantes (privado) · qr-pagos (público)
 ```
 
@@ -416,14 +416,14 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 ### 4.1 Principios que sostienen el aislamiento
 
 1. **`tenant_id` en toda tabla de negocio** y como primera columna de sus índices.
-2. **RLS activo en las 19 tablas**, sin política = denegado. 60 políticas en
+2. **RLS activo en las 20 tablas**, sin política = denegado. 66 políticas en
    `public` + 7 en `storage`.
 3. **El tenant sale de la identidad:** `app.current_tenant_id()`,
    `app.current_customer_id()`, `app.current_app_user_id()`. Autorización:
    `app.tenant_allows(tenant_id, 'modulo.accion')` y `app.has_permission`.
 4. **Esquema `app` fuera de la API.** Las funciones `SECURITY DEFINER` viven ahí
    (PostgREST publica todo `public` como `/rpc`). **En `public` no hay ninguna
-   función DEFINER**: las 4 RPC son `SECURITY INVOKER` y corren bajo RLS.
+   función DEFINER**: las 8 RPC son `SECURITY INVOKER` y corren bajo RLS.
 5. **Claves foráneas compuestas** `(tenant_id, customer_id) → customers(tenant_id, id)`
    (y análogas con planes, membresías, pagos, **sucursales** y **usuarios**): el
    motor impide que una fila de un gimnasio apunte a un socio o a una sede de otro.
@@ -454,8 +454,9 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 | | `check_in_tokens` | Token opaco de 24 hex por socio, rotable; un disparador fuerza que sea aleatorio |
 | | `notices`, `notice_reads` | Avisos manuales y su marca de leído |
 | | `audit_log` | Escriben los disparadores de sedes y asignaciones y el cambio de sede de trabajo (V3.0). `actor_user_id` sale de la sesión |
-| Cobro (V2.2) | `payment_receipts` | Estado `pendiente/aprobado/rechazado`, origen `recepcion/socio`; sellado tras revisión; **aprobado ⇔ tiene pago** (CHECK) |
-| | `tenant_payment_settings` | QR del banco (ruta en Storage), titular, banco, nota, vencimiento; lectura pública |
+| Cobro (V2.2) | `payment_receipts` | Estado `pendiente/aprobado/rechazado`, origen `recepcion/socio`; sellado tras revisión; **aprobado ⇔ tiene pago** (CHECK). `expected_amount` = precio del plan que fija un disparador al subir (no el formulario); `verified_amount` al aprobar. **La base no deja subir, aprobar ni enlazar un pago por debajo del precio** (`monto_insuficiente`, `pago_no_valido`); un pago por comprobante |
+| | `tenant_payment_settings` | Titular, banco, nota y `qr_mode` (`global` \| `por_plan`); lectura pública; se escribe solo por RPC |
+| | `payment_qr_codes` | QR de cobro: `plan_id` NULL = **general** (siempre monto libre, uno por gimnasio) o de un plan (uno por plan, FK compuesta); `amount_mode` `libre`/`exacto` + `fixed_amount`; `expires_on`; ruta con prefijo del gimnasio (CHECK). Lectura: anónimo todo (es lo que se imprime en el mostrador), con sesión solo su gimnasio. Escritura: `settings.manage`, por RPC |
 
 Enums: `payment_method` (`cash, qr, transfer, card, other`), `attendance_method`
 (`manual, qr, kiosk`), `receipt_status`, `receipt_source`, estados de
@@ -484,12 +485,17 @@ membresía/socio/tenant.
 | Función | Qué hace | Errores de negocio |
 |---|---|---|
 | `registrar_socio(nombre, apellido, documento, teléfono, correo, nacimiento, nota, plan_id, inicio, método, monto)` | Ficha con código correlativo (reintenta si choca), membresía si hay plan, pago si `monto > 0`, QR por disparador, vínculo con cuenta existente | `sin_permiso`, `nombre_invalido`, `correo_invalido`, `plan_invalido`, `inicio_invalido`, `monto_invalido`, `documento_duplicado` |
-| `vender_membresia(customer, plan_id, inicio, método, monto, nota)` | Membresía que empieza al día siguiente de la vigente; pago si `monto > 0` | `socio_no_encontrado`, `sin_permiso`, `plan_invalido`, `monto_invalido` |
-| `revisar_comprobante(id, aprobar, nota)` | `FOR UPDATE`; rechazar exige motivo; aprobar crea membresía (si hay plan) + pago con `idempotency_key = 'comprobante:'||id` | `comprobante_no_encontrado`, `comprobante_ya_revisado`, `motivo_requerido`, `sin_permiso` |
+| `vender_membresia(customer, plan_id, inicio, método, monto, nota)` | Membresía que empieza al día siguiente de la vigente; pago si `monto > 0`. Con método `qr`, el monto no puede ser menor que el precio (también en `registrar_socio`) | `socio_no_encontrado`, `sin_permiso`, `plan_invalido`, `monto_invalido`, `monto_insuficiente` |
+| `revisar_comprobante(id, aprobar, nota, monto_verificado)` | `FOR UPDATE`; rechazar exige motivo; aprobar exige `monto_verificado` (o el declarado) ≥ `expected_amount` y crea membresía (si hay plan) + pago por lo verificado con `idempotency_key = 'comprobante:'||id` | `comprobante_no_encontrado`, `comprobante_ya_revisado`, `motivo_requerido`, `sin_permiso`, `monto_invalido`, `monto_insuficiente` |
+| `guardar_ajustes_de_cobro(holder, bank, note, qr_mode)` | Crea o actualiza los ajustes del gimnasio **de la sesión** (sin `tenant_id` en el SET) | `sin_permiso`, `modo_de_qr_invalido` |
+| `guardar_qr_de_cobro(plan_id, qr_path, amount_mode, fixed_amount, expires_on)` | Crea o reemplaza el QR general o el de un plan del gimnasio de la sesión; devuelve `qr_path_anterior` para borrar la imagen vieja | `sin_permiso`, `plan_invalido`, `qr_general_exacto`, `monto_exacto_distinto_al_precio`, `ruta_invalida`, `qr_requerido`, `modo_de_monto_invalido` |
+| `eliminar_qr_de_cobro(id)` | Borra un QR del propio gimnasio y devuelve su ruta | `sin_permiso` (también si es de otro gimnasio) |
 | `rotar_token_check_in(customer)` | Nuevo token QR (el disparador pone el valor aleatorio) | — |
 | `establecer_sucursal_primaria(branch)` | Cambia la sede principal (delega en `app.fijar_sucursal_primaria`, que repite el permiso) | `sin_permiso`, `sucursal_inactiva` |
 
-**Esquema `app` (25):** contexto (`current_*`, `tenant_allows`,
+**Esquema `app` (28):** cobro (`preparar_qr_de_cobro`, `fijar_importe_esperado`,
+`verificar_pago_del_comprobante`: congelan tenant, plan e importes y exigen el
+precio completo), contexto (`current_*`, `tenant_allows`,
 `has_permission`, `is_platform_admin`, `tenant_de_ruta`, `hoy_del_gimnasio`,
 `puede_operar_sucursal`), sedes (`preparar_sucursal`, `exigir_sucursal_disponible`
 → error `sucursal_no_disponible`, `fijar_sucursal_primaria`, `auditar_sucursal`,
@@ -507,7 +513,7 @@ y un único candidato**), y disparadores de filas (`emitir_token_de_check_in`,
 | Bucket | Acceso | Límite | Ruta |
 |---|---|---|---|
 | `comprobantes` | Privado. Personal con `payments.read` lee su gimnasio; el socio lee lo suyo | 5 MB · jpeg/png/webp | `{tenant_id}/{customer_id}/{uuid}.{ext}` |
-| `qr-pagos` | Público de lectura; escribe `settings.manage` | 2 MB | `{tenant_id}/qr-{timestamp}.{ext}` |
+| `qr-pagos` | Público de lectura; escribe y borra `settings.manage` del gimnasio de la ruta | 2 MB | `{tenant_id}/qr-{timestamp}.{ext}` (general) · `{tenant_id}/plan-{plan_id}-{timestamp}.{ext}` |
 
 Las imágenes **no se entregan con URL firmada**: pasan por
 `/[tenant]/panel/comprobantes/[id]/imagen` (sesión, re-verificación de firma
@@ -549,7 +555,7 @@ silencio. `storage.protect_delete` impide borrar objetos por SQL.
 
 ### 4.7 Migraciones
 
-**31 aplicadas** (`v2_0001` … `v3_sucursal_principal_solo_por_rpc`), listadas
+**33 aplicadas** (`v2_0001` … `v3_venta_y_alta_con_qr_exigen_importe_completo`), listadas
 con su propósito en [`supabase/migrations/README.md`](supabase/migrations/README.md).
 **Viven solo en el servidor**: materializarlas requiere `npx supabase link` +
 `npx supabase db pull`, que pide la contraseña de la base (no disponible en la
@@ -569,7 +575,7 @@ nombre `v3_…` en snake_case español, y añadir su fila al README de migracion
 | `/[tenant]/sucursales` | SSG + ISR 300 s | `enableMultiBranch` | Todas las sedes: una fila por sede con imagen, mapa, texto de vitrina, datos y «Cómo llegar»; anclas `#sede-CODE` |
 | `/[tenant]/acceso` | SSG | `memberLogin` | Login y registro (también en modal desde la cabecera) |
 | `/auth/confirmar` | dinámica | — | Confirma correo; destino validado contra el registro (sin redirector abierto) |
-| `/[tenant]/pago/datos` · `/pago/qr` | handler | `enablePayments` | JSON e imagen del QR de cobro vigente (caché 60 s / 300 s; 410 vencido) |
+| `/[tenant]/pago/datos` · `/pago/qr` | handler | `enablePayments` | JSON e imagen del QR de cobro que toca (`?plan=<código>`; imagen por `?qr=<id>` del mismo gimnasio). Cliente **anónimo**, elección de `resolverCobroQr` (caché 60 s / 300 s; 410 vencido) |
 | `/[tenant]/panel` | dinámica | sesión | Reparte al espacio que corresponde |
 | `…/panel/socio` | dinámica | sesión | Panel del socio |
 | `…/panel/gimnasio` | dinámica | `dashboard.read` | Dashboard de gerencia y recepción |
@@ -577,7 +583,7 @@ nombre `v3_…` en snake_case español, y añadir su fila al README de migracion
 | `…/panel/asistencia` | dinámica | `enableAttendance` + `attendance.read` | Check-in, estadísticas, historial |
 | `…/panel/socios`, `/nuevo`, `/[id]` | dinámica | `enableMemberManagement` + `customers.*` | Lista, alta, ficha completa |
 | `…/panel/comprobantes`, `/[id]/imagen` | dinámica | `enablePayments` + `payments.read` | Bandeja, revisión, ZIP |
-| `…/panel/cobros` | dinámica | `enablePayments` + `settings.manage` | Subir QR del banco y vencimiento |
+| `…/panel/cobros` | dinámica | `enablePayments` + `settings.manage` | Datos y modalidad, QR general y QR de cada plan activo (libre/exacto, vencimiento, «se cobra con»), eliminar |
 | `…/panel/sucursales`, `/[id]` | dinámica | `enableMultiBranch` + `branches.manage` | Sedes con indicadores, comparativa, alta/edición, activar/desactivar, principal, personal por sede |
 | `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV |
 
@@ -633,20 +639,30 @@ y código de otro gimnasio dan la **misma** respuesta neutra.
    se publica igual. Enlace «Ver ubicación» = `google_maps_url` del negocio.
 
 **Cobro por QR y comprobantes.**
-1. Gerencia sube el QR del banco con vencimiento en `/panel/cobros`
-   (`tenant_payment_settings` + bucket `qr-pagos`). El archivo de configuración
-   (`content.paymentQr`) solo aporta titular, banco y nota **de respaldo**.
-2. En `/planes`, cada paquete muestra **«Pagar con QR»** → modal con QR, importe
-   y pasos (`PaymentQrModal` → `ContenidoDePagoQr`, que pide `/pago/datos`).
-   Sin QR vigente, explica que se paga en recepción.
+1. Gerencia configura en `/panel/cobros` la **modalidad** (`global`: un QR
+   para todo · `por_plan`: cada plan puede tener el suyo), el **QR general** y
+   el **QR de cada plan** (monto libre o exacto = precio actual, vencimiento).
+   Todo por RPC con el gimnasio de la sesión; los planes salen de la base. El
+   archivo de configuración (`content.paymentQr`) solo aporta titular, banco y
+   nota **de respaldo**.
+2. En `/planes`, cada paquete muestra **«Pagar con QR»** → modal con QR, precio
+   **de la base** y «paga exactamente X» (`PaymentQrModal` → `ContenidoDePagoQr`,
+   que pide `/pago/datos?plan=<código>`). Elección (`seleccionarQrDeCobro`,
+   `cobro-qr.ts`): modo global → general; por plan → el del plan si está vigente
+   (y, si es exacto, su importe = precio actual) → si no, el general (siempre
+   libre) → si no, pagar en recepción. Un QR exacto de otro plan nunca se reutiliza.
+   El formulario del socio enseña el QR del plan que elige.
 3. El socio sube la captura desde su panel (`subirMiComprobante`); recepción
    puede adjuntarla (`subirComprobante`), incluso al dar de alta a quien pagó
    por QR (el alta se crea sin plan y el comprobante lleva el plan propuesto).
    Las imágenes se reducen en el navegador (1600 px, JPEG 0,85) y el servidor
    valida la firma binaria.
-4. Recepción o gerencia **aprueba** (`revisar_comprobante`): membresía + pago
-   en una transacción. Ese pago es el que suman dashboards y reportes.
-   **Una captura no activa nada hasta que alguien la aprueba.**
+4. Recepción o gerencia **aprueba** (`revisar_comprobante`) escribiendo el
+   importe que llegó al banco: membresía + pago en una transacción. Ese pago es
+   el que suman dashboards y reportes. **Una captura no activa nada hasta que
+   alguien la aprueba, y nada se aprueba por debajo del precio del plan**
+   (180 esperado: 179 se rechaza; 181 se acepta y se registra 181). No existe
+   «pagar la diferencia después»: se rechaza con motivo.
 5. **Descarga ZIP** (`DescargarComprobantesZip`, `lib/zip.ts`) con filtros
    (hoy, ayer, rango, estado, origen, método) y `resumen.csv`. Se arma **en el
    navegador** porque Vercel corta respuestas de más de 4,5 MB.
@@ -938,6 +954,8 @@ ningún chunk servido.
 | El enlace de «Miraflores» abría «Edificio Torre Vicenta» | Nombre de sede y nombre del edificio no son lo mismo | Resolver el enlace y preguntar antes de cargar datos públicos |
 | Gerencia podía dejar el gimnasio sin sede principal | `GRANT UPDATE (is_primary)` directo | Invariantes de «una y solo una» solo por RPC |
 | Escapes `\u…` convertidos en caracteres invisibles al escribir archivos | Herramienta de escritura | Usar `\p{M}` o `charCodeAt`, nunca rangos con caracteres combinantes literales |
+| «No soy gerente» al guardar el QR, siendo gerencia | `upsert` de PostgREST genera `ON CONFLICT DO UPDATE SET tenant_id = …` y no hay grant de UPDATE sobre `tenant_id` → 42501; el adaptador lo tradujo como «revisa que seas gerencia». Dejó 6 imágenes huérfanas | Nada de `upsert` sobre tablas con columnas no actualizables: RPC invocador con el tenant de la sesión. Los errores se traducen por **código** y el código queda en el log |
+| Personal podía aprobar un comprobante enlazando un pago barato | UPDATE directo de `status`/`payment_id` | Disparador que congela importes y exige pago del mismo socio y ≥ precio |
 | Ningún `mt-*` de `p`, `h1–h4` ni listas se aplicaba; botones-enlace con texto blanco sobre el color de acción | Resets de `globals.css` fuera de capa: en Tailwind v4 una regla sin `@layer` gana a TODA utilidad | Los resets de elementos van en `@layer base` (corregido en V3.0) |
 | Capturas del panel de navegador vacías o recortadas con la ventana oculta | El panel no pinta si la app está minimizada | Edge headless por CDP (script sin dependencias); los iframes solo salen si están en la vista |
 
@@ -971,6 +989,12 @@ ningún chunk servido.
 22. **Sede de trabajo por dispositivo (cookie), permiso en la base.**
 23. **La base acota operar por sede; leer el historial sigue siendo del gimnasio.**
 24. **Las sedes viven en la base, no en el archivo del tenant.**
+25. **El precio esperado de un cobro lo fija la base**, nunca el formulario; un
+    pago por QR menor que el precio no se acepta. Mayor, sí (se registra lo pagado).
+26. **El QR general es siempre de monto libre**; el respaldo de un plan sin QR
+    propio es el general, nunca el exacto de otro plan.
+27. **Lo público del cobro se lee como anónimo** (`publicPaymentSettingsRepository`):
+    con sesión, RLS solo enseña los QR del propio gimnasio.
 
 ---
 
@@ -982,8 +1006,9 @@ ningún chunk servido.
    dnclwawnjnzqqxgsuhpn` + `npx supabase db pull` (lo hace una persona con la
    contraseña de la base). Mientras tanto, el inventario vive en
    `supabase/migrations/README.md`.
-2. **Tests parciales, sin CI.** V3.0 añadió `npm test` (node --test, 24 pruebas:
-   sedes, racha con varias sedes, catálogo y CSV de reportes). Faltan `periodo`,
+2. **Tests parciales, sin CI.** V3.0 añadió `npm test` (node --test, 46 pruebas:
+   sedes, racha con varias sedes, catálogo y CSV de reportes, selección de QR e
+   importes 180/179/181). Faltan `periodo`,
    `members`, `tenant.validator`, `build-theme`, una prueba RLS automatizada
    (hoy es manual, §9.2) y GitHub Actions con typecheck + test + build + audit + greps.
 3. **`DEFAULT_FEATURE_FLAGS` contradice «fallar cerrado»:** las flags del sitio
@@ -1003,7 +1028,13 @@ ningún chunk servido.
    Se revisó la vitrina (inicio, sucursales, planes, contacto, Aurora, móvil);
    el panel con sesión, no.
 5. **Subir el QR real del banco de Mítico** en `/mitico/panel/cobros` (la imagen
-   del cliente vence el 10/09/2028).
+   del cliente vence el 10/09/2028). Hoy no hay ningún QR guardado.
+5b. **6 imágenes huérfanas** en `qr-pagos/4b79e41f-…/qr-*.jpg` (los intentos
+   fallidos de gerencia del 11/09): borrarlas desde el panel de Storage.
+5c. **Revisión humana con sesión de `/panel/cobros`** (modalidad, QR general,
+   QR por plan en modal, eliminar), de la revisión con importe verificado y del
+   QR por plan en el panel del socio. Base y rutas públicas verificadas; la UI con
+   sesión, no.
 6. **Despliegue por push roto** (§7): dos interruptores en el panel de Vercel.
 
 ### 🟡 Media
@@ -1025,6 +1056,16 @@ ningún chunk servido.
     estructurado del tenant (días cerrados). Si las sedes cierran días distintos,
     habrá que estructurarlo.
 10e. `/panel/sucursales` no tiene paginación ni búsqueda de personal (hoy son 3 cuentas).
+10f. **Cobro — riesgos aceptados:** (a) en efectivo, tarjeta o transferencia el
+    personal puede vender por debajo del precio (descuento del mostrador; solo QR
+    exige el precio completo); (b) quien tiene `payments.create` registra pagos,
+    así que el pago enlazado a un comprobante es de confianza del personal (la
+    base exige mismo socio, mismo gimnasio e importe ≥ precio); (c) el anónimo lee
+    los QR y precios activos de todos los gimnasios (dato público por naturaleza);
+    (d) con `settings.manage`, una llamada manual a la RPC podría apuntar dos QR
+    del propio gimnasio a la misma imagen y borrarla al reemplazar uno (la app
+    siempre sube rutas nuevas); (e) un QR de un plan desactivado se conserva y se
+    lista en `/panel/cobros` para eliminarlo; no se ofrece a nadie.
 11. **Configuración de tenants en archivos + tabla `tenants` en la base:**
     duplicación de slug, nombre, zona y moneda. Mudar a la base es cambiar el
     adaptador del composition root (el puerto ya es asíncrono).
@@ -1110,6 +1151,7 @@ enlaces?, ¿quién crea ejercicios: gerencia o también entrenadores?
 | V2.2 | 2026-09-10 | `406dd68`, `417738b` | Gestión de socios, cobro por QR con comprobantes, cámara, racha, reportes híbridos; desplegada |
 | Cierre V2 | 2026-09-10 | `d599bda` | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada; documentos alineados |
 | V3.0 vitrina | 2026-09-11 | `eb3b0ff` | Landing multisucursal: chips de sedes en el hero, sección de sucursales rediseñada (portada/detalle/mapas), página `/sucursales` en el menú, texto de vitrina por sede en el tenant (`content.branches`), FAQ y «Nosotros» con las dos sedes; resets CSS a `@layer base` (márgenes y contraste de botones); voseo retirado de galería, horarios, instalaciones y tenants. Planes y pagos sin cambios. Desplegada (`dpl_58gzS8aVddniDoLLmXnWhrKPajwY`): `/mitico/sucursales` 200, `/aurora-fit/sucursales` 404, planes intactos |
+| V3.0 cobro QR | 2026-09-11 | (este commit) | **Corrección urgente.** Causa raíz de «gerencia no puede guardar el QR»: `upsert` con `tenant_id` sin grant (42501) mal traducido como falta de rol; ahora RPC invocador, sin ampliar permisos. QR general y por plan (`payment_qr_codes`, modalidad `global`/`por_plan`, monto libre/exacto), selección con respaldo en el general, precio de la base en la vitrina; la base rechaza cobros por QR y aprobaciones por debajo del precio (180/179/181 probados) y cierra el enlace de un pago barato por UPDATE directo. Migraciones `v3_cobro_qr_por_plan_e_importe_verificado` y `v3_venta_y_alta_con_qr_exigen_importe_completo`; batería RLS en `docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`; 46 pruebas de dominio |
 | V3.0 | 2026-09-11 | `0227dd4`, `16fd88c` | Multisucursal: `branches`, `user_branches`, asistencia con sede (histórico sin sede), `branches.manage`/`branches.all`, sede de trabajo por dispositivo, dashboards global/por sede, `/panel/sucursales`, reportes por sede, «Nuestras sucursales» en la vitrina, auditoría por disparador, `npm test`. Mítico: Prado + Miraflores. Desplegada (`dpl_7DFPH7re52R8Q7kzHNwXo5sG99TQ`) y verificada sobre el alias: públicas 200 desde CDN, vitrina con las dos sedes y sus mapas, panel 307, `/aurora-fit/panel/sucursales` 404, CSV de la comparativa 401 sin sesión y 404 en Aurora, sin `service_role` en chunks |
 
 Detalle de cada fase —defectos encontrados, tablas de pruebas por rol, notas de

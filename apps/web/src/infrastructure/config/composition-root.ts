@@ -95,9 +95,8 @@ export async function publicBranchesRepository(): Promise<PublicBranchesPort> {
 }
 
 /**
- * Ajustes de cobro. Lo usa también el sitio público SIN sesión: el cliente de
- * servidor sin cookie actúa como visitante anónimo, que es exactamente el
- * alcance que tiene la política de lectura de esos ajustes.
+ * Ajustes y QR de cobro CON la sesión de quien pregunta: el panel de gerencia
+ * (escrituras por RPC) y los dashboards.
  */
 export async function paymentSettingsRepository(): Promise<PaymentSettingsPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
@@ -105,4 +104,20 @@ export async function paymentSettingsRepository(): Promise<PaymentSettingsPort> 
     '../operations/supabase-receipts.repository'
   );
   return new SupabasePaymentSettingsRepository(await createSupabaseServerClient());
+}
+
+/**
+ * Ajustes y QR de cobro para lo PÚBLICO (`/pago/*`), como visitante anónimo.
+ * Con sesión, RLS solo enseña los QR del propio gimnasio: una cuenta de otro
+ * gimnasio que abriera los planes de este no vería su QR.
+ */
+export async function publicPaymentSettingsRepository(): Promise<PaymentSettingsPort> {
+  const { createSupabasePublicClient } = await import('../auth/supabase.public');
+  const { SupabasePaymentSettingsRepository } = await import(
+    '../operations/supabase-receipts.repository'
+  );
+  const anonimo = createSupabasePublicClient();
+  // Las rutas comprueban `isSupabaseConfigured()` antes de pedirlo.
+  if (!anonimo) throw new Error('Supabase no está configurado.');
+  return new SupabasePaymentSettingsRepository(anonimo);
 }

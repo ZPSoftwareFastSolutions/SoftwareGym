@@ -18,7 +18,9 @@ import {
   subirMiComprobante,
 } from '@/app/[tenant]/panel/comprobantes/actions';
 import type { PlanVendible } from '@core/domain/operations/members';
-import { NOMBRE_DE_METODO_DE_PAGO, METODOS_DE_PAGO } from '@core/domain/operations/members';
+import { importeDeTexto, NOMBRE_DE_METODO_DE_PAGO, METODOS_DE_PAGO } from '@core/domain/operations/members';
+import { evaluarImporte } from '@core/domain/operations/cobro-qr';
+import type { DatosPublicosDeCobro } from './ContenidoDePagoQr';
 import { nombreEnZip, type Comprobante } from '@core/domain/operations/receipts';
 import { aCsv } from '@core/domain/operations/reports';
 import { crearZip } from '@/lib/zip';
@@ -83,11 +85,16 @@ export function SubirComprobanteForm({ slug, modo, planes, customerId, socios = 
   }, [estado.exito]);
 
   const errores = estado.errores ?? {};
+  const planElegido = planes.find((p) => p.id === planId) ?? null;
+  const montoEscrito = importeDeTexto(monto);
+  const faltaImporte = Boolean(planElegido && montoEscrito !== null && evaluarImporte(planElegido.price, montoEscrito) === 'insuficiente');
 
   return (
     <form key={version} action={accion} className="flex flex-col gap-4">
       <input type="hidden" name="tenantSlug" value={slug} />
       {customerId && <input type="hidden" name="customerId" value={customerId} />}
+
+      {modo === 'socio' && <QrDelPlan slug={slug} codigoDePlan={planElegido?.code ?? null} />}
 
       {modo === 'personal' && !customerId && (
         <Campo id="comp-socio" etiqueta="Socio" error={errores.customerId} obligatorio>
@@ -130,17 +137,30 @@ export function SubirComprobanteForm({ slug, modo, planes, customerId, socios = 
           </select>
         </Campo>
 
-        <Campo id="comp-monto" etiqueta="Importe pagado (Bs)" error={errores.monto} obligatorio>
+        <Campo
+          id="comp-monto"
+          etiqueta="Importe pagado (Bs)"
+          error={errores.monto}
+          ayuda={planElegido ? `Precio del plan: ${importe(planElegido.price, planElegido.currency)}.` : undefined}
+          obligatorio
+        >
           <input
             name="monto"
             inputMode="decimal"
             value={monto}
             onChange={(evento) => setMonto(evento.target.value)}
             placeholder="160"
+            aria-invalid={faltaImporte}
             className={CLASE_DE_CONTROL}
           />
         </Campo>
       </div>
+      {faltaImporte && planElegido && (
+        <p role="alert" className="-mt-2 text-[0.8rem] text-structural">
+          El importe es menor que el precio del plan ({importe(planElegido.price, planElegido.currency)}). Un pago incompleto no activa
+          el plan: {modo === 'socio' ? 'paga el importe completo antes de enviar el comprobante.' : 'cobra el importe completo.'}
+        </p>
+      )}
 
       {modo === 'personal' && (
         <Campo id="comp-metodo" etiqueta="Método" error={errores.metodo}>
@@ -177,16 +197,110 @@ export function SubirComprobanteForm({ slug, modo, planes, customerId, socios = 
   );
 }
 
-export function RevisarComprobante({ slug, receiptId }: { readonly slug: string; readonly receiptId: string }) {
+/**
+ * QR con el que se paga el plan elegido, pedido a `/pago/datos` (la misma
+ * elección que la página de planes): si gerencia configuró un QR por plan, al
+ * cambiar de plan cambia el QR.
+ */
+function QrDelPlan({ slug, codigoDePlan }: { readonly slug: string; readonly codigoDePlan: string | null }) {
+  const [datos, setDatos] = useState<DatosPublicosDeCobro | null>(null);
+  const [imagenRota, setImagenRota] = useState(false);
+
+  useEffect(() => {
+    let vigente = true;
+    setImagenRota(false);
+    const consulta = codigoDePlan ? `?plan=${encodeURIComponent(codigoDePlan)}` : '';
+    fetch(`/${slug}/pago/datos${consulta}`)
+      .then((respuesta) => (respuesta.ok ? (respuesta.json() as Promise<DatosPublicosDeCobro>) : null))
+      .then((cuerpo) => {
+        if (vigente) setDatos(cuerpo);
+      })
+      .catch(() => {
+        if (vigente) setDatos(null);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [slug, codigoDePlan]);
+
+  const conQr = Boolean(datos?.disponible && datos.imagen) && !imagenRota;
+
+  return (
+    <div className="flex items-center gap-4 rounded-[var(--t-radius-md)] border border-line p-4">
+      <div className="grid h-28 w-28 shrink-0 place-items-center overflow-hidden rounded bg-white p-1">
+        {conQr && datos?.imagen ? (
+          <img src={datos.imagen} alt="QR de cobro del plan elegido" className="h-full w-full object-contain" onError={() => setImagenRota(true)} />
+        ) : (
+          <Icon name="qr" size={30} className="text-neutral-500" />
+        )}
+      </div>
+      <p className="text-[0.86rem] leading-relaxed text-muted">
+        {conQr && datos
+          ? datos.montoExacto !== null
+            ? '1. Escanea este QR con la app de tu banco: ya trae el importe. 2. Confirma el pago. 3. Sube aquí la captura.'
+            : `1. Escanea este QR con la app de tu banco. 2. Paga ${datos.plan ? `exactamente ${importe(datos.plan.precio, datos.plan.moneda)}` : 'el importe de tu plan'}. 3. Sube aquí la captura.`
+          : datos?.vencido
+            ? 'El QR de cobro está vencido. Paga en recepción mientras el gimnasio lo renueva.'
+            : 'No hay un QR disponible para este pago. Puedes pagar en recepción.'}
+      </p>
+    </div>
+  );
+}
+
+interface RevisarComprobanteProps {
+  readonly slug: string;
+  readonly receiptId: string;
+  /** Importe que declaró quien subió el comprobante. */
+  readonly declarado: number;
+  /** Precio del plan fijado por la base al subirlo; `null` si no hay plan. */
+  readonly esperado: number | null;
+  readonly moneda: string;
+}
+
+/**
+ * Aprobar o rechazar. Quien revisa escribe lo que VIO en el banco (por defecto,
+ * lo declarado). Si llegó menos que el precio del plan, aprobar se desactiva:
+ * no existe «aprobar y que complete después». La acción y la base lo repiten,
+ * así que un botón habilitado a mano no cambia el resultado.
+ */
+export function RevisarComprobante({ slug, receiptId, declarado, esperado, moneda }: RevisarComprobanteProps) {
   const [estado, accion] = useActionState(revisarComprobante, {});
   const [rechazando, setRechazando] = useState(false);
+  const [verificado, setVerificado] = useState(String(declarado));
 
   if (estado.exito) return <Aviso estado={estado} />;
+
+  const monto = importeDeTexto(verificado);
+  const evaluacion = monto === null ? null : evaluarImporte(esperado, monto);
+  const insuficiente = evaluacion === 'insuficiente';
 
   return (
     <form action={accion} className="flex flex-col gap-3">
       <input type="hidden" name="tenantSlug" value={slug} />
       <input type="hidden" name="receiptId" value={receiptId} />
+
+      {!rechazando && (
+        <Campo
+          id={`verificado-${receiptId}`}
+          etiqueta="Importe que llegó al banco (Bs)"
+          error={estado.errores?.montoVerificado}
+          ayuda={esperado !== null ? `Precio del plan: ${importe(esperado, moneda)}.` : undefined}
+        >
+          <input
+            name="montoVerificado"
+            inputMode="decimal"
+            value={verificado}
+            onChange={(evento) => setVerificado(evento.target.value)}
+            aria-invalid={insuficiente}
+            className={CLASE_DE_CONTROL}
+          />
+        </Campo>
+      )}
+      {!rechazando && insuficiente && esperado !== null && monto !== null && (
+        <p role="alert" className="text-[0.8rem] text-structural">
+          Faltan {importe(esperado - monto, moneda)} para el precio del plan. No se puede aprobar: rechaza el comprobante con el motivo.
+        </p>
+      )}
 
       {rechazando && (
         <Campo id={`motivo-${receiptId}`} etiqueta="Motivo del rechazo" error={estado.errores?.nota} obligatorio>
@@ -201,7 +315,8 @@ export function RevisarComprobante({ slug, receiptId }: { readonly slug: string;
               type="submit"
               name="decision"
               value="aprobar"
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[var(--t-radius-md)] bg-action px-4 text-[0.86rem] font-semibold text-on-action transition-colors hover:bg-action-strong"
+              disabled={insuficiente || monto === null}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[var(--t-radius-md)] bg-action px-4 text-[0.86rem] font-semibold text-on-action transition-colors hover:bg-action-strong disabled:pointer-events-none disabled:opacity-50"
             >
               <Icon name="check" size={16} />
               Aprobar

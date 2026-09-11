@@ -23,8 +23,10 @@ import {
 } from '@core/domain/operations/members';
 import { calcularRacha, diasCerradosDelHorario, type ResumenDeRacha } from '@core/domain/operations/streak';
 import type { Comprobante } from '@core/domain/operations/receipts';
+import { evaluarImporte } from '@core/domain/operations/cobro-qr';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
+import { importe } from '@/lib/formato';
 import {
   contextoDeAccion,
   imagenDeFormulario,
@@ -104,6 +106,13 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
   const monto = importeDeTexto(datos.monto) ?? plan?.price ?? null;
   const metodo = esMetodoDePago(datos.metodo) ? datos.metodo : 'cash';
 
+  // Un cobro por QR no cubre el plan si es menor que su precio (la base lo
+  // rechaza igual). Se comprueba ANTES de crear la ficha: si no, el socio
+  // quedaría dado de alta con un comprobante que no se pudo guardar.
+  if (plan && monto !== null && (pagaConQr || metodo === 'qr') && evaluarImporte(plan.price, monto) === 'insuficiente') {
+    return { errores: { monto: `Un cobro por QR no puede ser menor que el precio del plan (${importe(plan.price, plan.currency)}).` }, valores };
+  }
+
   // PAGO POR QR: la membresía NO se crea en el alta. Se crea al aprobar el
   // comprobante, que lleva el plan propuesto. Si se activara ya, el socio
   // entrenaría con un pago que nadie ha verificado contra el banco.
@@ -132,7 +141,8 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
     });
     if (!subida.ok) comprobante = 'error';
     else if (texto(form, 'verificado') === 'si') {
-      const revision = await recibos.revisar(subida.valor, true, 'Verificado en el alta');
+      // Quien marca «verificado» vio el pago en el banco por el importe escrito.
+      const revision = await recibos.revisar(subida.valor, true, 'Verificado en el alta', monto);
       comprobante = revision.ok ? 'aprobado' : 'pendiente';
     } else comprobante = 'pendiente';
   }
@@ -239,6 +249,11 @@ export async function venderMembresia(_previo: EstadoDeFormulario, form: FormDat
   const socios = await membersRepository();
   const plan = (await socios.planesVendibles()).find((candidato) => candidato.id === planId);
   if (!plan) return { errores: { planId: 'Ese plan no está disponible.' } };
+  // Por QR no se vende por debajo del precio (la base lo repite). En efectivo
+  // o tarjeta, un descuento sigue siendo decisión del mostrador.
+  if (metodo === 'qr' && monto !== null && monto > 0 && evaluarImporte(plan.price, monto) === 'insuficiente') {
+    return { errores: { monto: `Un cobro por QR no puede ser menor que el precio del plan (${importe(plan.price, plan.currency)}).` } };
+  }
 
   const resultado = await socios.venderMembresia({
     customerId: texto(form, 'customerId', 40),

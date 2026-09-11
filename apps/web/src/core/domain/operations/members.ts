@@ -253,6 +253,7 @@ export function mensajeDeErrorDeSocio(codigo: string): string {
   if (codigo.includes('plan_invalido')) return 'Ese plan no está disponible.';
   if (codigo.includes('inicio_invalido')) return 'La fecha de inicio está fuera del rango permitido.';
   if (codigo.includes('monto_invalido')) return 'El importe no es válido.';
+  if (codigo.includes('monto_insuficiente')) return 'Un cobro por QR no puede ser menor que el precio del plan.';
   if (codigo.includes('sin_permiso') || codigo.includes('42501')) return 'Tu cuenta no puede hacer esta operación.';
   if (codigo.includes('socio_no_encontrado')) return 'Ese socio no existe o está archivado.';
   return 'No se pudo completar la operación. Vuelve a intentarlo.';

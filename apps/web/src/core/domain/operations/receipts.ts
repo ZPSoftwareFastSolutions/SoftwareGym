@@ -43,7 +43,12 @@ export interface Comprobante {
   readonly planName: string | null;
   readonly membershipId: string | null;
   readonly paymentId: string | null;
+  /** Importe que declaró quien subió la captura. */
   readonly amount: number;
+  /** Precio del plan al subir el comprobante, fijado por la base. `null` sin plan. */
+  readonly expectedAmount: number | null;
+  /** Importe del pago con el que se aprobó. `null` mientras no esté aprobado. */
+  readonly verifiedAmount: number | null;
   readonly currency: string;
   readonly method: MetodoDePago;
   readonly status: EstadoDeComprobante;
@@ -163,6 +168,11 @@ export function mensajeDeErrorDeComprobante(codigo: string): string {
   if (codigo.includes('comprobante_ya_revisado')) return 'Ese comprobante ya fue revisado por otra persona.';
   if (codigo.includes('motivo_requerido')) return 'Escribe el motivo del rechazo: el socio necesita saber qué corregir.';
   if (codigo.includes('comprobante_no_encontrado')) return 'Ese comprobante no existe.';
+  if (codigo.includes('monto_insuficiente')) {
+    return 'El importe verificado es menor que el precio del plan. No se puede aprobar: recházalo indicando el motivo.';
+  }
+  if (codigo.includes('monto_invalido')) return 'El importe verificado no es válido.';
+  if (codigo.includes('pago_no_valido')) return 'El pago no corresponde a este socio.';
   if (codigo.includes('sin_permiso') || codigo.includes('42501')) return 'Tu cuenta no puede revisar comprobantes.';
   return 'No se pudo completar la revisión. Vuelve a intentarlo.';
 }
