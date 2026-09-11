@@ -97,8 +97,17 @@
 
 /* ===========================================================================
    BASE
+   ----------------------------------------------------------------------------
+   Todo este bloque va en `@layer base`, y no es un detalle de estilo. En
+   Tailwind v4 las utilidades viven en `@layer utilities`, y una regla SIN capa
+   gana a cualquier regla con capa sin importar la especificidad. Fuera de capa,
+   `ul, p, h1 { margin: 0 }` anulaba en silencio todos los `mt-*` de listas,
+   párrafos y títulos del sitio, y `a { color: inherit }` pintaba en blanco el
+   texto de los botones-enlace que pedían `text-on-action` (contraste AA roto
+   sobre el color de acción).
    ======================================================================== */
 
+@layer base {
 *,
 *::before,
 *::after {
@@ -184,6 +193,7 @@ ol {
 ::selection {
   background: var(--t-action);
   color: var(--t-on-action);
+}
 }
 
 /* ===========================================================================

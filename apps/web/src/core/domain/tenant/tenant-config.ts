@@ -72,6 +72,43 @@ export interface PaymentQrInfo {
   readonly note?: string;
 }
 
+/**
+ * Presentación comercial de UNA sede (V3.0).
+ *
+ * La sede en sí —nombre, dirección, horario, mapa, si está activa— vive en la
+ * base y la edita gerencia. Aquí va solo el TEXTO DE VITRINA, que es marketing
+ * del cliente y cambia con el sitio, no con la operación. El puente es el
+ * `code` de la sede, igual que el `code` une los planes del archivo con los de
+ * la base. Una sede sin texto aquí se publica igual, con sus datos.
+ */
+export interface BranchShowcase {
+  /** `branches.code` de la sede: MAYÚSCULAS y dígitos, 2 a 12. */
+  readonly code: string;
+  /** Frase corta que la distingue: «El clásico del centro». */
+  readonly tagline: string;
+  readonly description: string;
+  /** Lo que la hace especial, en frases breves. Máximo cinco. */
+  readonly highlights: readonly string[];
+  /** Semilla de la composición gráfica mientras no haya fotografía. */
+  readonly seed?: number;
+}
+
+/** Sección de sucursales del sitio. Solo tiene efecto con `enableMultiBranch`. */
+export interface BranchesContent {
+  readonly eyebrow: string;
+  readonly title: string;
+  /** Fragmento del título con tratamiento de color de marca. */
+  readonly titleAccent?: string;
+  readonly lead: string;
+  /** Qué gana el socio al tener varias sedes: tres ideas, con icono. */
+  readonly benefits: readonly {
+    readonly title: string;
+    readonly description: string;
+    readonly icon: string;
+  }[];
+  readonly showcase: readonly BranchShowcase[];
+}
+
 export interface DaySchedule {
   readonly day: string;
   readonly open: string;
@@ -155,6 +192,8 @@ export interface TenantContent {
   };
   /** Cobro por QR. Ausente en gimnasios que solo cobran en mostrador. */
   readonly paymentQr?: PaymentQrInfo;
+  /** Vitrina de sucursales (V3.0). Ausente: la sección usa textos genéricos. */
+  readonly branches?: BranchesContent;
 }
 
 /**

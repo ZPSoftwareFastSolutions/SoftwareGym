@@ -34,9 +34,15 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
 
   return (
     <>
-      <HeroSection hero={content.hero} slug={slug} />
+      <HeroSection hero={content.hero} slug={slug} sedes={sucursales.map((s) => s.name)} />
 
-      <MarqueeStrip items={content.services.map((s) => s.name)} />
+      <MarqueeStrip
+        items={[
+          ...content.services.map((s) => s.name),
+          // Con varias sedes, la franja también las nombra: se lee sin buscar.
+          ...(sucursales.length > 1 ? sucursales.map((s) => `Sede ${s.name}`) : []),
+        ]}
+      />
 
       <ServicesSection
         services={content.services}
@@ -44,6 +50,17 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
         limit={3}
         showCta={content.services.length > 3}
         lead="Un mismo lugar para entrenar fuerza, mejorar tu condición física y recuperarte bien."
+      />
+
+      {/* Justo después de «qué ofrecemos», antes de los precios: con varias
+          sedes, «dónde» decide tanto como «cuánto». */}
+      <BranchesSection
+        sucursales={sucursales}
+        tenantName={tenant.name}
+        slug={slug}
+        contact={contact}
+        contenido={content.branches}
+        presentacion="portada"
       />
 
       {features.showPlans && (
@@ -58,8 +75,6 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
           lead="Elige el paquete que se adapta a ti. Sin permanencia mínima."
         />
       )}
-
-      <BranchesSection sucursales={sucursales} tenantName={tenant.name} contact={contact} />
 
       {features.showProducts && (
         <ProductsSection categories={content.products} contact={contact} />

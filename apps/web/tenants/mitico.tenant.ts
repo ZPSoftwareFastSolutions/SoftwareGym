@@ -82,7 +82,7 @@ export const miticoTenant: TenantConfig = {
       'Hola Mítico Fitness 👋 Quiero información sobre los paquetes y precios.',
     // PENDIENTE: confirmar con el cliente.
     email: 'hola@miticofitness.com',
-    addressLine: 'La Paz, Bolivia',
+    addressLine: 'Sedes en El Prado y Miraflores',
     city: 'La Paz',
     country: 'Bolivia',
     // Mapa oficial del local. El recuadro se atenúa por CSS cuando el
@@ -125,6 +125,7 @@ export const miticoTenant: TenantConfig = {
     { label: 'Nosotros', segment: 'nosotros' },
     { label: 'Servicios', segment: 'servicios' },
     { label: 'Planes', segment: 'planes', requiresFeature: 'showPlans' },
+    { label: 'Sucursales', segment: 'sucursales', requiresFeature: 'enableMultiBranch' },
     { label: 'Instalaciones', segment: 'instalaciones', requiresFeature: 'showFacilities' },
     { label: 'Galería', segment: 'galeria', requiresFeature: 'showGallery' },
     { label: 'Horarios', segment: 'horarios', requiresFeature: 'showSchedule' },
@@ -160,9 +161,11 @@ export const miticoTenant: TenantConfig = {
     title: 'Mítico Fitness — El dolor que sentirás hoy es la fuerza que sentirás mañana',
     titleTemplate: '%s | Mítico Fitness',
     description:
-      'Gimnasio en La Paz. Paquetes mensuales desde 160 Bs, entrenamiento personalizado con rutinas temáticas, baile fitness, nutricionista y suplementación deportiva.',
+      'Gimnasio en La Paz con dos sedes, Prado y Miraflores, y una sola membresía. Paquetes mensuales desde 160 Bs, entrenamiento personalizado con rutinas temáticas, baile fitness, nutricionista y suplementación deportiva.',
     keywords: [
       'gimnasio la paz',
+      'gimnasio el prado la paz',
+      'gimnasio miraflores la paz',
       'mítico fitness',
       'entrenamiento personalizado',
       'suplementos deportivos',
@@ -180,15 +183,15 @@ export const miticoTenant: TenantConfig = {
 
   content: {
     hero: {
-      eyebrow: 'La Paz, Bolivia',
+      eyebrow: 'La Paz · Prado y Miraflores',
       title: 'Vamos con',
       titleAccent: 'todo',
       subtitle:
-        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Entrenamiento personalizado, baile fitness, nutrición y suplementación en un solo lugar.',
+        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Entrenamiento personalizado, baile fitness, nutrición y suplementación, ahora en dos sedes con una sola membresía.',
       primaryCta: { label: 'Ver paquetes', segment: 'planes' },
       secondaryCta: { label: 'Hablar por WhatsApp', segment: 'contacto' },
       stats: [
-        { value: '1.200', label: 'm² de entrenamiento' },
+        { value: '2', label: 'sedes en La Paz' },
         { value: '+2.400', label: 'socios activos' },
         { value: '18', label: 'clases semanales' },
         { value: '6', label: 'años de trayectoria' },
@@ -203,7 +206,8 @@ export const miticoTenant: TenantConfig = {
       paragraphs: [
         'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman baile fitness, nutricionista profesional o entrenador personal según lo que cada uno necesite. Puedes empezar por un día y decidir después.',
         'El entrenamiento personalizado se organiza en rutinas con nombre propio —Batman, Gamora, Thor, Hulk, Capitana Marvel— que marcan el nivel y el enfoque de cada programa. No es decoración: cada rutina tiene una progresión distinta y un objetivo distinto.',
-        'Además del entrenamiento, en el mostrador encontrás la suplementación y los accesorios que usamos y recomendamos: proteína, creatina, pre-entrenos, shakers y ropa deportiva de la casa.',
+        'Además del entrenamiento, en el mostrador encuentras la suplementación y los accesorios que usamos y recomendamos: proteína, creatina, pre-entrenos, shakers y ropa deportiva de la casa.',
+        'Hoy entrenamos en dos sedes: el Prado, en el centro de la ciudad, y Miraflores, en el Edificio Torre Vicenta. Tu membresía vale en las dos, así que eliges cada día dónde entrenar.',
       ],
       values: [
         {
@@ -234,9 +238,9 @@ export const miticoTenant: TenantConfig = {
       milestones: [
         { year: '2019', text: 'Abrimos la primera sala de 180 m² con catorce máquinas.' },
         { year: '2021', text: 'Sumamos el área funcional y las primeras clases grupales.' },
-        { year: '2023', text: 'Mudanza a la sede actual: 1.200 m² en tres plantas.' },
+        { year: '2023', text: 'Nos instalamos en el Prado, a pasos de la Plaza del Estudiante.' },
         { year: '2025', text: 'Incorporamos evaluación de composición corporal para todos los socios.' },
-        { year: '2026', text: 'Más de 2.400 socios activos y un equipo de 22 profesionales.' },
+        { year: '2026', text: 'Abrimos Mítico Miraflores en el Edificio Torre Vicenta: dos sedes, una sola membresía.' },
       ],
     },
 
@@ -854,6 +858,12 @@ export const miticoTenant: TenantConfig = {
 
     faq: [
       {
+        id: 'sucursales',
+        question: '¿Puedo entrenar en las dos sedes?',
+        answer:
+          'Sí. Tu membresía vale en Prado y en Miraflores: eliges cada día dónde entrenar, con el mismo QR y sin pagar nada extra. Tus visitas y tu racha cuentan igual en las dos sedes.',
+      },
+      {
         id: 'empezar',
         question: '¿Cuánto cuesta empezar?',
         answer:
@@ -869,7 +879,7 @@ export const miticoTenant: TenantConfig = {
         id: 'personalizado',
         question: '¿Qué incluye el entrenamiento personalizado?',
         answer:
-          'Hay cuatro planes, de 220 a 480 Bs al mes. Todos incluyen entrenamiento personalizado, pre-entreno y un batido semanal. Del Avanzado en adelante sumás entrenador personal, y el Premium incluye además nutricionista profesional.',
+          'Hay cuatro planes, de 220 a 480 Bs al mes. Todos incluyen entrenamiento personalizado, pre-entreno y un batido semanal. Del Avanzado en adelante sumas entrenador personal, y el Premium incluye además nutricionista profesional.',
       },
       {
         id: 'rutinas',
@@ -904,8 +914,66 @@ export const miticoTenant: TenantConfig = {
     closingCta: {
       title: '¡Vamos con todo!',
       subtitle:
-        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Escríbenos y armamos tu plan.',
+        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Te esperamos en Prado o en Miraflores: escríbenos y armamos tu plan.',
       label: 'Consultar por WhatsApp',
+    },
+
+    /**
+     * Vitrina de sucursales (V3.0). Las sedes y sus datos (dirección, horario,
+     * mapa) vienen de la base; aquí solo el texto comercial, unido por `code`.
+     * PENDIENTE DE CONFIRMAR CON EL CLIENTE: descripciones y destacados son una
+     * propuesta de redacción.
+     */
+    branches: {
+      eyebrow: 'Nuestras sucursales',
+      title: 'Dos sedes,',
+      titleAccent: 'una sola membresía',
+      lead: 'Entrena en el Prado o en Miraflores, cuando quieras y donde te quede mejor. Tu plan, tu QR y tu racha te acompañan en las dos.',
+      benefits: [
+        {
+          title: 'Una membresía, dos sedes',
+          description: 'Pagas un solo plan y entrenas en Prado y en Miraflores sin costo adicional.',
+          icon: 'shield',
+        },
+        {
+          title: 'El mismo QR',
+          description: 'Enséñalo en cualquier recepción: tu entrada queda registrada en la sede donde estés.',
+          icon: 'qr',
+        },
+        {
+          title: 'Tu racha no se corta',
+          description: 'Un día en Prado y al siguiente en Miraflores suman como días seguidos.',
+          icon: 'fire',
+        },
+      ],
+      showcase: [
+        {
+          code: 'PRADO',
+          tagline: 'El clásico del centro',
+          description:
+            'Nuestra casa de siempre, a pasos de la Plaza del Estudiante. La sede donde Mítico se hizo fuerte: sala de pesas completa, entrenamiento personalizado y el ambiente de comunidad que nos define. Ideal si estudias o trabajas en el centro.',
+          highlights: [
+            'A pasos de la Plaza del Estudiante',
+            'Sala de pesas y máquinas completas',
+            'Entrenadores con seguimiento personal',
+            'Suplementos y productos en mostrador',
+          ],
+          seed: 41,
+        },
+        {
+          code: 'MIRAFLORES',
+          tagline: 'La nueva casa de Mítico',
+          description:
+            'Abrimos en el Edificio Torre Vicenta, sobre la Av. Argentina, para llevar Mítico a quienes viven y trabajan en Miraflores. Espacios renovados, equipamiento nuevo y el mismo equipo de entrenadores, con toda la energía de la marca.',
+          highlights: [
+            'Edificio Torre Vicenta, Av. Argentina',
+            'Espacios renovados y equipamiento nuevo',
+            'Entrenamiento personalizado y baile fitness',
+            'Mismo plan y mismo QR que en Prado',
+          ],
+          seed: 88,
+        },
+      ],
     },
   },
 };

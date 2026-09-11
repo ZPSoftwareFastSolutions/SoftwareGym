@@ -44,7 +44,10 @@ export default async function ContactPage({ params }: TenantPageParams) {
         <BranchesSection
           sucursales={sucursales}
           tenantName={name}
+          slug={slug}
           contact={contact}
+          contenido={tenant.content.branches}
+          presentacion="mapas"
           conMapa={features.showLocationMap}
           eyebrow="Cómo llegar"
         />

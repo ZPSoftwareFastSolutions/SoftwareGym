@@ -20,7 +20,7 @@ export default async function GalleryPage({ params }: TenantPageParams) {
       <PageHero
         slug={slug}
         eyebrow="Galería"
-        title="Mirá antes de venir"
+        title="Mira antes de venir"
         lead="Las imágenes definitivas se sustituyen por la sesión fotográfica del gimnasio; la composición y el recorrido ya son los definitivos."
         breadcrumb={breadcrumb}
       />

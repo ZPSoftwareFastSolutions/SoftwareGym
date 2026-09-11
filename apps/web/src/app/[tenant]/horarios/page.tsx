@@ -20,8 +20,8 @@ export default async function SchedulePage({ params }: TenantPageParams) {
       <PageHero
         slug={slug}
         eyebrow="Horarios"
-        title="Vení cuando te quede bien"
-        lead="Consultá el horario de atención de cada día y planificá tu semana."
+        title="Ven cuando te quede bien"
+        lead="Consulta el horario de atención de cada día y planifica tu semana."
         breadcrumb={breadcrumb}
       />
 

@@ -13,9 +13,15 @@ import { Reveal } from '../ui/Reveal';
 interface HeroSectionProps {
   readonly hero: HeroContent;
   readonly slug: string;
+  /**
+   * Sedes activas (V3.0), para decirlo en la primera pantalla: con varias
+   * sedes, «dónde queda» es la primera duda de quien llega. Vacío o una sola,
+   * no se pinta nada.
+   */
+  readonly sedes?: readonly string[];
 }
 
-export function HeroSection({ hero, slug }: HeroSectionProps) {
+export function HeroSection({ hero, slug, sedes = [] }: HeroSectionProps) {
   return (
     <section
       className="relative flex min-h-[92svh] items-center overflow-hidden pt-[var(--header-height)]"
@@ -53,6 +59,29 @@ export function HeroSection({ hero, slug }: HeroSectionProps) {
               {hero.secondaryCta.label}
             </LinkButton>
           </div>
+
+          {sedes.length > 1 && (
+            <nav aria-label="Nuestras sedes" className="mt-9">
+              <ul className="flex flex-wrap items-center gap-2.5">
+                <li className="me-1 flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-muted">
+                  <Icon name="pin" size={16} className="text-action" />
+                  {sedes.length} sedes
+                </li>
+                {sedes.map((sede) => (
+                  <li key={sede}>
+                    <a
+                      href={tenantHref(slug, 'sucursales')}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-action/40 bg-action/10 px-4 text-[0.9rem] font-semibold text-ink transition-colors hover:border-action hover:bg-action hover:text-on-action"
+                    >
+                      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-action shadow-[0_0_10px_var(--t-action)]" />
+                      {sede}
+                    </a>
+                  </li>
+                ))}
+                <li className="hidden text-[0.86rem] text-muted sm:block">· una sola membresía</li>
+              </ul>
+            </nav>
+          )}
         </div>
 
         <Reveal delay={220}>

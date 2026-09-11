@@ -153,6 +153,35 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('Hay identificadores de producto duplicados en content.products.');
   }
 
+  // Textos de vitrina de sucursales (V3.0). El código tiene que poder existir
+  // en la base (mismo patrón que `branches.code`): uno mal escrito no rompería
+  // nada, simplemente su texto no aparecería nunca, y eso no se nota a simple vista.
+  const branches = tenant.content.branches;
+  if (branches) {
+    const codes = branches.showcase.map((s) => s.code);
+    for (const code of codes) {
+      if (!/^[A-Z0-9]{2,12}$/.test(code)) {
+        issues.push(`content.branches.showcase: el código "${code}" no tiene el formato de branches.code (A-Z, 0-9, 2 a 12).`);
+      }
+    }
+    if (new Set(codes).size !== codes.length) {
+      issues.push('Hay códigos de sucursal duplicados en content.branches.showcase.');
+    }
+    for (const sede of branches.showcase) {
+      if (sede.highlights.length > 5) {
+        issues.push(`content.branches.showcase "${sede.code}": máximo cinco highlights (tiene ${sede.highlights.length}).`);
+      }
+    }
+    if (branches.benefits.length > 4) {
+      issues.push(`content.branches.benefits: máximo cuatro beneficios (tiene ${branches.benefits.length}).`);
+    }
+  }
+
+  const navSucursales = tenant.navigation.find((n) => n.segment === 'sucursales');
+  if (navSucursales && navSucursales.requiresFeature !== 'enableMultiBranch') {
+    issues.push('La entrada de navegación "sucursales" debe exigir la capacidad enableMultiBranch.');
+  }
+
   return issues;
 }
 

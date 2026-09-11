@@ -249,7 +249,7 @@ src/
     auth/confirmar/route.ts      Retorno del correo de confirmación (PKCE y token_hash)
     [tenant]/
       layout.tsx                 BISAGRA DEL ENLATADO: resuelve el tenant, inyecta tokens, 404 si no existe
-      page.tsx + nosotros, servicios, planes, instalaciones, galeria, horarios, contacto
+      page.tsx + nosotros, servicios, planes, sucursales, instalaciones, galeria, horarios, contacto
       acceso/                    Login y registro (page estática + actions.ts)
       pago/datos, pago/qr        Datos e imagen públicos del QR de cobro
       panel/
@@ -353,8 +353,9 @@ negocio: `repo.hoyDelGimnasio(slug)` (base, `app.hoy_del_gimnasio`) o
 
 - **Sitio público estático** (SSG por tenant, `dynamicParams = false`). El layout
   del tenant **no lee cookies**: si lo hiciera, todo el sitio saldría del CDN.
-  El inicio y `/contacto` llevan `revalidate = 300` (ISR) porque muestran las
-  sedes de la base; las leen con `createSupabasePublicClient` (anónimo, sin cookies).
+  El inicio, `/sucursales` y `/contacto` llevan `revalidate = 300` (ISR) porque
+  muestran las sedes de la base; las leen con `createSupabasePublicClient`
+  (anónimo, sin cookies).
 - **`/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicos.**
 - **Cookie de sesión `HttpOnly`/`Secure`/`SameSite=Lax`** forzada en
   `cookie-options.ts` (tanto en el cliente de servidor como en el middleware).
@@ -372,7 +373,8 @@ negocio: `repo.hoyDelGimnasio(slug)` (base, `app.hoy_del_gimnasio`) o
   dominios, `branding`, `contact`, `social`, `hours` (con zona horaria y días
   cerrados), `navigation` (cada entrada puede exigir una flag), `features`,
   `seo`, `content` (hero, about, services, planGroups, trainingPlans, products,
-  facilities, gallery, team, testimonials, faq, closingCta, `paymentQr`) y
+  facilities, gallery, team, testimonials, faq, closingCta, `paymentQr`,
+  `branches`: texto de vitrina de las sedes unido a la base por `code`) y
   `provisioning` (plan, estado).
 - **Registro y validación:** `tenant.registry.ts` lista los tenants;
   `tenant.validator.ts` corre en el build: una configuración inválida rompe el
@@ -564,6 +566,7 @@ nombre `v3_…` en snake_case español, y añadir su fila al README de migracion
 |---|---|---|---|
 | `/` | estática | — | Vitrina de la plataforma |
 | `/[tenant]` + `nosotros`, `servicios`, `planes`, `instalaciones`, `galeria`, `horarios`, `contacto` | SSG | `publicSite` + flag de sección | Sitio comercial |
+| `/[tenant]/sucursales` | SSG + ISR 300 s | `enableMultiBranch` | Todas las sedes: una fila por sede con imagen, mapa, texto de vitrina, datos y «Cómo llegar»; anclas `#sede-CODE` |
 | `/[tenant]/acceso` | SSG | `memberLogin` | Login y registro (también en modal desde la cabecera) |
 | `/auth/confirmar` | dinámica | — | Confirma correo; destino validado contra el registro (sin redirector abierto) |
 | `/[tenant]/pago/datos` · `/pago/qr` | handler | `enablePayments` | JSON e imagen del QR de cobro vigente (caché 60 s / 300 s; 410 vencido) |
@@ -578,8 +581,8 @@ nombre `v3_…` en snake_case español, y añadir su fila al README de migracion
 | `…/panel/sucursales`, `/[id]` | dinámica | `enableMultiBranch` + `branches.manage` | Sedes con indicadores, comparativa, alta/edición, activar/desactivar, principal, personal por sede |
 | `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV |
 
-Build: 46 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
-`/[tenant]` y `/[tenant]/contacto` son SSG con ISR de 300 s.
+Build: 48 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
+`/[tenant]`, `/[tenant]/sucursales` y `/[tenant]/contacto` son SSG con ISR de 300 s.
 
 ### 5.2 Flujos
 
@@ -617,9 +620,17 @@ y código de otro gimnasio dan la **misma** respuesta neutra.
 7. **Reportes:** filtro `sucursal` en `asistencia` y `asistencia-por-socio`
    (+ columna en `asistencia`); reporte nuevo `asistencia-por-sucursal`
    (requiere la flag: sin ella 404, también su CSV).
-8. **Vitrina:** «Nuestras sucursales» en el inicio (imagen generativa) y en
-   contacto (mapa por sede, sustituye al mapa único). Enlace «Ver ubicación» =
-   `google_maps_url` del negocio; el mapa embebido usa coordenadas o dirección.
+8. **Vitrina** (`BranchesSection`, tres presentaciones):
+   - Inicio: chips de sedes en el hero, sedes en la franja animada y sección
+     `portada` (beneficios de la membresía única y una tarjeta grande por sede
+     con número, texto, destacados, dirección, horario y «Conocer la sede»).
+   - Página `/sucursales` (en el menú con la flag): presentación `detalle`, una
+     fila por sede con imagen + mapa, texto completo y «Cómo llegar».
+   - Contacto: presentación `mapas` (sustituye al mapa único).
+   El texto comercial de cada sede vive en `content.branches.showcase` del
+   archivo del tenant (tagline, descripción, destacados), unido por `code` como
+   los planes; dirección, horario y mapa vienen de la base. Una sede sin texto
+   se publica igual. Enlace «Ver ubicación» = `google_maps_url` del negocio.
 
 **Cobro por QR y comprobantes.**
 1. Gerencia sube el QR del banco con vencimiento en `/panel/cobros`
@@ -927,6 +938,8 @@ ningún chunk servido.
 | El enlace de «Miraflores» abría «Edificio Torre Vicenta» | Nombre de sede y nombre del edificio no son lo mismo | Resolver el enlace y preguntar antes de cargar datos públicos |
 | Gerencia podía dejar el gimnasio sin sede principal | `GRANT UPDATE (is_primary)` directo | Invariantes de «una y solo una» solo por RPC |
 | Escapes `\u…` convertidos en caracteres invisibles al escribir archivos | Herramienta de escritura | Usar `\p{M}` o `charCodeAt`, nunca rangos con caracteres combinantes literales |
+| Ningún `mt-*` de `p`, `h1–h4` ni listas se aplicaba; botones-enlace con texto blanco sobre el color de acción | Resets de `globals.css` fuera de capa: en Tailwind v4 una regla sin `@layer` gana a TODA utilidad | Los resets de elementos van en `@layer base` (corregido en V3.0) |
+| Capturas del panel de navegador vacías o recortadas con la ventana oculta | El panel no pinta si la app está minimizada | Edge headless por CDP (script sin dependencias); los iframes solo salen si están en la vista |
 
 ---
 
@@ -983,6 +996,12 @@ ningún chunk servido.
    flujos en la base, el build y el sitio público; no la UI con sesión.
 4b. **Datos de sedes de Mítico por confirmar:** teléfono y horario de cada sede,
    coordenadas de Miraflores. Se cargan desde `/mitico/panel/sucursales/[id]`.
+   El texto de vitrina de Prado y Miraflores (`content.branches`), el hito 2026
+   de «Nosotros» y la cifra «2 sedes» del hero son redacción propuesta: confirmar.
+4c. **Revisar a ojo el efecto global de `@layer base`:** ahora se aplican los
+   márgenes y colores de utilidad que antes se anulaban, también en el panel.
+   Se revisó la vitrina (inicio, sucursales, planes, contacto, Aurora, móvil);
+   el panel con sesión, no.
 5. **Subir el QR real del banco de Mítico** en `/mitico/panel/cobros` (la imagen
    del cliente vence el 10/09/2028).
 6. **Despliegue por push roto** (§7): dos interruptores en el panel de Vercel.
@@ -1090,6 +1109,7 @@ enlaces?, ¿quién crea ejercicios: gerencia o también entrenadores?
 | V2.1 | 2026-09-09 | `399c795` | Dashboards por rol, asistencia QR, notificaciones, reportes CSV/PDF |
 | V2.2 | 2026-09-10 | `406dd68`, `417738b` | Gestión de socios, cobro por QR con comprobantes, cámara, racha, reportes híbridos; desplegada |
 | Cierre V2 | 2026-09-10 | `d599bda` | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada; documentos alineados |
+| V3.0 vitrina | 2026-09-11 | rama `feat/v3.0-multisucursal` | Landing multisucursal: chips de sedes en el hero, sección de sucursales rediseñada (portada/detalle/mapas), página `/sucursales` en el menú, texto de vitrina por sede en el tenant (`content.branches`), FAQ y «Nosotros» con las dos sedes; resets CSS a `@layer base` (márgenes y contraste de botones); voseo retirado de galería, horarios, instalaciones y tenants. Planes y pagos sin cambios |
 | V3.0 | 2026-09-11 | `0227dd4`, `16fd88c` | Multisucursal: `branches`, `user_branches`, asistencia con sede (histórico sin sede), `branches.manage`/`branches.all`, sede de trabajo por dispositivo, dashboards global/por sede, `/panel/sucursales`, reportes por sede, «Nuestras sucursales» en la vitrina, auditoría por disparador, `npm test`. Mítico: Prado + Miraflores. Desplegada (`dpl_7DFPH7re52R8Q7kzHNwXo5sG99TQ`) y verificada sobre el alias: públicas 200 desde CDN, vitrina con las dos sedes y sus mapas, panel 307, `/aurora-fit/panel/sucursales` 404, CSV de la comparativa 401 sin sesión y 404 en Aurora, sin `service_role` en chunks |
 
 Detalle de cada fase —defectos encontrados, tablas de pruebas por rol, notas de

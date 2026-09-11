@@ -411,7 +411,7 @@ export const auroraFitTenant: TenantConfig = {
     closingCta: {
       title: 'Tu clase de valoración es gratuita',
       subtitle:
-        'Vení, practicá y conversá con nosotras. Después vemos qué disciplina y qué ritmo te corresponden.',
+        'Ven, practica y conversa con nosotras. Después vemos qué disciplina y qué ritmo te corresponden.',
       label: 'Reservar mi valoración',
     },
   },

@@ -32,7 +32,7 @@ export default async function FacilitiesPage({ params }: TenantPageParams) {
       <FacilitiesSection
         facilities={content.facilities}
         eyebrow="Recorrido"
-        title="Conocé cada área"
+        title="Conoce cada área"
         layout="rows"
       />
 
