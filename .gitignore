@@ -58,6 +58,3 @@ npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
-
-.vercel
-.env*

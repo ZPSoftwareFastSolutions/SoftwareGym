@@ -886,8 +886,9 @@ export const miticoTenant: TenantConfig = {
       },
     ],
 
-    // El QR del banco todavía no lo entregó el gimnasio: la ventana reserva
-    // su hueco y mientras tanto explica cómo se paga. Ver `PaymentQrInfo`.
+    // Respaldo de titular y nota. La imagen del QR del banco la sube gerencia
+    // en /panel/cobros; mientras no esté, la ventana explica cómo se paga.
+    // Ver `PaymentQrInfo`.
     paymentQr: {
       holder: 'Mítico Fitness',
       note:

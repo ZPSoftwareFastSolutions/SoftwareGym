@@ -1,5 +1,11 @@
 # Arquitectura — GYM PLATFORM
 
+> ⚠️ **Este documento describe la arquitectura de V1** (sitio público). Sigue
+> siendo válido para esa parte —capas, contrato del enlatado, temas,
+> renderizado—, pero no cubre el sistema privado de V2 a V2.2 (Supabase, RLS,
+> panel, cobros). **La arquitectura vigente completa está en
+> [`/CLAUDE.md`](../../CLAUDE.md), §3 y §4.**
+>
 > Documento vivo. Toda decisión estructural que contradiga lo escrito aquí
 > debe registrarse antes como un ADR en `docs/architecture/adr/`.
 

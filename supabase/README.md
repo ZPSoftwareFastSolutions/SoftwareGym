@@ -58,7 +58,14 @@ Eso escribe los archivos `.sql` en `supabase/migrations/`. **Está pendiente**:
 hasta que se haga, el esquema está versionado en el servidor pero no en el
 repositorio, que es justo lo que la regla §47 del documento maestro pide evitar.
 
-Migraciones aplicadas, en orden:
+> **Estado al cierre de V2.2 (2026-09-10): 27 migraciones, 17 tablas con RLS,
+> 14 vistas, 53 políticas en `public` y 7 en `storage`, 2 buckets.** El
+> inventario completo y vigente está en
+> [`migrations/README.md`](migrations/README.md) y el modelo de datos en la §4
+> de [`/CLAUDE.md`](../CLAUDE.md). La tabla de abajo cubre solo la base inicial
+> de V2.
+
+Migraciones iniciales de V2, en orden:
 
 | # | Nombre | Qué hace |
 |---|---|---|

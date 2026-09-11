@@ -19,11 +19,18 @@ Desarrollado por **ZP Software Fast Solutions**.
 
 | Versión | Alcance | Estado |
 |---|---|---|
-| **V1** | Sitio público multi-tenant | ✅ **Entregado** |
-| V1.5 | API .NET + PostgreSQL | Pendiente |
-| V2 | Autenticación, clientes, membresías, pagos | Pendiente |
-| V3 | Asistencia, QR, reservas, rutinas, clases | Pendiente |
+| **V1** | Sitio público multi-tenant | ✅ Entregado |
+| **V2** | Supabase (Auth, PostgreSQL con RLS, Storage), login y registro | ✅ Entregado |
+| **V2.1** | Dashboards por rol, asistencia con QR, notificaciones, reportes | ✅ Entregado |
+| **V2.2** | Gestión de socios, cobro por QR con comprobantes, racha, reportes híbridos | ✅ Entregado · rama `feat/v2.2-gestion` |
+| V3 | Reservas, entrenadores, rutinas, clases | Siguiente |
 | V4 | Multi-sucursal, suscripciones, facturación | Pendiente |
+
+> **La descripción completa y vigente del sistema** —arquitectura, modelo de
+> datos, seguridad, rutas, flujos, despliegue, deuda y punto de partida de V3—
+> está en [`CLAUDE.md`](CLAUDE.md). Este README resume; si discrepan, manda
+> `CLAUDE.md`. La API .NET prevista para V1.5 no se construyó: Supabase la
+> sustituye (ADR 0004).
 
 ---
 
@@ -70,7 +77,24 @@ npm run start       # servidor de producción
 
 ---
 
-## Qué incluye V1
+## Qué incluye
+
+### Sistema privado (V2 → V2.2)
+
+- **Acceso de socios** con Supabase Auth: cookie `HttpOnly`, confirmación de
+  correo, cuentas vinculadas a su ficha.
+- **Tres espacios de trabajo** según permisos: plataforma, gimnasio (gerencia y
+  recepción) y socio.
+- **Asistencia** con check-in por cámara o lector, estadísticas y mapa de calor.
+- **Gestión de socios**: alta con plan, cobro y QR; ficha completa; edición,
+  venta y corrección de membresías (recepción crea, gerencia corrige).
+- **Cobro por QR** con comprobantes: el socio sube la captura, el personal la
+  aprueba y se crean membresía y pago; descarga en ZIP.
+- **Reportes** con filtros por periodo, plan, método y rol; CSV e impresión a PDF.
+- **Aislamiento entre gimnasios en la base** (RLS en todas las tablas),
+  verificado con sesiones simuladas por rol.
+
+### Sitio público (V1)
 
 **Nueve rutas por gimnasio:** Inicio · Nosotros · Servicios · Planes ·
 Instalaciones · Galería · Horarios · Contacto · Acceso socios.
@@ -135,17 +159,17 @@ Procedimiento completo, checklist de publicación y errores frecuentes en
 
 ---
 
-## Lo que V1 **no** hace
+## Lo que todavía **no** hace
 
 Declarado de forma explícita para que nadie lo suponga:
 
-- **No hay autenticación.** El formulario de `/acceso` está deshabilitado, sin
-  destino y con aviso en pantalla. Un formulario que acepta una contraseña sin
-  validarla contra nada es peor que no tenerlo.
-- **No hay base de datos ni API.** La configuración vive en archivos versionados.
+- **No hay tests automatizados ni CI.** Es la primera deuda a saldar.
+- **Las migraciones de la base no están en el repositorio**: viven en Supabase
+  y se listan en [`supabase/migrations/README.md`](supabase/migrations/README.md).
+- **La configuración de cada gimnasio sigue en archivos**, no en la base.
 - **El formulario de contacto no envía a un servidor.** Abre WhatsApp con los
   datos redactados, y así se indica en la propia página.
-- **No hay tests automatizados ni CI.** Es la primera deuda a saldar; está
-  registrada en el documento de arquitectura.
 - **Las fotografías no son reales.** Se dibujan composiciones generativas con
   los colores de cada marca hasta que el cliente entregue su material.
+- **Las cuentas de demostración usan contraseñas predecibles.** Hay que
+  eliminarlas antes de cualquier uso con datos reales.
