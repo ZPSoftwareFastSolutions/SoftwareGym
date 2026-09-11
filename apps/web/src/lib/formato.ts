@@ -55,6 +55,16 @@ export function hora(valor: string | null | undefined): string {
   return fecha.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+/** Hora actual en una zona horaria IANA, como `HH:MM` (24 h). */
+export function horaEnZona(zona: string): string {
+  try {
+    const texto = new Intl.DateTimeFormat('en-GB', { timeZone: zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
+    return /^\d{2}:\d{2}$/.test(texto) ? texto : new Date().toISOString().slice(11, 16);
+  } catch {
+    return new Date().toISOString().slice(11, 16);
+  }
+}
+
 /** Fecha de hoy en una zona horaria IANA, como `YYYY-MM-DD`. */
 export function hoyEnZona(zona: string): string {
   try {

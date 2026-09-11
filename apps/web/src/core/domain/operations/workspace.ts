@@ -14,13 +14,14 @@
  * cuenta. Falsear esta decisión solo lleva a una pantalla vacía.
  */
 
-/** Los cuatro roles del sistema. Se conservan por nombre solo para mostrarlos. */
-export type CodigoDeRol = 'super_admin' | 'manager' | 'receptionist' | 'customer';
+/** Los roles del sistema. Se conservan por nombre solo para mostrarlos. */
+export type CodigoDeRol = 'super_admin' | 'manager' | 'receptionist' | 'trainer' | 'customer';
 
 export const NOMBRE_DE_ROL: Readonly<Record<CodigoDeRol, string>> = {
   super_admin: 'Administrador de la plataforma',
   manager: 'Gerencia',
   receptionist: 'Recepción',
+  trainer: 'Entrenador',
   customer: 'Socio',
 };
 
@@ -29,12 +30,13 @@ export const NOMBRE_DE_ROL: Readonly<Record<CodigoDeRol, string>> = {
  * distinta: mezclarlos en una sola con condicionales termina en una página
  * que nadie entiende y que filtra por descuido.
  */
-export type EspacioDeTrabajo = 'plataforma' | 'gimnasio' | 'socio';
+export type EspacioDeTrabajo = 'plataforma' | 'gimnasio' | 'entrenador' | 'socio';
 
 /** Segmento de ruta de cada espacio, bajo `/[tenant]/panel`. */
 export const SEGMENTO_DE_ESPACIO: Readonly<Record<EspacioDeTrabajo, string>> = {
   plataforma: 'panel/plataforma',
   gimnasio: 'panel/gimnasio',
+  entrenador: 'panel/entrenador',
   socio: 'panel/socio',
 };
 
@@ -66,6 +68,16 @@ export const PERMISO = {
   gestionarSucursales: 'branches.manage',
   /** Alcance: opera y consulta todas las sedes sin estar asignado a cada una. */
   todasLasSucursales: 'branches.all',
+  // --- V3.1 · entrenadores + ejercicios ---
+  verEntrenadores: 'trainers.read',
+  /** Perfiles, cuenta, sedes, ausencias y asignaciones de socios. */
+  gestionarEntrenadores: 'trainers.manage',
+  /** Trabajar como entrenador: su perfil y sus socios asignados. */
+  trabajarComoEntrenador: 'trainers.self',
+  verEjercicios: 'exercises.read',
+  gestionarEjercicios: 'exercises.manage',
+  /** Reglas comerciales de los planes (V3.1: si incluyen entrenador). */
+  gestionarPlanes: 'plans.manage',
 } as const;
 
 export type CodigoDePermiso = (typeof PERMISO)[keyof typeof PERMISO];
@@ -95,12 +107,15 @@ export function tienePermiso(perfil: PerfilOperativo, permiso: string): boolean 
 export function espacioDeTrabajo(perfil: PerfilOperativo): EspacioDeTrabajo {
   if (tienePermiso(perfil, PERMISO.administrarGimnasios)) return 'plataforma';
   if (tienePermiso(perfil, PERMISO.verDashboard)) return 'gimnasio';
+  // Un entrenador con cuenta también suele tener rol de socio (se registró por
+  // la web): su espacio de trabajo es el de entrenador.
+  if (tienePermiso(perfil, PERMISO.trabajarComoEntrenador)) return 'entrenador';
   return 'socio';
 }
 
 /** Nombre legible del rol de mayor alcance, para saludar sin adivinar. */
 export function rolPrincipal(perfil: PerfilOperativo): string {
-  const orden: readonly CodigoDeRol[] = ['super_admin', 'manager', 'receptionist', 'customer'];
+  const orden: readonly CodigoDeRol[] = ['super_admin', 'manager', 'receptionist', 'trainer', 'customer'];
   const encontrado = orden.find((codigo) => perfil.roles.includes(codigo));
   return encontrado ? NOMBRE_DE_ROL[encontrado] : 'Cuenta';
 }

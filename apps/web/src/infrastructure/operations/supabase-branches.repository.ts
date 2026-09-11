@@ -233,8 +233,10 @@ export class SupabaseBranchesRepository implements BranchesRepositoryPort {
           alcanceGlobal: roles.some((rol) => rolesGlobales.has(rol)),
         };
       })
-      // Una cuenta que solo es de socio no opera en ninguna sede: no se ofrece.
-      .filter((cuenta) => cuenta.roles.some((rol) => rol !== 'customer'));
+      // Una cuenta que solo es de socio (o de entrenador, V3.1) no registra
+      // entradas en ninguna sede: no se ofrece para asignar. Las sedes de un
+      // entrenador se administran en su perfil.
+      .filter((cuenta) => cuenta.roles.some((rol) => rol !== 'customer' && rol !== 'trainer'));
   }
 
   async asignar(tenantId: string, appUserId: string, branchId: string): Promise<ResultadoDeOperacion<null>> {

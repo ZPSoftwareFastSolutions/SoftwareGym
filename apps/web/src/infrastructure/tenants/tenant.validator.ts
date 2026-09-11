@@ -182,6 +182,22 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('La entrada de navegación "sucursales" debe exigir la capacidad enableMultiBranch.');
   }
 
+  // Turnos del personal (V3.1). El código se guarda con cada ausencia (mismo
+  // patrón que la restricción de la base) y las horas deben ser un tramo real.
+  const turnos = tenant.hours.staffShifts;
+  if (turnos) {
+    if (turnos.length === 0 || turnos.length > 6) issues.push('hours.staffShifts: entre 1 y 6 turnos.');
+    const codigos = turnos.map((t) => t.code);
+    if (new Set(codigos).size !== codigos.length) issues.push('hours.staffShifts: códigos de turno repetidos.');
+    for (const t of turnos) {
+      if (!/^[a-z0-9-]{2,20}$/.test(t.code)) issues.push(`hours.staffShifts: el código "${t.code}" debe usar a-z, 0-9 y guiones (2 a 20).`);
+      const hora = /^([01]\d|2[0-3]):[0-5]\d$/;
+      if (!hora.test(t.start) || !hora.test(t.end) || t.end <= t.start) {
+        issues.push(`hours.staffShifts "${t.code}": horas HH:MM y el fin después del inicio.`);
+      }
+    }
+  }
+
   return issues;
 }
 

@@ -121,6 +121,16 @@ export interface BusinessHours {
   readonly timezone: string;
   readonly week: readonly DaySchedule[];
   readonly holidayNote?: string;
+  /**
+   * V3.1 · Turnos de trabajo del personal («no disponible por la mañana»), en
+   * la hora local del gimnasio. Ausente: Mañana 06–12, Tarde 12–18, Noche 18–22.
+   */
+  readonly staffShifts?: readonly {
+    readonly code: string;
+    readonly label: string;
+    readonly start: string;
+    readonly end: string;
+  }[];
 }
 
 export interface NavItem {

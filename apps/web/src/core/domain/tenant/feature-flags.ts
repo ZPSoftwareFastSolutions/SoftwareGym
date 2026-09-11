@@ -54,6 +54,14 @@ export interface FeatureFlags {
    * pero sus socios se gestionan fuera del sistema.
    */
   readonly enableMemberManagement: boolean;
+
+  // --- V3.1 ---
+  /**
+   * Catálogo de ejercicios del gimnasio con sus medios. Separada de
+   * `enableTrainers` (perfiles, ausencias y asignaciones): un gimnasio puede
+   * contratar el catálogo sin gestionar entrenadores, y al revés.
+   */
+  readonly enableExercises: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -83,6 +91,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   enableReports: false,
   enableMultiBranch: false,
   enableMemberManagement: false,
+  enableExercises: false,
 };
 
 export type FeatureFlagKey = keyof FeatureFlags;

@@ -155,6 +155,12 @@ export const miticoTenant: TenantConfig = {
     // datos de la base que gerencia administra en /panel/sucursales, y la
     // vitrina las lee de allí.
     enableMultiBranch: true,
+
+    // V3.1: entrenadores (perfiles, sedes, ausencias, asignación de socios
+    // según el plan) y catálogo de ejercicios con medios. Los entrenadores y
+    // ejercicios son datos de la base, no de este archivo.
+    enableTrainers: true,
+    enableExercises: true,
   },
 
   seo: {

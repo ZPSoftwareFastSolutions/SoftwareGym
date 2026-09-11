@@ -59,10 +59,15 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
   const entradas: EntradaDePanel[] = [
     {
       href: tenantHref(slug, SEGMENTO_DE_ESPACIO[espacio]),
-      etiqueta: espacio === 'socio' ? 'Mi panel' : 'Resumen',
-      icono: 'layers',
+      etiqueta: espacio === 'socio' ? 'Mi panel' : espacio === 'entrenador' ? 'Mis socios' : 'Resumen',
+      icono: espacio === 'entrenador' ? 'trainer' : 'layers',
     },
   ];
+
+  // Un entrenador que además es socio del gimnasio sigue viendo su membresía.
+  if (espacio === 'entrenador' && perfil.customerId) {
+    entradas.push({ href: tenantHref(slug, 'panel/socio'), etiqueta: 'Mi membresía', icono: 'idcard' });
+  }
 
   // Dos condiciones, y las dos hacen falta: la capacidad tiene que estar
   // CONTRATADA por el gimnasio y la persona tiene que tener PERMISO. Una flag
@@ -93,6 +98,20 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
 
   if (esPersonal && features.enableMultiBranch && tienePermiso(perfil, PERMISO.gestionarSucursales)) {
     entradas.push({ href: tenantHref(slug, 'panel/sucursales'), etiqueta: 'Sucursales', icono: 'pin' });
+  }
+
+  if (esPersonal && features.enableTrainers && tienePermiso(perfil, PERMISO.verEntrenadores)) {
+    entradas.push({ href: tenantHref(slug, 'panel/entrenadores'), etiqueta: 'Entrenadores', icono: 'trainer' });
+  }
+
+  if (esPersonal && features.enableExercises && tienePermiso(perfil, PERMISO.verEjercicios)) {
+    entradas.push({ href: tenantHref(slug, 'panel/ejercicios'), etiqueta: 'Ejercicios', icono: 'dumbbell' });
+  }
+
+  // Alguien del personal que además entrena socios (recepción con perfil de
+  // entrenador, por ejemplo) llega a su lista desde aquí.
+  if (esPersonal && features.enableTrainers && tienePermiso(perfil, PERMISO.trabajarComoEntrenador)) {
+    entradas.push({ href: tenantHref(slug, 'panel/entrenador'), etiqueta: 'Mis socios', icono: 'user' });
   }
 
   if (features.enableReports && tienePermiso(perfil, PERMISO.verReportes)) {

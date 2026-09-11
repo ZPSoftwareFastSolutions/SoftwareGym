@@ -33,6 +33,15 @@ const SUPABASE_ORIGIN = (() => {
 })();
 
 const connectSrc = ["'self'", SUPABASE_ORIGIN].filter(Boolean).join(' ');
+
+/**
+ * Medios del catálogo de ejercicios (V3.1): imágenes y clips del bucket PRIVADO
+ * `ejercicios`, servidos con URL firmada de corta vida desde el origen de
+ * NUESTRO proyecto de Supabase (no `*.supabase.co`). No pasan por la
+ * aplicación porque un clip de 15 MB no cabe en una respuesta de Vercel.
+ */
+const mediaSrc = ["'self'", 'blob:', SUPABASE_ORIGIN].filter(Boolean).join(' ');
+const imgSrc = ["'self'", 'data:', 'blob:', SUPABASE_ORIGIN].filter(Boolean).join(' ');
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -53,10 +62,13 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      `img-src ${imgSrc}`,
+      `media-src ${mediaSrc}`,
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
-      "frame-src 'self' https://www.google.com https://maps.google.com",
+      // Mapas de las sedes y vídeos enlazados de ejercicios (solo los reproductores
+      // sin cookies de seguimiento: youtube-nocookie y Vimeo con dnt).
+      "frame-src 'self' https://www.google.com https://maps.google.com https://www.youtube-nocookie.com https://player.vimeo.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

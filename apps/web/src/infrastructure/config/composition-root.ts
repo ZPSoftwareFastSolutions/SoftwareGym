@@ -22,7 +22,9 @@ import type {
   PaymentSettingsPort,
   ReceiptsRepositoryPort,
 } from '@core/application/ports/receipts-repository.port';
+import type { ExercisesRepositoryPort } from '@core/application/ports/exercises-repository.port';
 import type { ReportsRepositoryPort } from '@core/application/ports/reports-repository.port';
+import type { TrainersRepositoryPort } from '@core/application/ports/trainers-repository.port';
 import type { TenantRepositoryPort } from '@core/application/ports/tenant-repository.port';
 import { StaticTenantRepository } from '../tenants/static-tenant.repository';
 
@@ -82,6 +84,20 @@ export async function branchesRepository(): Promise<BranchesRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseBranchesRepository } = await import('../operations/supabase-branches.repository');
   return new SupabaseBranchesRepository(await createSupabaseServerClient());
+}
+
+/** Entrenadores (V3.1), con la sesión de quien pregunta. */
+export async function trainersRepository(): Promise<TrainersRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseTrainersRepository } = await import('../operations/supabase-trainers.repository');
+  return new SupabaseTrainersRepository(await createSupabaseServerClient());
+}
+
+/** Catálogo de ejercicios y sus medios (V3.1), con la sesión de quien pregunta. */
+export async function exercisesRepository(): Promise<ExercisesRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseExercisesRepository } = await import('../operations/supabase-exercises.repository');
+  return new SupabaseExercisesRepository(await createSupabaseServerClient());
 }
 
 /**

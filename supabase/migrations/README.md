@@ -81,6 +81,18 @@ importes 180/179/181 en [`docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`](../../do
 Los 6 intentos fallidos de gerencia dejaron 6 imágenes huérfanas en
 `qr-pagos/4b79e41f…/qr-*.jpg`: se borran desde el panel de Storage (SQL no puede).
 
+## V3.1 · Entrenadores + ejercicios (2026-09-11)
+
+| Versión | Nombre | Qué introduce |
+|---|---|---|
+| 20260911191206 | `v3_roles_de_gimnasio_no_otorgan_plataforma` | **Corrige una escalada de privilegios existente desde V2**: `user_roles_write` dejaba a gerencia (`users.manage`) otorgar CUALQUIER rol a cuentas de su gimnasio, incluido `super_admin` (probado: `is_platform_admin` pasaba a verdadero). Ahora fuera de la plataforma solo se insertan/borran roles de alcance `tenant`; sin UPDATE de roles; `app_users` sin INSERT y con UPDATE solo de `customer_id`, `full_name`, `status` |
+| 20260911191920 | `v3_1_entrenadores_ejercicios_y_permisos` | Permisos `trainers.read/manage/self`, `exercises.read/manage`; rol `trainer` (solo `trainers.self`). `membership_plans.includes_trainer` y `max_secondary_trainers` (0–5); `tenants.media_quota_bytes` (300 MB). Tablas con RLS y FK compuestas: `trainers` (cuenta opcional, única), `trainer_branches` (N:M), `trainer_unavailability` (horas/turno/día/periodo, sin solapes), `customer_trainers` (principal único, secundarios según el plan, fin en vez de borrar), `exercises` (catálogo por gimnasio, 14 grupos musculares), `exercise_media` (imagen/GIF/clip/enlace; tamaño y tipo leídos de `storage.objects`; cuota y 6 por ejercicio). Disparadores de validación y auditoría; RPC `vincular_cuenta_de_entrenador`, `desvincular_cuenta_de_entrenador`, `mis_socios_asignados` (DEFINER solo en `app`); vistas `v_trainers`, `v_customer_trainers`, `v_uso_de_medios`; bucket privado `ejercicios` (15 MB, imagen/GIF/MP4/WebM) con políticas por `exercises.read/manage` |
+| 20260911192032 | `v3_1_semilla_entrenador_demo_y_ejercicios` | Mítico: cuenta demo `entrenador@miticofitness.com` vinculada al perfil «Entrenador Demo» en sus sedes activas; 13 ejercicios base sin medios. **Sin asignaciones**: los planes nacen sin entrenador (lo decide gerencia) |
+| 20260911192503 | `v3_1_mensajes_de_asignacion_y_especialidades` | Ajustes que detectó la batería de RLS (no eran brechas): especialidades sin repetir mayúsculas; «ya asignado» / «ya tiene principal» antes de la regla del plan; entrenador de otro gimnasio → `entrenador_no_disponible` |
+
+Pruebas por rol, gimnasio ajeno, anónimo, cuota y escalada de roles:
+[`docs/runbooks/pruebas-rls-v3.1-entrenadores-ejercicios.sql`](../../docs/runbooks/pruebas-rls-v3.1-entrenadores-ejercicios.sql).
+
 **Histórico sin sucursal.** Las 154 entradas anteriores a V3.0 no guardaron
 dónde ocurrieron y no hay dato fiable para deducirlo: se dejaron con
 `branch_id` NULL («sin sucursal registrada») en vez de inventarles una sede.
