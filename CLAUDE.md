@@ -970,7 +970,7 @@ programa?, ¿se cobra aparte o va incluido en el plan?
 | V2 cabecera | 2026-09-09 | `54bb33f`, `b1310db`, `0ba2a83` | «Mi panel» con sesión; cuentas demo por rol |
 | V2.1 | 2026-09-09 | `399c795` | Dashboards por rol, asistencia QR, notificaciones, reportes CSV/PDF |
 | V2.2 | 2026-09-10 | `406dd68`, `417738b` | Gestión de socios, cobro por QR con comprobantes, cámara, racha, reportes híbridos; desplegada |
-| Cierre V2 | 2026-09-10 | (este commit) | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada |
+| Cierre V2 | 2026-09-10 | `d599bda` | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada; documentos alineados |
 
 Detalle de cada fase —defectos encontrados, tablas de pruebas por rol, notas de
 despliegue— en [`docs/historial/bitacora-v1-a-v2.2.md`](docs/historial/bitacora-v1-a-v2.2.md).
