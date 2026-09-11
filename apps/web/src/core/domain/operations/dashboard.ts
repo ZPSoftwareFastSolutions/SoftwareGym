@@ -41,6 +41,8 @@ export interface GimnasioDeLaPlataforma {
   readonly currency: string;
   readonly cuentas: number;
   readonly cuentasActivas: number;
+  /** Sedes activas (V3.0). */
+  readonly sucursales: number;
 }
 
 /**

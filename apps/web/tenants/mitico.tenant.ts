@@ -149,6 +149,11 @@ export const miticoTenant: TenantConfig = {
     enableReports: true,
     enablePayments: true,
     enableMemberManagement: true,
+
+    // V3.0: dos sedes (Prado y Miraflores). Las sedes NO se declaran aquí: son
+    // datos de la base que gerencia administra en /panel/sucursales, y la
+    // vitrina las lee de allí.
+    enableMultiBranch: true,
   },
 
   seo: {

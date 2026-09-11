@@ -29,6 +29,15 @@ const QrScanner = dynamic(() => import('./QrScanner').then((modulo) => modulo.Qr
 
 interface CheckInPanelProps {
   readonly slug: string;
+  /**
+   * Sede donde se registra (V3.0). Viaja en el formulario para que la entrada
+   * quede en la sede que el mostrador TENÍA EN PANTALLA, aunque en otra
+   * pestaña se haya cambiado la sede de trabajo. El servidor la vuelve a
+   * validar y la base también.
+   */
+  readonly sucursal: { readonly id: string; readonly name: string } | null;
+  /** Muestra el nombre de la sede. Un gimnasio de sede única no lo necesita. */
+  readonly mostrarSucursal?: boolean;
   /** Abre directamente con la cámara, para el tótem o el acceso rápido. */
   readonly empezarConCamara?: boolean;
 }
@@ -55,7 +64,7 @@ function BotonRegistrar() {
   );
 }
 
-export function CheckInPanel({ slug, empezarConCamara = false }: CheckInPanelProps) {
+export function CheckInPanel({ slug, sucursal, mostrarSucursal = false, empezarConCamara = false }: CheckInPanelProps) {
   const [estado, accion] = useActionState(registrarCheckIn, ESTADO_INICIAL);
   const [camara, setCamara] = useState(empezarConCamara);
   const campo = useRef<HTMLInputElement>(null);
@@ -90,10 +99,25 @@ export function CheckInPanel({ slug, empezarConCamara = false }: CheckInPanelPro
 
   return (
     <div className="flex flex-col gap-5">
+      {mostrarSucursal && sucursal && (
+        <p className="flex items-center gap-2 self-start rounded-full border border-action/40 bg-action/10 px-3.5 py-1.5 text-[0.82rem] text-ink">
+          <Icon name="pin" size={15} className="text-action" />
+          Registrando en <strong className="font-semibold">{sucursal.name}</strong>
+        </p>
+      )}
+
+      {!sucursal && (
+        <p className="flex items-start gap-2.5 rounded-[var(--t-radius-md)] border border-structural/50 bg-structural/10 px-4 py-3 text-[0.88rem] text-ink">
+          <Icon name="alert" size={17} className="mt-0.5 shrink-0 text-structural" />
+          Tu cuenta no tiene ninguna sucursal donde registrar entradas. Pide a gerencia que te asigne una sede.
+        </p>
+      )}
+
       {camara && <QrScanner alDetectar={alDetectar} alCancelar={alCancelar} />}
 
       <form ref={formulario} action={accion} className={cn('flex flex-col gap-3 sm:flex-row', camara && 'sr-only')}>
         <input type="hidden" name="tenantSlug" value={slug} />
+        <input type="hidden" name="sucursal" value={sucursal?.id ?? ''} />
         <div className="flex-1">
           <label htmlFor="codigo-check-in" className="sr-only">
             Código del socio
@@ -152,6 +176,12 @@ export function CheckInPanel({ slug, empezarConCamara = false }: CheckInPanelPro
   );
 }
 
+/** Hora en el reloj de quien mira el mostrador, que está físicamente en el gimnasio. */
+function horaLocal(iso: string): string {
+  const fecha = new Date(iso);
+  return Number.isNaN(fecha.getTime()) ? '—' : fecha.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+}
+
 function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeCheckIn['resultado']> }) {
   const base = 'flex items-start gap-3.5 rounded-[var(--t-radius-md)] border px-5 py-4';
 
@@ -163,7 +193,7 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
           <span>
             <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
             <span className="text-[0.88rem] text-muted">
-              Entrada registrada
+              Entrada registrada en {resultado.sucursal}
               {typeof resultado.diasRestantes === 'number' &&
                 ` · le quedan ${resultado.diasRestantes} ${resultado.diasRestantes === 1 ? 'día' : 'días'} de membresía`}
             </span>
@@ -176,7 +206,9 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
           <Icon name="clock" size={20} className="mt-0.5 shrink-0 text-muted" />
           <span>
             <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
-            <span className="text-[0.88rem] text-muted">Ya tenía su entrada de hoy. No se registra dos veces el mismo día.</span>
+            <span className="text-[0.88rem] text-muted">
+              Ya tenía su entrada de hoy{resultado.sucursal ? ` en ${resultado.sucursal}` : ''}, a las {horaLocal(resultado.hora)}. No se registra dos veces el mismo día.
+            </span>
           </span>
         </p>
       );
@@ -186,7 +218,7 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
           <Icon name="shield" size={20} className="mt-0.5 shrink-0 text-structural" />
           <span>
             <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
-            <span className="text-[0.88rem] text-muted">Entrada registrada, pero su membresía está vencida. Ofrécele la renovación.</span>
+            <span className="text-[0.88rem] text-muted">Entrada registrada en {resultado.sucursal}, pero su membresía está vencida. Ofrécele la renovación.</span>
           </span>
         </p>
       );

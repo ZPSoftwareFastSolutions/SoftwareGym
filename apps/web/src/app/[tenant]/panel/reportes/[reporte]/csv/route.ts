@@ -37,7 +37,12 @@ export async function GET(peticion: Request, { params }: Contexto) {
   const tenant = await getTenantBySlug(tenantRepository(), slugCrudo.trim().toLowerCase());
   // Las mismas capacidades que exige la página. Un gimnasio sin reportes
   // contratados no tiene esta ruta, ni siquiera para quien tendría permiso.
-  if (!tenant || tenant.features.memberLogin !== true || tenant.features.enableReports !== true) {
+  if (
+    !tenant ||
+    tenant.features.memberLogin !== true ||
+    tenant.features.enableReports !== true ||
+    (definicion.capacidad !== undefined && tenant.features[definicion.capacidad] !== true)
+  ) {
     return new NextResponse('No encontrado', { status: 404 });
   }
 

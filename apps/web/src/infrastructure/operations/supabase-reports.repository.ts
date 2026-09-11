@@ -38,6 +38,8 @@ import {
 import { NOMBRE_DE_METODO, type MetodoDeAsistencia } from '@core/domain/operations/attendance';
 import { NOMBRE_DE_ROL, type CodigoDeRol } from '@core/domain/operations/workspace';
 import { numero } from '@core/domain/operations/dashboard';
+import { ETIQUETA_SIN_SUCURSAL, FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
+import { diasDelRango, porcentaje } from '@core/domain/operations/reports';
 
 const TOPE = 2000;
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,6 +61,11 @@ function busquedaSegura(q: string | undefined): string | null {
 
 function esMetodoDeAsistencia(valor: unknown): valor is MetodoDeAsistencia {
   return valor === 'manual' || valor === 'qr' || valor === 'kiosk';
+}
+
+/** Código de sede (el mismo patrón que la base) o el histórico sin sede. */
+function esFiltroDeSucursal(valor: unknown): valor is string {
+  return typeof valor === 'string' && (valor === FILTRO_SIN_SUCURSAL || /^[A-Z0-9]{2,12}$/.test(valor));
 }
 
 function esRol(valor: unknown): valor is CodigoDeRol {
@@ -89,6 +96,7 @@ function filtroAdmitido(clave: ClaveDeReporte, filtro: FiltroDeReporte): FiltroD
     ...(metodoValido ? { metodo: filtro.metodo } : {}),
     ...(admitidos.has('origen') && esOrigenDeComprobante(filtro.origen) ? { origen: filtro.origen } : {}),
     ...(admitidos.has('rol') && esRol(filtro.rol) ? { rol: filtro.rol } : {}),
+    ...(admitidos.has('sucursal') && esFiltroDeSucursal(filtro.sucursal) ? { sucursal: filtro.sucursal } : {}),
     ...(admitidos.has('busqueda') && busquedaSegura(filtro.q) ? { q: busquedaSegura(filtro.q) ?? undefined } : {}),
   };
 }
@@ -103,6 +111,8 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
         return this.asistencia(filtro);
       case 'asistencia-por-socio':
         return this.asistenciaPorSocio(filtro, hoy);
+      case 'asistencia-por-sucursal':
+        return this.asistenciaPorSucursal(filtro, hoy);
       case 'membresias':
         return this.membresias(filtro);
       case 'vencimientos':
@@ -133,13 +143,15 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
 
     let consulta = this.supabase
       .from('v_attendance_log')
-      .select('attendance_date, checked_in_local, customer_id, customer_name, customer_code, method')
+      .select('attendance_date, checked_in_local, customer_id, customer_name, customer_code, method, branch_name')
       .order('checked_in_local', { ascending: false })
       .limit(TOPE);
 
     if (filtro.desde) consulta = consulta.gte('attendance_date', filtro.desde);
     if (filtro.hasta) consulta = consulta.lte('attendance_date', filtro.hasta);
     if (filtro.metodo) consulta = consulta.eq('method', filtro.metodo);
+    if (filtro.sucursal === FILTRO_SIN_SUCURSAL) consulta = consulta.is('branch_id', null);
+    else if (filtro.sucursal) consulta = consulta.eq('branch_code', filtro.sucursal);
     if (filtro.planId) {
       const ids = (fichas ?? []).filter((f) => f.plan_id === filtro.planId).map((f) => String(f.id));
       if (ids.length === 0) return [];
@@ -155,6 +167,7 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
       socio: texto(fila.customer_name),
       codigo: texto(fila.customer_code),
       plan: planDeSocio.get(String(fila.customer_id)) ?? '',
+      sucursal: texto(fila.branch_name) || ETIQUETA_SIN_SUCURSAL,
       metodo: esMetodoDeAsistencia(fila.method) ? NOMBRE_DE_METODO[fila.method] : texto(fila.method),
     }));
   }
@@ -173,6 +186,8 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
     let entradas = this.supabase.from('v_attendance_log').select('customer_id').limit(20_000);
     if (filtro.desde) entradas = entradas.gte('attendance_date', filtro.desde);
     if (filtro.hasta) entradas = entradas.lte('attendance_date', filtro.hasta);
+    if (filtro.sucursal === FILTRO_SIN_SUCURSAL) entradas = entradas.is('branch_id', null);
+    else if (filtro.sucursal) entradas = entradas.eq('branch_code', filtro.sucursal);
 
     const [{ data: socios }, { data: visitas }] = await Promise.all([fichas, entradas]);
 
@@ -195,6 +210,57 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
         };
       })
       .sort((a, b) => b.visitas - a.visitas || a.socio.localeCompare(b.socio));
+  }
+
+  /**
+   * Comparativa de sedes. Cada sede ACTIVA aparece aunque no tenga entradas:
+   * una sede a cero en el periodo es justo lo que el gerente tiene que ver, y
+   * omitirla la haría desaparecer del reporte. Las inactivas y el histórico
+   * sin sede solo aparecen si tienen entradas en el periodo.
+   */
+  private async asistenciaPorSucursal(filtro: FiltroDeReporte, hoy: string): Promise<readonly FilaDeReporte[]> {
+    let entradas = this.supabase
+      .from('v_attendance_log')
+      .select('branch_id, customer_id, attendance_date')
+      .limit(20_000);
+    if (filtro.desde) entradas = entradas.gte('attendance_date', filtro.desde);
+    if (filtro.hasta) entradas = entradas.lte('attendance_date', filtro.hasta);
+    if (filtro.metodo) entradas = entradas.eq('method', filtro.metodo);
+
+    const [{ data: visitas }, { data: sedes }] = await Promise.all([
+      entradas,
+      this.supabase.from('branches').select('id, name, is_active').order('name'),
+    ]);
+
+    const acumulado = new Map<string, { entradas: number; socios: Set<string> }>();
+    let primeraFecha: string | null = null;
+    for (const visita of visitas ?? []) {
+      const clave = texto(visita.branch_id) || FILTRO_SIN_SUCURSAL;
+      const actual = acumulado.get(clave) ?? { entradas: 0, socios: new Set<string>() };
+      actual.entradas += 1;
+      actual.socios.add(String(visita.customer_id));
+      acumulado.set(clave, actual);
+      const fecha = texto(visita.attendance_date);
+      if (fecha && (!primeraFecha || fecha < primeraFecha)) primeraFecha = fecha;
+    }
+
+    const total = [...acumulado.values()].reduce((suma, sede) => suma + sede.entradas, 0);
+    const dias = diasDelRango(filtro.desde ?? primeraFecha ?? hoy, filtro.hasta ?? hoy, hoy);
+    const fila = (nombre: string, datos: { entradas: number; socios: Set<string> } | undefined) => ({
+      sucursal: nombre,
+      entradas: datos?.entradas ?? 0,
+      socios: datos?.socios.size ?? 0,
+      promedio: Math.round(((datos?.entradas ?? 0) / dias) * 10) / 10,
+      porcentaje: porcentaje(datos?.entradas ?? 0, total),
+    });
+
+    const filas = (sedes ?? [])
+      .filter((sede) => sede.is_active === true || acumulado.has(String(sede.id)))
+      .map((sede) => fila(sede.is_active === true ? texto(sede.name) ?? 'Sucursal' : `${texto(sede.name) ?? 'Sucursal'} (inactiva)`, acumulado.get(String(sede.id))))
+      .sort((a, b) => b.entradas - a.entradas || a.sucursal.localeCompare(b.sucursal, 'es'));
+
+    const historico = acumulado.get(FILTRO_SIN_SUCURSAL);
+    return historico ? [...filas, fila(ETIQUETA_SIN_SUCURSAL, historico)] : filas;
   }
 
   private async membresias(filtro: FiltroDeReporte): Promise<readonly FilaDeReporte[]> {

@@ -8,6 +8,8 @@
 
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { cobroDeTenant } from '@/lib/cobro';
+import { publicBranchesRepository } from '@infra/config/composition-root';
+import { BranchesSection } from '@/presentation/sections/BranchesSection';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
 import { HeroSection } from '@/presentation/sections/HeroSection';
@@ -17,10 +19,18 @@ import { ProductsSection } from '@/presentation/sections/ProductsSection';
 import { ServicesSection } from '@/presentation/sections/ServicesSection';
 import { TestimonialsSection } from '@/presentation/sections/TestimonialsSection';
 
+/**
+ * V3.0 · Las sedes vienen de la base (gerencia las edita sin desplegar), así
+ * que la portada se regenera en segundo plano cada cinco minutos (ISR). Sigue
+ * siendo estática: el cliente anónimo no lee cookies.
+ */
+export const revalidate = 300;
+
 export default async function TenantHomePage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params);
   const cobro = cobroDeTenant(tenant);
   const { content, features, slug, contact } = tenant;
+  const sucursales = features.enableMultiBranch ? await (await publicBranchesRepository()).sucursalesPublicas(slug) : [];
 
   return (
     <>
@@ -48,6 +58,8 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
           lead="Elige el paquete que se adapta a ti. Sin permanencia mínima."
         />
       )}
+
+      <BranchesSection sucursales={sucursales} tenantName={tenant.name} contact={contact} />
 
       {features.showProducts && (
         <ProductsSection categories={content.products} contact={contact} />

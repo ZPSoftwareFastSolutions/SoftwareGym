@@ -57,7 +57,7 @@ export default async function ReportesPage({ params }: TenantPageParams) {
   const { slug } = tenant;
 
   const { perfil } = await exigirPermiso(slug, PERMISO.verReportes);
-  const disponibles = reportesDisponibles(perfil.permissions);
+  const disponibles = reportesDisponibles(perfil.permissions, tenant.features);
 
   return (
     <div className="flex flex-col gap-6">

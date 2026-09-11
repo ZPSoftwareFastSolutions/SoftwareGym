@@ -37,6 +37,14 @@ export interface FeatureFlags {
   readonly enableNotifications: boolean;
   readonly enablePayments: boolean;
   readonly enableReports: boolean;
+  /**
+   * V3.0 · Multisucursal: selector de sede de trabajo, `/panel/sucursales`,
+   * vistas y reportes por sede y la sección pública «Nuestras sucursales».
+   *
+   * Apagada NO significa «sin sucursales»: todo gimnasio tiene al menos su sede
+   * principal en la base y cada entrada nueva la registra. Significa que el
+   * gimnasio opera como sede única y no ve nada de la gestión multisede.
+   */
   readonly enableMultiBranch: boolean;
 
   // --- V2.2 ---

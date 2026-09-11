@@ -117,6 +117,13 @@ export default async function PanelDePlataformaPage({ params }: TenantPageParams
               celda: (fila) => `${fila.cuentasActivas} / ${fila.cuentas}`,
             },
             {
+              // Configuración, no datos personales: el super admin sí la ve.
+              clave: 'sucursales',
+              titulo: 'Sucursales',
+              numerica: true,
+              celda: (fila) => fila.sucursales,
+            },
+            {
               clave: 'zona',
               titulo: 'Zona horaria',
               secundaria: true,

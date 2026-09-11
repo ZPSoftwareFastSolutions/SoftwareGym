@@ -32,7 +32,9 @@ import { Badge } from '@/presentation/ui/Badge';
 import { Button, LinkButton } from '@/presentation/ui/Button';
 import { CLASE_DE_CONTROL } from '@/presentation/ui/Campo';
 import { Icon } from '@/presentation/icons/Icon';
+import { ETIQUETA_SIN_SUCURSAL, FILTRO_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
 import { exigirPermiso, fechaCorta, hora } from '../_datos';
+import { contextoDeSucursal } from '../_sucursal';
 
 export const metadata: Metadata = { title: 'Control de asistencia', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -59,15 +61,22 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
   const puedeVerReportes = features.enableReports && tienePermiso(perfil, PERMISO.verReportes);
   const gestionSocios = features.enableMemberManagement === true && tienePermiso(perfil, PERMISO.verSocios);
 
+  const multisede = features.enableMultiBranch === true;
+  const sede = await contextoDeSucursal(perfil);
+
   const consulta = await searchParams;
   const busqueda = parametro(consulta.q);
   const { desde, hasta } = normalizarRango(parametro(consulta.desde, 10), parametro(consulta.hasta, 10));
-  const hayFiltro = Boolean(busqueda || desde || hasta);
+  // Solo valores conocidos: una sede de este gimnasio o el histórico sin sede.
+  const sucursalCruda = multisede ? parametro(consulta.sucursal, 40) : '';
+  const sucursalFiltro =
+    sucursalCruda === FILTRO_SIN_SUCURSAL || sede.sucursales.some((s) => s.id === sucursalCruda) ? sucursalCruda : '';
+  const hayFiltro = Boolean(busqueda || desde || hasta || sucursalFiltro);
 
   const [kpis, serie, registros, del30] = await Promise.all([
     repo.indicadores(slug),
     repo.asistenciaDiaria(30),
-    repo.historialDeAsistencia({ busqueda, desde, hasta, limite: 80 }),
+    repo.historialDeAsistencia({ busqueda, desde, hasta, limite: 80, ...(sucursalFiltro ? { sucursal: sucursalFiltro } : {}) }),
     // Una sola consulta alimenta hora pico, mapa de calor y métodos: salen de
     // las mismas filas y no pueden contradecirse entre sí.
     repo.historialDeAsistencia({ limite: 500 }),
@@ -112,6 +121,9 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
     detalle: `${String(h).padStart(2, '0')}:00 a ${String(h).padStart(2, '0')}:59: ${porHora.get(h) ?? 0} entradas`,
   }));
 
+  const reparto = multisede ? repartoPorSucursal(ventana) : [];
+  // Tokens de marca; el histórico sin sede va siempre en gris, aparte.
+  const COLORES_DE_SEDE = ['var(--t-action)', 'var(--t-structural)', 'var(--t-accent)', 'var(--t-structural-deep)'];
   const sociosUnicos = new Set(ventana.map((r) => r.customerId)).size;
   const mejorDiaIndice = calor.map((fila) => fila.reduce((s, v) => s + v, 0)).reduce((mejor, total, i, todos) => (total > (todos[mejor] ?? 0) ? i : mejor), 0);
   const base = tenantHref(slug, 'panel/asistencia');
@@ -127,9 +139,10 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
             </h2>
             <p className="mt-1.5 text-[0.86rem] text-muted">
               Usa la cámara para leer el QR del socio, o escanéalo con un lector / teclea el código. Se registra solo.
+              {multisede && ' El mismo QR vale en todas las sedes: la entrada queda en tu sucursal actual.'}
             </p>
             <div className="mt-6">
-              <CheckInPanel slug={slug} />
+              <CheckInPanel slug={slug} sucursal={sede.actual} mostrarSucursal={multisede} />
             </div>
           </section>
         ) : (
@@ -205,6 +218,50 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
           </section>
         </div>
 
+        {multisede && reparto.length > 0 && (
+          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-sedes">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="titulo-sedes" className="t-h3">Entradas por sucursal</h2>
+                <p className="mt-1.5 text-[0.86rem] text-muted">Últimos 30 días. El mismo socio puede entrenar en varias sedes con su única membresía.</p>
+              </div>
+              {puedeVerReportes && (
+                <LinkButton href={`${tenantHref(slug, 'panel/reportes/asistencia-por-sucursal')}?preset=30d`} variant="ghost" size="sm" icon="chart" iconPosition="start">
+                  Comparar sedes
+                </LinkButton>
+              )}
+            </div>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
+              <DonutChart
+                titulo="Entradas por sucursal en los últimos 30 días"
+                centroValor={`${ventana.length}`}
+                centroEtiqueta="entradas"
+                segmentos={reparto.map((r, i) => ({
+                  etiqueta: r.nombre,
+                  valor: r.visitas,
+                  color: r.branchId === null ? 'color-mix(in srgb, var(--t-muted) 60%, transparent)' : (COLORES_DE_SEDE[i % COLORES_DE_SEDE.length] ?? 'var(--t-action)'),
+                }))}
+              />
+              <ul className="flex flex-col gap-2">
+                {reparto.map((r) => (
+                  <li key={r.branchId ?? 'sin'}>
+                    <a
+                      href={`${base}?sucursal=${r.branchId ?? FILTRO_SIN_SUCURSAL}#historial`}
+                      className="flex min-h-11 items-center justify-between gap-3 rounded-[var(--t-radius-md)] bg-raised px-4 text-[0.9rem] transition-colors hover:text-action"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon name="pin" size={15} className={r.branchId ? 'text-action' : 'text-muted'} />
+                        {r.nombre}
+                      </span>
+                      <span className="tabular-nums text-muted">{r.visitas}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
         <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-horas">
           <h2 id="titulo-horas" className="t-h3">Entradas por hora</h2>
           <BarChart titulo="Entradas por hora del día" puntos={puntosPorHora} unidad="entradas" alto={170} saltoDeEtiqueta={2} className="mt-6" />
@@ -219,11 +276,35 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
             {hayFiltro && <Badge tone="neutral">{registros.length} resultados</Badge>}
           </div>
 
-          <form method="get" action={`${base}#historial`} data-print="hide" className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end">
+          <form
+            method="get"
+            action={`${base}#historial`}
+            data-print="hide"
+            className={
+              multisede
+                ? 'mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] lg:items-end'
+                : 'mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end'
+            }
+          >
             <div>
               <label htmlFor="q" className="mb-1.5 block text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-muted">Socio o código</label>
               <input id="q" name="q" type="search" defaultValue={busqueda} maxLength={60} placeholder="Buscar por nombre o código" className={CLASE_DE_CONTROL} />
             </div>
+            {multisede && (
+              <div>
+                <label htmlFor="sucursal" className="mb-1.5 block text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-muted">Sucursal</label>
+                <select id="sucursal" name="sucursal" defaultValue={sucursalFiltro} className={CLASE_DE_CONTROL}>
+                  <option value="">Todas</option>
+                  {sede.sucursales.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.isActive ? '' : ' (inactiva)'}
+                    </option>
+                  ))}
+                  <option value={FILTRO_SIN_SUCURSAL}>{ETIQUETA_SIN_SUCURSAL}</option>
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor="desde" className="mb-1.5 block text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-muted">Desde</label>
               <input id="desde" name="desde" type="date" defaultValue={desde ?? ''} className={CLASE_DE_CONTROL} />
@@ -246,6 +327,9 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
               { clave: 'codigo', titulo: 'Código', secundaria: true, celda: (fila) => fila.customerCode ?? '—' },
               { clave: 'fecha', titulo: 'Fecha', celda: (fila) => fechaCorta(fila.attendanceDate) },
               { clave: 'hora', titulo: 'Hora', celda: (fila) => hora(fila.checkedInAt) },
+              ...(multisede
+                ? [{ clave: 'sucursal', titulo: 'Sucursal', celda: (fila: (typeof registros)[number]) => fila.branchName ?? ETIQUETA_SIN_SUCURSAL }]
+                : []),
               { clave: 'metodo', titulo: 'Método', secundaria: true, celda: (fila) => NOMBRE_DE_METODO[fila.method] },
             ]}
             filas={registros}

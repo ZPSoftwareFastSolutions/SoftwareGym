@@ -14,11 +14,13 @@
  * pensar que el reporte está vacío por culpa del filtro.
  */
 
+import type { FeatureFlagKey } from '../tenant/feature-flags';
 import type { PresetDePeriodo } from './periodo';
 
 export type ClaveDeReporte =
   | 'asistencia'
   | 'asistencia-por-socio'
+  | 'asistencia-por-sucursal'
   | 'membresias'
   | 'vencimientos'
   | 'pagos'
@@ -37,7 +39,9 @@ export type TipoDeFiltro =
   | 'metodo-asistencia'
   | 'origen'
   | 'rol'
-  | 'busqueda';
+  | 'busqueda'
+  /** Sede donde ocurrió la operación. Solo se ofrece a gimnasios multisucursal. */
+  | 'sucursal';
 
 export type CategoriaDeReporte = 'operacion' | 'dinero' | 'personas';
 
@@ -68,6 +72,8 @@ export interface FiltroDeReporte {
   readonly origen?: string;
   readonly rol?: string;
   readonly q?: string;
+  /** Código de la sede, o `sin-sucursal` para el histórico sin sede. */
+  readonly sucursal?: string;
 }
 
 export interface ColumnaDeReporte {
@@ -104,17 +110,22 @@ export interface DefinicionDeReporte {
   readonly grafico?: GraficoDeReporte;
   /** Periodo con el que se abre si no se eligió otro. */
   readonly periodoPorDefecto?: PresetDePeriodo;
+  /**
+   * Capacidad contratada que el reporte necesita. Apagada, el reporte no se
+   * lista y su ruta responde 404, igual que cualquier módulo no contratado.
+   */
+  readonly capacidad?: FeatureFlagKey;
 }
 
 export const REPORTES: readonly DefinicionDeReporte[] = [
   {
     clave: 'asistencia',
     titulo: 'Asistencia',
-    descripcion: 'Cada entrada registrada, con socio, fecha, hora y método.',
+    descripcion: 'Cada entrada registrada, con socio, fecha, hora, sucursal y método.',
     icono: 'calendar',
     categoria: 'operacion',
     permiso: 'attendance.read',
-    filtros: ['periodo', 'metodo-asistencia', 'plan', 'busqueda'],
+    filtros: ['periodo', 'sucursal', 'metodo-asistencia', 'plan', 'busqueda'],
     periodoPorDefecto: '30d',
     columnas: [
       { clave: 'fecha', titulo: 'Fecha' },
@@ -122,9 +133,29 @@ export const REPORTES: readonly DefinicionDeReporte[] = [
       { clave: 'socio', titulo: 'Socio' },
       { clave: 'codigo', titulo: 'Código' },
       { clave: 'plan', titulo: 'Plan' },
+      { clave: 'sucursal', titulo: 'Sucursal' },
       { clave: 'metodo', titulo: 'Método' },
     ],
     grafico: { titulo: 'Entradas por día', agruparPor: 'fecha', orden: 'etiqueta' },
+  },
+  {
+    clave: 'asistencia-por-sucursal',
+    titulo: 'Asistencia por sucursal',
+    descripcion: 'Comparativa de sedes en el periodo: entradas, socios distintos, promedio diario y peso sobre el total.',
+    icono: 'layers',
+    categoria: 'operacion',
+    permiso: 'attendance.read',
+    capacidad: 'enableMultiBranch',
+    filtros: ['periodo', 'metodo-asistencia'],
+    periodoPorDefecto: '30d',
+    columnas: [
+      { clave: 'sucursal', titulo: 'Sucursal' },
+      { clave: 'entradas', titulo: 'Entradas', numerica: true, sumable: true },
+      { clave: 'socios', titulo: 'Socios distintos', numerica: true },
+      { clave: 'promedio', titulo: 'Promedio diario', numerica: true },
+      { clave: 'porcentaje', titulo: '% del total', numerica: true },
+    ],
+    grafico: { titulo: 'Entradas por sucursal', agruparPor: 'sucursal', medida: 'entradas', orden: 'valor' },
   },
   {
     clave: 'asistencia-por-socio',
@@ -133,7 +164,7 @@ export const REPORTES: readonly DefinicionDeReporte[] = [
     icono: 'chart',
     categoria: 'operacion',
     permiso: 'attendance.read',
-    filtros: ['periodo', 'plan', 'estado-membresia', 'busqueda'],
+    filtros: ['periodo', 'sucursal', 'plan', 'estado-membresia', 'busqueda'],
     periodoPorDefecto: '30d',
     columnas: [
       { clave: 'socio', titulo: 'Socio' },
@@ -279,8 +310,36 @@ export function reportePorClave(clave: string): DefinicionDeReporte | undefined 
   return REPORTES.find((reporte) => reporte.clave === clave);
 }
 
-export function reportesDisponibles(permisos: readonly string[]): readonly DefinicionDeReporte[] {
-  return REPORTES.filter((reporte) => permisos.includes(reporte.permiso));
+/**
+ * Reportes que puede ver alguien con estos permisos EN un gimnasio con estas
+ * capacidades. Sin `capacidades`, no se filtra por contrato (compatibilidad).
+ */
+export function reportesDisponibles(
+  permisos: readonly string[],
+  capacidades?: Readonly<Partial<Record<FeatureFlagKey, boolean>>>,
+): readonly DefinicionDeReporte[] {
+  return REPORTES.filter(
+    (reporte) =>
+      permisos.includes(reporte.permiso) &&
+      (!reporte.capacidad || !capacidades || capacidades[reporte.capacidad] === true),
+  );
+}
+
+/**
+ * Porcentaje con un decimal, redondeado. Cero cuando no hay total: un 0/0 no
+ * es «NaN %» en una hoja que abre el gerente.
+ */
+export function porcentaje(parte: number, total: number): number {
+  if (!Number.isFinite(parte) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.round((parte / total) * 1000) / 10;
+}
+
+/** Días naturales de un rango inclusive. Mínimo 1: el promedio de hoy divide entre un día. */
+export function diasDelRango(desde: string | undefined, hasta: string | undefined, hoy: string): number {
+  const inicio = Date.parse(`${desde ?? hoy}T12:00:00Z`);
+  const fin = Date.parse(`${hasta ?? hoy}T12:00:00Z`);
+  if (Number.isNaN(inicio) || Number.isNaN(fin) || fin < inicio) return 1;
+  return Math.round((fin - inicio) / 86_400_000) + 1;
 }
 
 export type FilaDeReporte = Readonly<Record<string, string | number | null>>;

@@ -29,6 +29,7 @@ import {
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE, NOMBRE_DE_ORIGEN } from '@core/domain/operations/receipts';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { NOMBRE_DE_ROL } from '@core/domain/operations/workspace';
+import { ETIQUETA_SIN_SUCURSAL, FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import { Icon } from '../icons/Icon';
 
 interface ReportFiltersProps {
@@ -38,6 +39,11 @@ interface ReportFiltersProps {
   readonly preset: PresetDePeriodo | null;
   readonly planes: readonly PlanVendible[];
   readonly rutaBase: string;
+  /**
+   * Sedes para el filtro de sucursal. Vacío en gimnasios sin multisucursal: el
+   * filtro no se ofrece aunque el reporte lo admita.
+   */
+  readonly sucursales?: readonly { readonly code: string; readonly name: string }[];
 }
 
 const CONTROL =
@@ -106,7 +112,7 @@ function Selector({
   );
 }
 
-export function ReportFilters({ definicion, filtro, rango, preset, planes, rutaBase }: ReportFiltersProps) {
+export function ReportFilters({ definicion, filtro, rango, preset, planes, rutaBase, sucursales = [] }: ReportFiltersProps) {
   const admite = (tipo: TipoDeFiltro) => definicion.filtros.includes(tipo);
   const estadoTipo = (['estado-membresia', 'estado-comprobante', 'estado-socio'] as const).find(admite);
   const metodoTipo = (['metodo-pago', 'metodo-asistencia'] as const).find(admite);
@@ -132,6 +138,23 @@ export function ReportFilters({ definicion, filtro, rango, preset, planes, rutaB
           />
         </div>
       </div>,
+    );
+  }
+
+  if (admite('sucursal') && sucursales.length > 0) {
+    controles.push(
+      <Selector
+        key="sucursal"
+        id="filtro-sucursal"
+        nombre="sucursal"
+        etiqueta="Sucursal"
+        valor={filtro.sucursal}
+        opciones={[
+          ...sucursales.map((sucursal) => ({ valor: sucursal.code, texto: sucursal.name })),
+          { valor: FILTRO_SIN_SUCURSAL, texto: ETIQUETA_SIN_SUCURSAL },
+        ]}
+        todos="Todas las sucursales"
+      />,
     );
   }
 

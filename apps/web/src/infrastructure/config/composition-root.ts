@@ -12,6 +12,10 @@
  * línea, y solo esta línea.
  */
 
+import type {
+  BranchesRepositoryPort,
+  PublicBranchesPort,
+} from '@core/application/ports/branches-repository.port';
 import type { MembersRepositoryPort } from '@core/application/ports/members-repository.port';
 import type { OperationsRepositoryPort } from '@core/application/ports/operations-repository.port';
 import type {
@@ -71,6 +75,23 @@ export async function reportsRepository(): Promise<ReportsRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseReportsRepository } = await import('../operations/supabase-reports.repository');
   return new SupabaseReportsRepository(await createSupabaseServerClient());
+}
+
+/** Sucursales (V3.0), con la sesión de quien pregunta. */
+export async function branchesRepository(): Promise<BranchesRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseBranchesRepository } = await import('../operations/supabase-branches.repository');
+  return new SupabaseBranchesRepository(await createSupabaseServerClient());
+}
+
+/**
+ * Sucursales para la vitrina ESTÁTICA. Cliente anónimo sin cookies: leer
+ * cookies sacaría la página del CDN. RLS solo le deja ver sedes activas.
+ */
+export async function publicBranchesRepository(): Promise<PublicBranchesPort> {
+  const { createSupabasePublicClient } = await import('../auth/supabase.public');
+  const { SupabasePublicBranchesRepository } = await import('../operations/supabase-branches.repository');
+  return new SupabasePublicBranchesRepository(createSupabasePublicClient());
 }
 
 /**

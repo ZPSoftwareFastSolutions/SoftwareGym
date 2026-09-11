@@ -24,8 +24,11 @@ import { DashboardNav, type EntradaDePanel } from '@/presentation/patterns/Dashb
 import { Badge } from '@/presentation/ui/Badge';
 import { Button } from '@/presentation/ui/Button';
 import { receiptsRepository } from '@infra/config/composition-root';
+import { SelectorDeSucursal } from '@/presentation/patterns/SelectorDeSucursal';
+import { Icon } from '@/presentation/icons/Icon';
 import { cerrarSesion } from '../acceso/actions';
 import { perfilActual } from './_datos';
+import { contextoDeSucursal } from './_sucursal';
 
 export const metadata: Metadata = {
   title: 'Panel',
@@ -88,6 +91,10 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
     });
   }
 
+  if (esPersonal && features.enableMultiBranch && tienePermiso(perfil, PERMISO.gestionarSucursales)) {
+    entradas.push({ href: tenantHref(slug, 'panel/sucursales'), etiqueta: 'Sucursales', icono: 'pin' });
+  }
+
   if (features.enableReports && tienePermiso(perfil, PERMISO.verReportes)) {
     entradas.push({ href: tenantHref(slug, 'panel/reportes'), etiqueta: 'Reportes', icono: 'chart' });
   }
@@ -95,6 +102,11 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
   if (esPersonal && features.enablePayments && tienePermiso(perfil, PERMISO.configurar)) {
     entradas.push({ href: tenantHref(slug, 'panel/cobros'), etiqueta: 'Cobro QR', icono: 'qr' });
   }
+
+  // Sede de trabajo: solo para el personal de un gimnasio multisucursal. El
+  // socio no opera en ninguna sede, y un gimnasio de sede única no tiene nada
+  // que elegir.
+  const sede = esPersonal && features.enableMultiBranch ? await contextoDeSucursal(perfil) : null;
 
   return (
     <div className="section pb-16 pt-[calc(var(--header-height)+2rem)]">
@@ -113,12 +125,33 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
           {/* El cierre de sesión es un POST, no un enlace: una acción que
               cambia estado no puede dispararse con una precarga del
               navegador ni con la etiqueta de imagen de una página ajena. */}
-          <form action={cerrarSesion} data-print="hide">
-            <input type="hidden" name="tenantSlug" value={slug} />
-            <Button type="submit" variant="secondary" size="sm" icon="lock" iconPosition="start">
-              Cerrar sesión
-            </Button>
-          </form>
+          <div className="flex flex-wrap items-center gap-3">
+            {sede && sede.operables.length > 1 && sede.actual && (
+              <SelectorDeSucursal
+                slug={slug}
+                sucursales={sede.operables.map((s) => ({ id: s.id, name: s.name }))}
+                actualId={sede.actual.id}
+              />
+            )}
+            {sede && sede.operables.length === 1 && sede.actual && (
+              <p className="flex h-11 items-center gap-2 rounded-[var(--t-radius-md)] border border-line px-3.5 text-[0.86rem] text-muted">
+                <Icon name="pin" size={15} className="text-action" />
+                Sucursal <strong className="font-semibold text-ink">{sede.actual.name}</strong>
+              </p>
+            )}
+            {sede && !sede.actual && (
+              <p className="flex h-11 items-center gap-2 rounded-[var(--t-radius-md)] border border-structural/50 bg-structural/10 px-3.5 text-[0.84rem] text-ink">
+                <Icon name="alert" size={15} className="text-structural" />
+                Sin sucursal asignada
+              </p>
+            )}
+            <form action={cerrarSesion} data-print="hide">
+              <input type="hidden" name="tenantSlug" value={slug} />
+              <Button type="submit" variant="secondary" size="sm" icon="lock" iconPosition="start">
+                Cerrar sesión
+              </Button>
+            </form>
+          </div>
         </header>
 
         <DashboardNav entradas={entradas} />

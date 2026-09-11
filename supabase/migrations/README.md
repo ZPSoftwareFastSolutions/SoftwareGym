@@ -64,3 +64,20 @@ revisar el código. El detalle de cada una está en `CLAUDE.md`, sección
 | 20260910140118 | `v22_ajustes_de_cobro_con_slug` | El slug en los ajustes de cobro, para servir el QR sin sesión |
 | 20260910140432 | `v22_columnas_insertables_y_autoria_desde_la_sesion` | Permisos por columna; la autoría sale de la sesión, no del formulario |
 | 20260910191501 | `v22_comprobante_aprobado_exige_pago` | **Corrige** integridad: un comprobante aprobado sin cobro era dinero invisible para los dashboards |
+
+## V3.0 · Multisucursal (2026-09-11)
+
+| Versión | Nombre | Qué introduce |
+|---|---|---|
+| 20260911043330 | `v3_sucursales_asignaciones_y_permisos` | Tablas `branches` y `user_branches` (N:M usuario↔sede) con RLS, FK compuestas `(tenant_id, …)` y grants por columna; `attendance_records.branch_id` (FK compuesta, `CHECK … NOT VALID`, índice); permisos `branches.manage` y `branches.all` (gerencia); `app.puede_operar_sucursal` en la política de INSERT de asistencia; disparador `sucursal_no_disponible`; RPC `establecer_sucursal_primaria`; auditoría por disparador de sedes y asignaciones; `registered_by` y `audit_log.actor_user_id` salen de la sesión |
+| 20260911043415 | `v3_vistas_por_sucursal` | `v_attendance_log` + `branch_id`, `branch_code`, `branch_name` y `membership_id` **derivado**; vistas nuevas `v_attendance_branch_daily`, `v_branch_overview`, `v_mis_sucursales`; `v_platform_overview` + `sucursales` |
+| 20260911050002 | `v3_semilla_sucursales` | Mítico: **Prado** (principal, Plaza del Estudiante) y **Miraflores** (Edificio Torre Vicenta, Av. Argentina 1843); Aurora Fit: **Recoleta** (sede única); recepción de demostración de Mítico asignada a las dos sedes |
+| 20260911053257 | `v3_sucursal_principal_solo_por_rpc` | **Corrige** integridad: la marca de sede principal solo cambia por la RPC (se retira `UPDATE (is_primary)`; el cambio lo hace `app.fijar_sucursal_primaria`) |
+
+**Histórico sin sucursal.** Las 154 entradas anteriores a V3.0 no guardaron
+dónde ocurrieron y no hay dato fiable para deducirlo: se dejaron con
+`branch_id` NULL («sin sucursal registrada») en vez de inventarles una sede.
+`attendance_sucursal_obligatoria` es `CHECK (branch_id IS NOT NULL) NOT VALID`:
+la base la exige en toda fila nueva sin reescribir las anteriores. Si algún día
+el negocio confirma la sede de ese periodo, se asigna con un UPDATE explícito y
+documentado, y la restricción se puede validar (`VALIDATE CONSTRAINT`).

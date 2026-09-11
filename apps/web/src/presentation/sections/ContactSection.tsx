@@ -127,7 +127,7 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
 
               <div>
                 <h3 className="mb-3 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-muted">
-                  Seguinos
+                  Síguenos
                 </h3>
                 <SocialLinks social={social} name={name} />
               </div>
@@ -147,7 +147,7 @@ export function ContactSection({ contact, social, name, showForm, showMap }: Con
                 <div>
                   <h3 className="t-h3">Escríbenos</h3>
                   <p className="mt-2 text-[0.88rem] text-muted">
-                    Completá el formulario y te respondemos el mismo día.
+                    Completa el formulario y te respondemos el mismo día.
                   </p>
                 </div>
 

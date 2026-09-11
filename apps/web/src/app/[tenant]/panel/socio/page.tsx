@@ -16,6 +16,7 @@ import { tenantHref } from '@/lib/tenant-links';
 import { construirNotificaciones } from '@core/domain/operations/notifications';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { calcularRacha, diasCerradosDelHorario } from '@core/domain/operations/streak';
+import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
 import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
@@ -63,12 +64,16 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   const socios = await membersRepository();
   const conPagos = features.enablePayments === true;
 
-  const [hoy, avisos, ficha, dias, historial, planes, pagos, comprobantes] = await Promise.all([
-    repo.hoyDelGimnasio(slug),
+  const multisede = features.enableMultiBranch === true;
+  const hoy = await repo.hoyDelGimnasio(slug);
+
+  const [avisos, ficha, dias, historial, planes, pagos, comprobantes] = await Promise.all([
     repo.avisos(),
     customerId ? socios.ficha(customerId) : Promise.resolve(null),
     customerId ? socios.diasDeAsistencia(customerId, 365) : Promise.resolve([] as readonly string[]),
-    repo.historialDeAsistencia({ limite: 8 }),
+    // RLS ya reduce la bitácora a las entradas del propio socio. Con varias
+    // sedes se trae el mes entero para contar dónde entrenó; si no, bastan 8.
+    repo.historialDeAsistencia(multisede ? { desde: `${hoy.slice(0, 7)}-01`, limite: 62 } : { limite: 8 }),
     conPagos ? socios.planesVendibles() : Promise.resolve([]),
     customerId ? socios.pagos(customerId) : Promise.resolve([]),
     conPagos && customerId ? (await receiptsRepository()).listar({ customerId, limite: 10 }) : Promise.resolve([]),
@@ -82,6 +87,10 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId) : [];
   const racha = calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
   const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
+  // La racha y el conteo salen de las FECHAS, sin mirar la sede: ir a una sede un
+  // día y a otra al siguiente son dos días seguidos.
+  const sedesDelMes = multisede ? repartoPorSucursal(historial.filter((r) => r.attendanceDate.slice(0, 7) === hoy.slice(0, 7))) : [];
+  const ultimasEntradas = historial.slice(0, 8);
   const token = features.enableQrAttendance ? ficha?.checkinToken ?? null : null;
   const matriz = token ? matrizQr(token) : null;
   const planAPagar = planes.find((plan) => plan.code === codigoAPagar) ?? planes.find((plan) => plan.id === ficha?.planId);
@@ -138,7 +147,20 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
               comparacion={ficha?.endDate ? `días restantes · vence ${fechaCorta(ficha.endDate)}` : 'sin membresía registrada'}
               accion="Ver mi plan"
             />
-            <StatCard href="#mis-entradas" etiqueta="Este mes" valor={String(esteMes)} icono="calendar" comparacion={esteMes === 1 ? 'visita registrada' : 'visitas registradas'} accion="Ver mis entradas" />
+            <StatCard
+              href="#mis-entradas"
+              etiqueta="Este mes"
+              valor={String(esteMes)}
+              icono="calendar"
+              comparacion={
+                sedesDelMes.length > 1 || (sedesDelMes.length === 1 && sedesDelMes[0]?.branchId !== null)
+                  ? sedesDelMes.map((s) => `${s.branchId ? s.nombre : 'sin sede'}: ${s.visitas}`).join(' · ')
+                  : esteMes === 1
+                    ? 'visita registrada'
+                    : 'visitas registradas'
+              }
+              accion="Ver mis entradas"
+            />
             <Modal
               titulo="Tu racha"
               descripcion="Los días que el gimnasio cierra no la cortan."
@@ -336,15 +358,20 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
           <div className="grid gap-6 lg:grid-cols-2">
             <section id="mis-entradas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-historial">
               <h2 id="titulo-historial" className="t-h3">Tus últimas entradas</h2>
+              {multisede && (
+                <p className="mt-1.5 text-[0.84rem] text-muted">Tu membresía vale en todas las sedes de {perfil.tenantName ?? name}.</p>
+              )}
               <DataTable
                 titulo="Historial de tus entradas al gimnasio"
                 className="mt-5"
                 columnas={[
                   { clave: 'fecha', titulo: 'Fecha', celda: (fila) => fechaCorta(fila.attendanceDate) },
                   { clave: 'hora', titulo: 'Hora', celda: (fila) => hora(fila.checkedInAt) },
-                  { clave: 'metodo', titulo: 'Método', celda: (fila) => NOMBRE_DE_METODO[fila.method] },
+                  multisede
+                    ? { clave: 'sucursal', titulo: 'Sucursal', celda: (fila) => fila.branchName ?? ETIQUETA_SIN_SUCURSAL }
+                    : { clave: 'metodo', titulo: 'Método', celda: (fila) => NOMBRE_DE_METODO[fila.method] },
                 ]}
-                filas={historial}
+                filas={ultimasEntradas}
                 claveDeFila={(fila) => fila.id}
                 vacio={<EmptyState icono="calendar" titulo="Aún no hay entradas registradas" descripcion="En cuanto registres tu primera entrada con el QR, aparecerá aquí." />}
               />

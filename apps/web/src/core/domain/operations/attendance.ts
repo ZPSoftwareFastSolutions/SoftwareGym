@@ -21,6 +21,14 @@ export interface RegistroDeAsistencia {
   readonly checkedInAt: string;
   readonly attendanceDate: string;
   readonly method: MetodoDeAsistencia;
+  /** Sede donde ocurrió. `null` en el histórico anterior a V3.0, que no la guardó. */
+  readonly branchId: string | null;
+  readonly branchName: string | null;
+  /**
+   * Membresía vigente ese día, DERIVADA en la base (no se guarda). `null` si
+   * entró sin membresía vigente: la entrada se registra igual (decisión 12).
+   */
+  readonly membershipId: string | null;
 }
 
 export interface EstadisticasDeAsistencia {
@@ -39,9 +47,10 @@ export interface EstadisticasDeAsistencia {
  * es un error, y sin membresía es una venta, no un rechazo.
  */
 export type ResultadoDeCheckIn =
-  | { readonly tipo: 'registrado'; readonly socio: string; readonly hora: string; readonly diasRestantes: number | null }
-  | { readonly tipo: 'repetido'; readonly socio: string; readonly hora: string }
-  | { readonly tipo: 'sin-membresia'; readonly socio: string }
+  | { readonly tipo: 'registrado'; readonly socio: string; readonly hora: string; readonly diasRestantes: number | null; readonly sucursal: string }
+  /** `sucursal` y `hora` son las de la entrada que YA tenía hoy, que puede ser de otra sede. */
+  | { readonly tipo: 'repetido'; readonly socio: string; readonly hora: string; readonly sucursal: string | null }
+  | { readonly tipo: 'sin-membresia'; readonly socio: string; readonly sucursal: string }
   | { readonly tipo: 'desconocido' }
   | { readonly tipo: 'error'; readonly mensaje: string };
 

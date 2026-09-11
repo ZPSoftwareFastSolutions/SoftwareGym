@@ -61,6 +61,11 @@ export const PERMISO = {
   cobrar: 'payments.create',
   verUsuarios: 'users.read',
   gestionarUsuarios: 'users.manage',
+  // --- V3.0 · multisucursal ---
+  /** Alta, edición, activación, primaria y asignación de personal a sedes. */
+  gestionarSucursales: 'branches.manage',
+  /** Alcance: opera y consulta todas las sedes sin estar asignado a cada una. */
+  todasLasSucursales: 'branches.all',
 } as const;
 
 export type CodigoDePermiso = (typeof PERMISO)[keyof typeof PERMISO];

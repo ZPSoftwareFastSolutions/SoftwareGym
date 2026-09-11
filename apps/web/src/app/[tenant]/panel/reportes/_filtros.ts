@@ -69,6 +69,7 @@ export function leerFiltros(
     ...(uno(parametros.origen, 20) ? { origen: uno(parametros.origen, 20) } : {}),
     ...(uno(parametros.rol, 20) ? { rol: uno(parametros.rol, 20) } : {}),
     ...(uno(parametros.q) ? { q: uno(parametros.q) } : {}),
+    ...(uno(parametros.sucursal, 20) ? { sucursal: uno(parametros.sucursal, 20) } : {}),
   };
 
   const busqueda = new URLSearchParams();
@@ -85,6 +86,7 @@ export function leerFiltros(
   if (filtro.origen) busqueda.set('origen', filtro.origen);
   if (filtro.rol) busqueda.set('rol', filtro.rol);
   if (filtro.q) busqueda.set('q', filtro.q);
+  if (filtro.sucursal) busqueda.set('sucursal', filtro.sucursal);
 
   return { filtro, rango, preset, consulta: busqueda.toString() };
 }

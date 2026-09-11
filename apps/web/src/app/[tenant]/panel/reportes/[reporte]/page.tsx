@@ -27,7 +27,7 @@ import {
   type FilaDeReporte,
 } from '@core/domain/operations/reports';
 import { describirRango } from '@core/domain/operations/periodo';
-import { membersRepository, reportsRepository } from '@infra/config/composition-root';
+import { branchesRepository, membersRepository, reportsRepository } from '@infra/config/composition-root';
 import { BarChart } from '@/presentation/ui/BarChart';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
@@ -72,6 +72,8 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
   const tenant = await loadTenantPage(params as unknown as Promise<{ tenant: string }>, [
     'memberLogin',
     'enableReports',
+    // Un reporte que depende de una capacidad no contratada no existe (404).
+    ...(definicion.capacidad ? [definicion.capacidad] : []),
   ]);
   const { slug, name } = tenant;
 
@@ -86,9 +88,11 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
   const rutaBase = tenantHref(slug, `panel/reportes/${definicion.clave}`);
 
   const [reportes, socios] = await Promise.all([reportsRepository(), membersRepository()]);
-  const [filas, planes] = await Promise.all([
+  const conSucursales = tenant.features.enableMultiBranch === true && definicion.filtros.includes('sucursal');
+  const [filas, planes, sucursales] = await Promise.all([
     reportes.filas(definicion.clave, filtro, hoy),
     definicion.filtros.includes('plan') ? socios.planesVendibles() : Promise.resolve([]),
+    conSucursales ? (await branchesRepository()).listar() : Promise.resolve([]),
   ]);
 
   const resumen = resumirReporte(definicion, filas);
@@ -107,6 +111,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
     definicion.filtros.includes('periodo') ? `Periodo: ${describirRango(rango)}` : null,
     filtro.estado ? `Estado: ${filtro.estado}` : null,
     planElegido ? `Plan: ${planElegido}` : null,
+    filtro.sucursal ? `Sucursal: ${sucursales.find((s) => s.code === filtro.sucursal)?.name ?? filtro.sucursal}` : null,
     filtro.metodo ? `Método: ${filtro.metodo}` : null,
     filtro.origen ? `Origen: ${filtro.origen}` : null,
     filtro.rol ? `Rol: ${filtro.rol}` : null,
@@ -160,6 +165,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
             rango={rango}
             preset={preset}
             planes={planes}
+            sucursales={sucursales}
             rutaBase={rutaBase}
           />
         </div>

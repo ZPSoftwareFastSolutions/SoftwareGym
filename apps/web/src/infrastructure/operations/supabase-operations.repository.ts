@@ -33,7 +33,7 @@ import type {
   RegistroDeAsistencia,
   ResultadoDeCheckIn,
 } from '@core/domain/operations/attendance';
-import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
+import { FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import type { AvisoInterno, MembresiaParaAvisar } from '@core/domain/operations/notifications';
 import type { ClaveDeReporte, FilaDeReporte } from '@core/domain/operations/reports';
 import type { PerfilOperativo } from '@core/domain/operations/workspace';
@@ -73,6 +73,7 @@ const TOPE_DE_FILAS = 500;
 
 /** Formato del identificador de check-in, el mismo que impone la base. */
 const PATRON_TOKEN = /^[0-9A-F]{24}$/;
+const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function fechaIso(desplazamiento: number): string {
   const fecha = new Date();
@@ -206,13 +207,16 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
     let consulta = this.supabase
       .from('v_attendance_log')
       .select(
-        'id, customer_id, customer_name, customer_code, checked_in_local, attendance_date, method',
+        'id, customer_id, customer_name, customer_code, checked_in_local, attendance_date, method, branch_id, branch_name, membership_id',
       )
       .order('checked_in_at', { ascending: false })
       .limit(Math.min(filtro.limite ?? 50, TOPE_DE_FILAS));
 
     if (filtro.desde) consulta = consulta.gte('attendance_date', filtro.desde);
     if (filtro.hasta) consulta = consulta.lte('attendance_date', filtro.hasta);
+    if (filtro.customerId && PATRON_UUID.test(filtro.customerId)) consulta = consulta.eq('customer_id', filtro.customerId);
+    if (filtro.sucursal === FILTRO_SIN_SUCURSAL) consulta = consulta.is('branch_id', null);
+    else if (filtro.sucursal && PATRON_UUID.test(filtro.sucursal)) consulta = consulta.eq('branch_id', filtro.sucursal);
 
     const busqueda = filtro.busqueda?.trim();
     if (busqueda) {
@@ -235,6 +239,9 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       checkedInAt: String(fila.checked_in_local),
       attendanceDate: texto(fila.attendance_date) ?? '',
       method: metodo(fila.method),
+      branchId: texto(fila.branch_id),
+      branchName: texto(fila.branch_name),
+      membershipId: texto(fila.membership_id),
     }));
   }
 
@@ -295,6 +302,7 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       currency: texto(fila.currency) ?? 'BOB',
       cuentas: numero(fila.cuentas),
       cuentasActivas: numero(fila.cuentas_activas),
+      sucursales: numero(fila.sucursales),
     }));
   }
 
@@ -339,7 +347,10 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
     return (data ?? []).map((fila) => texto(fila.attendance_date) ?? '').filter(Boolean);
   }
 
-  async registrarCheckIn(token: string): Promise<ResultadoDeCheckIn> {
+  async registrarCheckIn(
+    token: string,
+    sucursal: { readonly id: string; readonly name: string },
+  ): Promise<ResultadoDeCheckIn> {
     const limpio = token.trim().toUpperCase();
 
     // Se valida la forma antes de consultar. No es una optimización: evita
@@ -380,22 +391,43 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       .maybeSingle();
 
     const ahora = new Date();
+    // Ni la hora ni la fecha ni la autoría viajan desde aquí: la base las pone
+    // (y no concede permiso para escribirlas). Lo que decide esta capa es la
+    // SEDE, y la base vuelve a comprobar que quien escanea puede operar en ella.
     const { error } = await this.supabase.from('attendance_records').insert({
       tenant_id: tenantId,
       customer_id: customerId,
-      checked_in_at: ahora.toISOString(),
+      branch_id: sucursal.id,
       method: 'qr',
     });
 
     if (error) {
       // 23505 es la violación de `attendance_tenant_customer_dia_uk`: ya se
-      // registró hoy. No es un fallo, es información para el mostrador.
+      // registró hoy. No es un fallo, es información para el mostrador. La
+      // regla sigue siendo UNA entrada por día aunque sea en otra sede, y
+      // decir dónde entró evita la discusión en el mostrador.
       if (error.code === '23505') {
-        return { tipo: 'repetido', socio: nombre, hora: ahora.toISOString() };
+        const { data: previa } = await this.supabase
+          .from('v_attendance_log')
+          .select('checked_in_at, branch_name')
+          .eq('customer_id', customerId)
+          .order('checked_in_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return {
+          tipo: 'repetido',
+          socio: nombre,
+          hora: texto(previa?.checked_in_at) ?? ahora.toISOString(),
+          sucursal: texto(previa?.branch_name),
+        };
       }
-      // 42501 es «RLS lo bloqueó»: quien escanea no puede registrar aquí.
+      if (error.message.includes('sucursal_no_disponible') || error.message.includes('sucursal_requerida')) {
+        return { tipo: 'error', mensaje: `La sucursal ${sucursal.name} no está activa. Elige otra sede de trabajo.` };
+      }
+      // 42501 es «RLS lo bloqueó»: sin permiso de asistencia o sin alcance en
+      // esta sede. Para quien está en el mostrador, las dos se arreglan igual.
       if (error.code === '42501') {
-        return { tipo: 'error', mensaje: 'Tu cuenta no puede registrar asistencia en este gimnasio.' };
+        return { tipo: 'error', mensaje: `Tu cuenta no puede registrar entradas en ${sucursal.name}. Pide a gerencia que te asigne a esta sede.` };
       }
       return { tipo: 'error', mensaje: 'No se pudo registrar la entrada. Vuelve a intentarlo.' };
     }
@@ -404,7 +436,7 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       // La entrada QUEDÓ registrada: quien llegó, llegó, y borrarlo sería
       // falsear la asistencia. Lo que devuelve es el aviso para que
       // recepción le ofrezca la renovación.
-      return { tipo: 'sin-membresia', socio: nombre };
+      return { tipo: 'sin-membresia', socio: nombre, sucursal: sucursal.name };
     }
 
     return {
@@ -412,6 +444,7 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       socio: nombre,
       hora: ahora.toISOString(),
       diasRestantes: numero(membresia.days_remaining, 0),
+      sucursal: sucursal.name,
     };
   }
 }

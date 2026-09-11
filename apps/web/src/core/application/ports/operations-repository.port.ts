@@ -56,6 +56,10 @@ export interface FiltroDeAsistencia {
   /** Texto libre contra nombre y código del socio. */
   readonly busqueda?: string;
   readonly limite?: number;
+  /** Id de la sede, o `sin-sucursal` para el histórico sin sede. */
+  readonly sucursal?: string;
+  /** Solo las del socio indicado. */
+  readonly customerId?: string;
 }
 
 export interface OperationsRepositoryPort {
@@ -106,10 +110,13 @@ export interface OperationsRepositoryPort {
   misDiasDeAsistencia(dias: number): Promise<readonly string[]>;
 
   /**
-   * Registra una entrada a partir del identificador del QR.
+   * Registra una entrada a partir del identificador del QR, EN una sede.
+   *
+   * El QR identifica al socio y nada más; la sede la pone la operación (la
+   * sede de trabajo de quien escanea). El mismo QR sirve en todas.
    *
    * Devuelve un resultado, nunca lanza por un token inexistente: que alguien
    * enseñe un código que no existe es un caso de uso, no una avería.
    */
-  registrarCheckIn(token: string): Promise<ResultadoDeCheckIn>;
+  registrarCheckIn(token: string, sucursal: { readonly id: string; readonly name: string }): Promise<ResultadoDeCheckIn>;
 }
