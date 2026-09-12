@@ -20,7 +20,9 @@ import { calcularRacha, diasCerradosDelHorario } from '@core/domain/operations/s
 import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
-import { membersRepository, receiptsRepository, trainingRepository } from '@infra/config/composition-root';
+import { clasesDelPlan, sumarDias } from '@core/domain/operations/classes';
+import { classesRepository, membersRepository, receiptsRepository, trainingRepository } from '@infra/config/composition-root';
+import { FilaDeSesion } from '@/presentation/patterns/AgendaDeClases';
 import { matrizQr } from '@infra/operations/qr';
 import { NotificationsPanel } from '@/presentation/patterns/NotificationsPanel';
 import { RachaCalendario } from '@/presentation/patterns/RachaCalendario';
@@ -85,6 +87,24 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
     features.enableRoutines === true && customerId
       ? await (await trainingRepository()).asignaciones({ customerId, vigentes: true })
       : [];
+
+  // V3.3: las clases que incluye su plan y las que tomó. El calendario lo ve
+  // cualquier cuenta del gimnasio; la asistencia, RLS la reduce a la propia.
+  const conClases = features.enableClasses === true && Boolean(customerId);
+  const clasesRepo = conClases ? await classesRepository() : null;
+  const [clasesDelGimnasio, sesionesDeLaSemana, clasesTomadas] = clasesRepo
+    ? await Promise.all([
+        clasesRepo.clases(),
+        clasesRepo.sesiones({ desde: hoy, hasta: sumarDias(hoy, 6), soloProgramadas: true }),
+        clasesRepo.clasesAsistidas(customerId ?? '', 6),
+      ])
+    : [[], [], []];
+  // Orientativo: la base vuelve a mirar la membresía que cubre el DÍA de cada sesión al registrar.
+  const planVigente =
+    ficha?.planId && (ficha.membershipStatus === 'active' || ficha.membershipStatus === 'expiring_soon') ? ficha.planId : null;
+  const misClases = clasesDelPlan(clasesDelGimnasio, planVigente);
+  const otrasClases = clasesDelGimnasio.filter((c) => c.isActive && !misClases.some((m) => m.id === c.id));
+  const misSesiones = sesionesDeLaSemana.filter((s) => misClases.some((c) => c.id === s.classId) && s.estado !== 'realizada').slice(0, 8);
 
   const membresia =
     ficha?.membershipStatus && ficha.endDate && ficha.daysRemaining !== null
@@ -386,6 +406,55 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {conClases && clasesDelGimnasio.some((c) => c.isActive) && (
+            <section id="mis-clases" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-clases">
+              <h2 id="titulo-mis-clases" className="t-h3">Tus clases</h2>
+              <p className="mt-1.5 text-[0.86rem] text-muted">
+                {misClases.length > 0
+                  ? `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Llega unos minutos antes: el cupo es limitado y el instructor o recepción registra tu asistencia.`
+                  : 'Tu plan actual no incluye clases grupales.'}
+              </p>
+
+              {misSesiones.length > 0 ? (
+                <ul className="mt-5 flex flex-col gap-2">
+                  {misSesiones.map((s) => (
+                    <li key={s.id}>
+                      <FilaDeSesion sesion={s} mostrarFecha mostrarSede={multisede} destacada={s.estado === 'en_curso'} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                misClases.length > 0 && <EmptyState className="mt-5" icono="calendar" titulo="No hay sesiones de tus clases en los próximos 7 días" />
+              )}
+
+              {otrasClases.length > 0 && (
+                <p className="mt-5 flex flex-wrap items-center gap-2 text-[0.84rem] text-muted">
+                  <Icon name="sparkle" size={15} className="text-action" />
+                  {misClases.length > 0 ? 'Con otro paquete también tienes' : 'Con otro paquete puedes tomar'}: {otrasClases.map((c) => c.name).join(', ')}.
+                  {features.showPlans && (
+                    <Link href={tenantHref(slug, 'planes')} className="font-semibold text-action underline-offset-4 hover:underline">
+                      Ver paquetes
+                    </Link>
+                  )}
+                </p>
+              )}
+
+              {clasesTomadas.length > 0 && (
+                <div className="mt-6 border-t border-line pt-5">
+                  <p className="mb-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-muted">Tus últimas clases</p>
+                  <ul className="flex flex-wrap gap-2">
+                    {clasesTomadas.map((c) => (
+                      <li key={c.id} className="rounded-[var(--t-radius-md)] bg-raised px-3 py-2 text-[0.84rem] text-ink">
+                        {c.className} · {fechaCorta(c.sessionDate)} {c.startTime}
+                        {multisede ? ` · ${c.branchName}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
           )}
 

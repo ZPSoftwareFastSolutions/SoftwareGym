@@ -16,6 +16,7 @@ import type {
   BranchesRepositoryPort,
   PublicBranchesPort,
 } from '@core/application/ports/branches-repository.port';
+import type { ClassesRepositoryPort, PublicClassesPort } from '@core/application/ports/classes-repository.port';
 import type { MembersRepositoryPort } from '@core/application/ports/members-repository.port';
 import type { OperationsRepositoryPort } from '@core/application/ports/operations-repository.port';
 import type {
@@ -99,6 +100,23 @@ export async function trainingRepository(): Promise<TrainingRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseTrainingRepository } = await import('../operations/supabase-training.repository');
   return new SupabaseTrainingRepository(await createSupabaseServerClient());
+}
+
+/** Clases grupales, horarios, sesiones y asistencia a clase (V3.3). */
+export async function classesRepository(): Promise<ClassesRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseClassesRepository } = await import('../operations/supabase-classes.repository');
+  return new SupabaseClassesRepository(await createSupabaseServerClient());
+}
+
+/**
+ * Clases para la vitrina ESTÁTICA (`/[tenant]/clases`). Cliente anónimo sin
+ * cookies, como las sedes: RLS solo le deja ver clases activas y públicas.
+ */
+export async function publicClassesRepository(): Promise<PublicClassesPort> {
+  const { createSupabasePublicClient } = await import('../auth/supabase.public');
+  const { SupabasePublicClassesRepository } = await import('../operations/supabase-classes.repository');
+  return new SupabasePublicClassesRepository(createSupabasePublicClient());
 }
 
 /** Catálogo de ejercicios y sus medios (V3.1), con la sesión de quien pregunta. */

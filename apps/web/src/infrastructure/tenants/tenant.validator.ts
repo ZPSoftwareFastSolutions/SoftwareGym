@@ -182,6 +182,11 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('La entrada de navegación "sucursales" debe exigir la capacidad enableMultiBranch.');
   }
 
+  const navClases = tenant.navigation.find((n) => n.segment === 'clases');
+  if (navClases && navClases.requiresFeature !== 'enableClasses') {
+    issues.push('La entrada de navegación "clases" debe exigir la capacidad enableClasses.');
+  }
+
   // Turnos del personal (V3.1). El código se guarda con cada ausencia (mismo
   // patrón que la restricción de la base) y las horas deben ser un tramo real.
   const turnos = tenant.hours.staffShifts;

@@ -126,6 +126,7 @@ export const miticoTenant: TenantConfig = {
     { label: 'Servicios', segment: 'servicios' },
     { label: 'Planes', segment: 'planes', requiresFeature: 'showPlans' },
     { label: 'Sucursales', segment: 'sucursales', requiresFeature: 'enableMultiBranch' },
+    { label: 'Clases', segment: 'clases', requiresFeature: 'enableClasses' },
     { label: 'Instalaciones', segment: 'instalaciones', requiresFeature: 'showFacilities' },
     { label: 'Galería', segment: 'galeria', requiresFeature: 'showGallery' },
     { label: 'Horarios', segment: 'horarios', requiresFeature: 'showSchedule' },
@@ -165,6 +166,12 @@ export const miticoTenant: TenantConfig = {
     // V3.2: programas, rutinas asignadas a socios, registro de ejercicios
     // completados y las métricas de entrenamiento que salen de ese registro.
     enableRoutines: true,
+
+    // V3.3: clases grupales (Baile fitness, Bachata, Box…) con horario semanal,
+    // sesiones por sede, planes que incluyen cada clase y asistencia a clase.
+    // Las clases son datos de la base; la página pública solo enseña las que
+    // gerencia marca como publicadas.
+    enableClasses: true,
   },
 
   seo: {

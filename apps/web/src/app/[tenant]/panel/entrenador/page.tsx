@@ -6,7 +6,7 @@
  * teléfono ni el resto de socios: la lista sale de una función de la base que
  * solo devuelve esas columnas y solo de sus asignaciones vigentes.
  *
- * Rutinas y seguimiento llegan en V3.2; aquí no se adelantan.
+ * Desde V3.2 suma las rutinas de sus socios y desde V3.3 las clases que dicta.
  */
 
 import type { Metadata } from 'next';
@@ -21,8 +21,10 @@ import {
   NOMBRE_DE_TIPO_DE_ASIGNACION,
   turnosDelGimnasio,
 } from '@core/domain/operations/trainers';
-import { PERMISO } from '@core/domain/operations/workspace';
-import { branchesRepository, trainersRepository, trainingRepository } from '@infra/config/composition-root';
+import { sumarDias } from '@core/domain/operations/classes';
+import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
+import { branchesRepository, classesRepository, trainersRepository, trainingRepository } from '@infra/config/composition-root';
+import { FilaDeSesion } from '@/presentation/patterns/AgendaDeClases';
 import { Badge } from '@/presentation/ui/Badge';
 import { LinkButton } from '@/presentation/ui/Button';
 import { DataTable } from '@/presentation/ui/DataTable';
@@ -62,6 +64,12 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
 
   const zona = tenant.hours.timezone;
   const hoy = hoyEnZona(zona);
+
+  // V3.3: las sesiones que dicta esta semana, para entrar a tomar asistencia.
+  const misSesiones =
+    tenant.features.enableClasses && tienePermiso(perfil, PERMISO.verClases)
+      ? await (await classesRepository()).sesiones({ desde: hoy, hasta: sumarDias(hoy, 6), trainerId: yo.id })
+      : null;
   const ausencias = ausenciasPendientes(await repo.ausencias(yo.id), hoy, horaEnZona(zona));
   const turnos = turnosDelGimnasio(tenant.hours.staffShifts);
   const nombreDeSede = new Map(sedes.map((s) => [s.id, s.name]));
@@ -142,6 +150,31 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
           vacio={<EmptyState icono="group" titulo="Todavía no tienes socios asignados" descripcion="Cuando gerencia te asigne socios, aparecerán aquí." />}
         />
       </section>
+
+      {misSesiones && (
+        <section id="clases" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-clases-entrenador">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="titulo-mis-clases-entrenador" className="t-h3">Tus clases de esta semana</h2>
+              <p className="mt-1.5 text-[0.86rem] text-muted">Entra a la sesión para registrar quién vino. Solo ves y registras a los asistentes de las clases que dictas.</p>
+            </div>
+            <LinkButton href={tenantHref(slug, 'panel/clases')} variant="secondary" size="sm" icon="calendar" iconPosition="start">
+              Agenda de clases
+            </LinkButton>
+          </div>
+          {misSesiones.length === 0 ? (
+            <EmptyState className="mt-5" icono="calendar" titulo="No tienes clases asignadas esta semana" />
+          ) : (
+            <ul className="mt-5 flex flex-col gap-2">
+              {misSesiones.map((s) => (
+                <li key={s.id}>
+                  <FilaDeSesion sesion={s} href={`${tenantHref(slug, 'panel/clases/sesion')}/${s.id}`} mostrarFecha destacada={s.estado === 'en_curso'} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {tenant.features.enableRoutines && (
         <section id="rutinas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-rutinas-de-mis-socios">

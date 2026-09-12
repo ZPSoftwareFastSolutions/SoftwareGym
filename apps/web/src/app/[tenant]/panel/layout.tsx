@@ -114,6 +114,12 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
     entradas.push({ href: tenantHref(slug, 'panel/rutinas'), etiqueta: 'Rutinas', icono: 'layers' });
   }
 
+  // Clases (V3.3): recepción y el instructor toman asistencia desde aquí; el
+  // socio ve las suyas en su propio panel, no en esta agenda.
+  if ((esPersonal || espacio === 'entrenador') && features.enableClasses && tienePermiso(perfil, PERMISO.verClases)) {
+    entradas.push({ href: tenantHref(slug, 'panel/clases'), etiqueta: 'Clases', icono: 'clock' });
+  }
+
   if (esPersonal && features.enableRoutines && tienePermiso(perfil, PERMISO.verMetricasDeEntrenamiento)) {
     entradas.push({ href: tenantHref(slug, 'panel/entrenamiento'), etiqueta: 'Entrenamiento', icono: 'chart' });
   }

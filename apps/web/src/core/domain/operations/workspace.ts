@@ -83,6 +83,12 @@ export const PERMISO = {
   /** Marcar ejercicios completados de un socio (el socio marca los suyos sin permiso). */
   registrarEntrenamiento: 'training.log',
   verMetricasDeEntrenamiento: 'training.read',
+  // --- V3.3 · clases grupales y sesiones ---
+  verClases: 'classes.read',
+  /** Clases, planes que las incluyen, horarios, generación y cancelación de sesiones. */
+  gestionarClases: 'classes.manage',
+  /** Registrar asistencia a una sesión (recepción en sus sedes, el instructor en las suyas). */
+  tomarAsistenciaDeClase: 'classes.attend',
   /** Reglas comerciales de los planes (V3.1: si incluyen entrenador). */
   gestionarPlanes: 'plans.manage',
 } as const;
