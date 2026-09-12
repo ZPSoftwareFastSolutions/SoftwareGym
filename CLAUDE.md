@@ -542,7 +542,7 @@ ejercicio, 30/90 d) · `v_training_customer_stats` (qué hace cada socio) · `v_
 | `rotar_token_check_in(customer)` | Nuevo token QR (el disparador pone el valor aleatorio) | — |
 | `establecer_sucursal_primaria(branch)` | Cambia la sede principal (delega en `app.fijar_sucursal_primaria`, que repite el permiso) | `sin_permiso`, `sucursal_inactiva` |
 
-**Esquema `app` (46):** rutinas y progreso V3.2 (`puede_entrenar_a` —gerencia sobre su
+**Esquema `app` (47):** rutinas y progreso V3.2 (`puede_entrenar_a` —gerencia sobre su
 gimnasio, entrenador sobre SUS socios—, `preparar_programa`, `preparar_rutina`,
 `preparar_ejercicio_de_rutina`, `validar_rutina_asignada`, `auditar_rutina_asignada`,
 `preparar_completado`: fija la fecha local, deduce el origen y rechaza fechas imposibles),
@@ -980,7 +980,8 @@ puedan ver y probar; el patrón semanal que muestran es el de la semilla, no el 
 ```bash
 cd apps/web
 npm run typecheck    # incluye apps/web/tests
-npm test             # node --test, sin dependencias: dominio puro (sedes, racha, reportes)
+npm test             # node --test, sin dependencias: dominio puro (sedes, racha, cobro QR,
+                     # entrenadores, ejercicios, rutinas y lectura de métricas)
 npm run build        # valida también la configuración de todos los tenants
 npm audit            # debe dar 0
 ```
@@ -1169,9 +1170,11 @@ ningún chunk servido.
    dnclwawnjnzqqxgsuhpn` + `npx supabase db pull` (lo hace una persona con la
    contraseña de la base). Mientras tanto, el inventario vive en
    `supabase/migrations/README.md`.
-2. **Tests parciales, sin CI.** V3.0 añadió `npm test` (node --test, 46 pruebas:
-   sedes, racha con varias sedes, catálogo y CSV de reportes, selección de QR e
-   importes 180/179/181). Faltan `periodo`,
+2. **Tests parciales, sin CI.** V3.0 añadió `npm test` y hoy son **102 pruebas**
+   (sedes, racha con varias sedes, catálogo y CSV de reportes, selección de QR e
+   importes 180/179/181, entrenadores y ausencias, política de medios, y la lectura
+   de las métricas de entrenamiento: umbrales del «día de pierna» y conclusiones).
+   Faltan `periodo`,
    `members`, `tenant.validator`, `build-theme`, una prueba RLS automatizada
    (hoy es manual, §9.2) y GitHub Actions con typecheck + test + build + audit + greps.
 3. **`DEFAULT_FEATURE_FLAGS` contradice «fallar cerrado»:** las flags del sitio
@@ -1349,7 +1352,7 @@ o de cada sesión?, ¿quién puede cancelar una sesión y con cuánta antelació
 | V2.2 | 2026-09-10 | `406dd68`, `417738b` | Gestión de socios, cobro por QR con comprobantes, cámara, racha, reportes híbridos; desplegada |
 | Cierre V2 | 2026-09-10 | `d599bda` | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada; documentos alineados |
 | V3.0 vitrina | 2026-09-11 | `eb3b0ff` | Landing multisucursal: chips de sedes en el hero, sección de sucursales rediseñada (portada/detalle/mapas), página `/sucursales` en el menú, texto de vitrina por sede en el tenant (`content.branches`), FAQ y «Nosotros» con las dos sedes; resets CSS a `@layer base` (márgenes y contraste de botones); voseo retirado de galería, horarios, instalaciones y tenants. Planes y pagos sin cambios. Desplegada (`dpl_58gzS8aVddniDoLLmXnWhrKPajwY`): `/mitico/sucursales` 200, `/aurora-fit/sucursales` 404, planes intactos |
-| V3.0 cobro QR | 2026-09-11 | (este commit) | **Corrección urgente.** Causa raíz de «gerencia no puede guardar el QR»: `upsert` con `tenant_id` sin grant (42501) mal traducido como falta de rol; ahora RPC invocador, sin ampliar permisos. QR general y por plan (`payment_qr_codes`, modalidad `global`/`por_plan`, monto libre/exacto), selección con respaldo en el general, precio de la base en la vitrina; la base rechaza cobros por QR y aprobaciones por debajo del precio (180/179/181 probados) y cierra el enlace de un pago barato por UPDATE directo. Migraciones `v3_cobro_qr_por_plan_e_importe_verificado` y `v3_venta_y_alta_con_qr_exigen_importe_completo`; batería RLS en `docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`; 46 pruebas de dominio |
+| V3.0 cobro QR | 2026-09-11 | `27279ef` | **Corrección urgente.** Causa raíz de «gerencia no puede guardar el QR»: `upsert` con `tenant_id` sin grant (42501) mal traducido como falta de rol; ahora RPC invocador, sin ampliar permisos. QR general y por plan (`payment_qr_codes`, modalidad `global`/`por_plan`, monto libre/exacto), selección con respaldo en el general, precio de la base en la vitrina; la base rechaza cobros por QR y aprobaciones por debajo del precio (180/179/181 probados) y cierra el enlace de un pago barato por UPDATE directo. Migraciones `v3_cobro_qr_por_plan_e_importe_verificado` y `v3_venta_y_alta_con_qr_exigen_importe_completo`; batería RLS en `docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`; 46 pruebas de dominio |
 | V3.2 | 2026-09-12 | `79d8de2` | Desplegada (`dpl_3YaGKuHdfqZk7jS6rT4vrds1oyrc`) y verificada sobre el alias: públicas 200, `/mitico/panel/{rutinas,entrenamiento,rutinas/asignada/[id]}` 307 sin sesión, las mismas en Aurora 404, sin `service_role` en 11 chunks. Programas → rutinas → ejercicios; **asignar copia la rutina** al socio y se ajusta solo para él; progreso con una marca por ejercicio y día (fecha local del gimnasio, origen deducido por la base, series y peso opcionales); el socio marca desde su panel y el entrenador desde el suyo, cada uno acotado por `app.puede_entrenar_a`. **Métricas para gerencia** en `/panel/entrenamiento`: conclusiones automáticas, ejercicio más y menos hecho, qué hace cada socio, mapa día × grupo muscular y etiqueta del día («día de pierna») con umbrales probados en el dominio. Migraciones `v3_2_programas_rutinas_y_progreso` (+3 correcciones que encontró la batería de RLS) y semilla de demostración; ADR 0007; 102 pruebas de dominio |
 | V3.1 | 2026-09-11 | `9c55f7b` | Desplegada (`dpl_AkFXrLTgx88Mv8ceBmVPm22xQvyc`) y verificada sobre el alias: públicas 200, `/mitico/panel/{entrenadores,entrenador,ejercicios}` 307 sin sesión, las mismas rutas en Aurora 404, CSP con el origen del proyecto en `img-src`/`media-src` y reproductores sin cookies en `frame-src`, sin `service_role` en 11 chunks (608 KB). Entrenadores + ejercicios. Perfil con cuenta opcional vinculada por gerencia (rol `trainer`, solo `trainers.self`), sedes N:M, ausencias por horas/turno/día/periodo sin solapes, socios principal/secundarios según el PLAN (en la base), espacio `/panel/entrenador` con columnas fijas; catálogo de ejercicios con imagen/GIF/clip/enlace, compresión en el navegador, subida directa firmada, bucket privado con URL firmada, cuota de 300 MB medida por la base. **Corrige una escalada de privilegios de V2** (gerencia podía darse `super_admin`). Migraciones `v3_roles_de_gimnasio_no_otorgan_plataforma`, `v3_1_entrenadores_ejercicios_y_permisos`, `v3_1_semilla_entrenador_demo_y_ejercicios`, `v3_1_mensajes_de_asignacion_y_especialidades`; ADR 0006; batería RLS V3.1; 79 pruebas de dominio |
 | V3.0 | 2026-09-11 | `0227dd4`, `16fd88c` | Multisucursal: `branches`, `user_branches`, asistencia con sede (histórico sin sede), `branches.manage`/`branches.all`, sede de trabajo por dispositivo, dashboards global/por sede, `/panel/sucursales`, reportes por sede, «Nuestras sucursales» en la vitrina, auditoría por disparador, `npm test`. Mítico: Prado + Miraflores. Desplegada (`dpl_7DFPH7re52R8Q7kzHNwXo5sG99TQ`) y verificada sobre el alias: públicas 200 desde CDN, vitrina con las dos sedes y sus mapas, panel 307, `/aurora-fit/panel/sucursales` 404, CSV de la comparativa 401 sin sesión y 404 en Aurora, sin `service_role` en chunks |
