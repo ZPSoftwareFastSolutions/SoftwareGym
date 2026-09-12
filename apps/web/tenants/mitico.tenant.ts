@@ -161,6 +161,10 @@ export const miticoTenant: TenantConfig = {
     // ejercicios son datos de la base, no de este archivo.
     enableTrainers: true,
     enableExercises: true,
+
+    // V3.2: programas, rutinas asignadas a socios, registro de ejercicios
+    // completados y las métricas de entrenamiento que salen de ese registro.
+    enableRoutines: true,
   },
 
   seo: {

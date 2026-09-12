@@ -25,6 +25,7 @@ import type {
 import type { ExercisesRepositoryPort } from '@core/application/ports/exercises-repository.port';
 import type { ReportsRepositoryPort } from '@core/application/ports/reports-repository.port';
 import type { TrainersRepositoryPort } from '@core/application/ports/trainers-repository.port';
+import type { TrainingRepositoryPort } from '@core/application/ports/training-repository.port';
 import type { TenantRepositoryPort } from '@core/application/ports/tenant-repository.port';
 import { StaticTenantRepository } from '../tenants/static-tenant.repository';
 
@@ -91,6 +92,13 @@ export async function trainersRepository(): Promise<TrainersRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseTrainersRepository } = await import('../operations/supabase-trainers.repository');
   return new SupabaseTrainersRepository(await createSupabaseServerClient());
+}
+
+/** Programas, rutinas, asignaciones y métricas de entrenamiento (V3.2). */
+export async function trainingRepository(): Promise<TrainingRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseTrainingRepository } = await import('../operations/supabase-training.repository');
+  return new SupabaseTrainingRepository(await createSupabaseServerClient());
 }
 
 /** Catálogo de ejercicios y sus medios (V3.1), con la sesión de quien pregunta. */

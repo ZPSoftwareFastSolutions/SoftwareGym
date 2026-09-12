@@ -76,6 +76,13 @@ export const PERMISO = {
   trabajarComoEntrenador: 'trainers.self',
   verEjercicios: 'exercises.read',
   gestionarEjercicios: 'exercises.manage',
+  // --- V3.2 · programas, rutinas y progreso ---
+  verRutinas: 'routines.read',
+  gestionarRutinas: 'routines.manage',
+  asignarRutinas: 'routines.assign',
+  /** Marcar ejercicios completados de un socio (el socio marca los suyos sin permiso). */
+  registrarEntrenamiento: 'training.log',
+  verMetricasDeEntrenamiento: 'training.read',
   /** Reglas comerciales de los planes (V3.1: si incluyen entrenador). */
   gestionarPlanes: 'plans.manage',
 } as const;

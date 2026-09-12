@@ -108,6 +108,16 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
     entradas.push({ href: tenantHref(slug, 'panel/ejercicios'), etiqueta: 'Ejercicios', icono: 'dumbbell' });
   }
 
+  // Las rutinas las ven el personal y también el entrenador desde su espacio:
+  // es su herramienta de trabajo, no una pantalla de gerencia.
+  if ((esPersonal || espacio === 'entrenador') && features.enableRoutines && tienePermiso(perfil, PERMISO.verRutinas)) {
+    entradas.push({ href: tenantHref(slug, 'panel/rutinas'), etiqueta: 'Rutinas', icono: 'layers' });
+  }
+
+  if (esPersonal && features.enableRoutines && tienePermiso(perfil, PERMISO.verMetricasDeEntrenamiento)) {
+    entradas.push({ href: tenantHref(slug, 'panel/entrenamiento'), etiqueta: 'Entrenamiento', icono: 'chart' });
+  }
+
   // Alguien del personal que además entrena socios (recepción con perfil de
   // entrenador, por ejemplo) llega a su lista desde aquí.
   if (esPersonal && features.enableTrainers && tienePermiso(perfil, PERMISO.trabajarComoEntrenador)) {

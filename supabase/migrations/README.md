@@ -100,3 +100,16 @@ dónde ocurrieron y no hay dato fiable para deducirlo: se dejaron con
 la base la exige en toda fila nueva sin reescribir las anteriores. Si algún día
 el negocio confirma la sede de ese periodo, se asigna con un UPDATE explícito y
 documentado, y la restricción se puede validar (`VALIDATE CONSTRAINT`).
+
+## V3.2 · Programas, rutinas y progreso (2026-09-12)
+
+| Versión | Nombre | Qué introduce |
+|---|---|---|
+| 20260912061426 | `v3_2_programas_rutinas_y_progreso` | Permisos `routines.read/manage/assign`, `training.log`, `training.read`; el rol `trainer` suma además `exercises.read`; recepción solo `routines.read`. Tablas con RLS y FK compuestas: `training_programs` (objetivo, nivel, semanas), `routines` (día, orden, notas, minutos), `routine_exercises` (series, repeticiones con formato validado, peso, descanso), `customer_routines` + `customer_routine_exercises` (**la asignación COPIA la rutina**, editable por socio) y `exercise_completions` (progreso con fecha local del gimnasio, series y peso opcionales, origen deducido por la base). RPC `asignar_rutina` (copia atómica), `marcar_ejercicio` (socio y ejercicio salen de la fila, una marca por día) y `desmarcar_ejercicio`; disparadores de validación, alcance del entrenador (`app.puede_entrenar_a`) y auditoría; vistas `v_routines`, `v_customer_routines`, `v_training_exercise_stats`, `v_training_customer_stats`, `v_training_weekday` y `v_training_overview` |
+| 20260912061634 | `v3_2_marcar_ejercicio_respeta_indice_parcial` | La batería de RLS encontró que el `ON CONFLICT` no repetía el predicado del índice parcial: **toda marca fallaba** con 42P10 |
+| 20260912061803 | `v3_2_marcar_ejercicio_no_escribe_el_origen` | La RPC nombraba `source` en el INSERT, columna que no se concede a nadie (la deduce la base): «permission denied» en cada marca |
+| 20260912061936 | `v3_2_progreso_y_catalogo_con_el_alcance_justo` | El progreso lo veía recepción (la política reusaba `puede_entrenar_a`, que acepta a cualquiera con `customers.read`); ahora es de `training.read`, el propio socio y SU entrenador. Y el rol `customer` recibe `exercises.read`: sin eso no podía leer el nombre de los ejercicios de su propia rutina |
+| 20260912062135 | `v3_2_semilla_programa_y_entrenamiento_demo` | Mítico: programa «Full Body 3 días» (Día A empuje, Día B pierna, Día C tirón), asignado a 5 socios, y seis semanas de ejercicios completados con patrón lunes/miércoles/viernes para que las métricas tengan datos. Los disparadores de validación se apagan solo durante la carga histórica |
+
+Pruebas por rol, gimnasio ajeno, anónimo y reglas de progreso:
+[`docs/runbooks/pruebas-rls-v3.2-rutinas-y-progreso.sql`](../../docs/runbooks/pruebas-rls-v3.2-rutinas-y-progreso.sql).

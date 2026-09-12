@@ -11,6 +11,7 @@
 
 import type { Metadata } from 'next';
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
+import { tenantHref } from '@/lib/tenant-links';
 import { fechaCorta, horaEnZona, hoyEnZona } from '@/lib/formato';
 import {
   ausenciasPendientes,
@@ -21,8 +22,9 @@ import {
   turnosDelGimnasio,
 } from '@core/domain/operations/trainers';
 import { PERMISO } from '@core/domain/operations/workspace';
-import { branchesRepository, trainersRepository } from '@infra/config/composition-root';
+import { branchesRepository, trainersRepository, trainingRepository } from '@infra/config/composition-root';
 import { Badge } from '@/presentation/ui/Badge';
+import { LinkButton } from '@/presentation/ui/Button';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
 import { StatCard } from '@/presentation/ui/StatCard';
@@ -51,6 +53,12 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
       </section>
     );
   }
+
+  // Las rutinas de SUS socios: RLS le deja ver las del gimnasio, así que se
+  // acota a su gente, que es lo que viene a mirar aquí.
+  const rutinas = tenant.features.enableRoutines
+    ? (await (await trainingRepository()).asignaciones({ vigentes: true })).filter((r) => socios.some((s) => s.customerId === r.customerId))
+    : [];
 
   const zona = tenant.hours.timezone;
   const hoy = hoyEnZona(zona);
@@ -134,6 +142,68 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
           vacio={<EmptyState icono="group" titulo="Todavía no tienes socios asignados" descripcion="Cuando gerencia te asigne socios, aparecerán aquí." />}
         />
       </section>
+
+      {tenant.features.enableRoutines && (
+        <section id="rutinas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-rutinas-de-mis-socios">
+          <h2 id="titulo-rutinas-de-mis-socios" className="t-h3">Rutinas de tus socios</h2>
+          <p className="mt-1.5 text-[0.86rem] text-muted">
+            Entra a una para ajustarla o marcar lo que hizo el socio. Cada rutina es una copia suya: lo que cambies no toca la plantilla.
+          </p>
+          <DataTable
+            titulo="Rutinas vigentes de tus socios"
+            className="mt-5"
+            columnas={[
+              {
+                clave: 'socio',
+                titulo: 'Socio',
+                celda: (r) => (
+                  <span className="flex flex-col">
+                    <span className="font-medium text-ink">{r.customerName}</span>
+                    <span className="text-[0.76rem] text-muted">{r.customerCode ?? ''}</span>
+                  </span>
+                ),
+              },
+              {
+                clave: 'rutina',
+                titulo: 'Rutina',
+                celda: (r) => (
+                  <span className="flex flex-col">
+                    <span>
+                      {r.dayLabel ? `${r.dayLabel} · ` : ''}
+                      {r.name}
+                    </span>
+                    <span className="text-[0.76rem] text-muted">{r.ejercicios} ejercicios</span>
+                  </span>
+                ),
+              },
+              {
+                clave: 'semana',
+                titulo: 'Esta semana',
+                celda: (r) => (
+                  <span className="flex flex-col">
+                    <span>{r.completados7d} registros</span>
+                    <span className="text-[0.76rem] text-muted">
+                      {r.ultimoRegistro ? `último: ${fechaCorta(r.ultimoRegistro)}` : 'sin registros'}
+                    </span>
+                  </span>
+                ),
+              },
+              {
+                clave: 'accion',
+                titulo: '',
+                celda: (r) => (
+                  <LinkButton href={`${tenantHref(slug, 'panel/rutinas/asignada')}/${r.id}`} variant="secondary" size="sm" icon="edit" iconPosition="start">
+                    Ver y marcar
+                  </LinkButton>
+                ),
+              },
+            ]}
+            filas={rutinas}
+            claveDeFila={(r) => r.id}
+            vacio={<EmptyState icono="layers" titulo="Tus socios todavía no tienen rutina" descripcion="Arma una rutina y asígnasela desde «Rutinas»." />}
+          />
+        </section>
+      )}
 
       <section id="ausencias" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-ausencias">
         <h2 id="titulo-mis-ausencias" className="t-h3">Tus ausencias registradas</h2>

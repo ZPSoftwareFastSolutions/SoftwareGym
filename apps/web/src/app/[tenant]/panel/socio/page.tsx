@@ -11,6 +11,7 @@
  */
 
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { construirNotificaciones } from '@core/domain/operations/notifications';
@@ -19,7 +20,7 @@ import { calcularRacha, diasCerradosDelHorario } from '@core/domain/operations/s
 import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
-import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
+import { membersRepository, receiptsRepository, trainingRepository } from '@infra/config/composition-root';
 import { matrizQr } from '@infra/operations/qr';
 import { NotificationsPanel } from '@/presentation/patterns/NotificationsPanel';
 import { RachaCalendario } from '@/presentation/patterns/RachaCalendario';
@@ -78,6 +79,12 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
     customerId ? socios.pagos(customerId) : Promise.resolve([]),
     conPagos && customerId ? (await receiptsRepository()).listar({ customerId, limite: 10 }) : Promise.resolve([]),
   ]);
+
+  // V3.2: sus rutinas vigentes. RLS solo devuelve las del propio socio.
+  const rutinas =
+    features.enableRoutines === true && customerId
+      ? await (await trainingRepository()).asignaciones({ customerId, vigentes: true })
+      : [];
 
   const membresia =
     ficha?.membershipStatus && ficha.endDate && ficha.daysRemaining !== null
@@ -347,6 +354,40 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
               <p className="mt-4 text-[0.78rem] text-muted">¿Algún dato está mal? Pide en recepción que lo corrijan: tu ficha la gestiona el gimnasio.</p>
             </section>
           </div>
+
+          {rutinas.length > 0 && (
+            <section id="mi-rutina" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mi-rutina">
+              <h2 id="titulo-mi-rutina" className="t-h3">Tu rutina</h2>
+              <p className="mt-1.5 text-[0.86rem] text-muted">
+                La armó tu entrenador. Marca cada ejercicio al terminarlo: así queda tu progreso y él ve cómo vas.
+              </p>
+              <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+                {rutinas.map((rutina) => (
+                  <li key={rutina.id}>
+                    <Link
+                      href={`${tenantHref(slug, 'panel/rutinas/asignada')}/${rutina.id}`}
+                      className="flex h-full flex-col gap-1.5 rounded-[var(--t-radius-md)] border border-line p-4 transition-colors hover:border-action"
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-ink">
+                          {rutina.dayLabel ? `${rutina.dayLabel} · ` : ''}
+                          {rutina.name}
+                        </span>
+                        <Icon name="arrowRight" size={16} className="text-action" />
+                      </span>
+                      <span className="text-[0.82rem] text-muted">
+                        {rutina.ejercicios} ejercicios{rutina.programName ? ` · ${rutina.programName}` : ''}
+                      </span>
+                      <span className="text-[0.78rem] text-muted">
+                        {rutina.completados7d} marcados esta semana
+                        {rutina.ultimoRegistro ? ` · último: ${fechaCorta(rutina.ultimoRegistro)}` : ' · todavía sin registros'}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
             <section id="mis-entradas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-historial">

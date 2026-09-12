@@ -4,10 +4,10 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-11 · cierre de **V3.1 entrenadores + ejercicios** (y corrección de escalada de roles).
-> - **Rama de trabajo vigente:** `feat/v3.1-entrenadores-ejercicios` → de ella sale V3.2.
+> - **Última actualización:** 2026-09-12 · cierre de **V3.2 programas, rutinas y métricas de entrenamiento**.
+> - **Rama de trabajo vigente:** `feat/v3.2-rutinas-programas` → de ella sale V3.3.
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
->   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md).
+>   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md).
 > - **Historia completa** (cada fase, cada defecto con su prueba, cada decisión
 >   con su contexto): [`docs/historial/bitacora-v1-a-v2.2.md`](docs/historial/bitacora-v1-a-v2.2.md).
 >   No se mantiene; si contradice a este archivo, manda este archivo.
@@ -28,8 +28,8 @@
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
 | **En producción** | https://gym-platform-alpha.vercel.app (desplegado desde `feat/v3.1-entrenadores-ejercicios`, commit `9c55f7b`, 2026-09-11) |
 | **Clientes demo** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) |
-| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · **V3.1 ✅ entrenadores + ejercicios** |
-| **Siguiente** | **V3.2**: programas + rutinas + asignaciones (§13). Luego V3.3 clases/sesiones, V3.4 reservas |
+| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · **V3.2 ✅ rutinas + métricas** |
+| **Siguiente** | **V3.3**: clases + sesiones (§13). Luego V3.4 reservas |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
 de datos) y §12 (deuda viva).
@@ -75,8 +75,8 @@ V2.1 ✅  Dashboards por rol, asistencia con QR, notificaciones, reportes
 V2.2 ✅  Gestión de socios, cobro por QR con comprobantes, racha, reportes híbridos
 V3.0 ✅  Multisucursal: sedes, usuario↔sede, asistencia por sede, vistas y vitrina
 V3.1 ✅  Entrenadores (perfil, cuenta opcional, sedes, ausencias, socios según plan) + ejercicios con medios
-V3.2 ⏭  Programas + rutinas + asignaciones
-V3.3     Clases + sesiones (con sede)
+V3.2 ✅  Programas → rutinas → ejercicios, asignación por copia, progreso y métricas de entrenamiento
+V3.3 ⏭  Clases + sesiones (con sede)
 V3.4     Reservas
 V4       Suscripciones, licencias, facturación, integraciones
 ```
@@ -224,7 +224,7 @@ propio en `presentation/icons/Icon.tsx`), de animación, `tailwind-merge`, de ZI
                         ▼
                Supabase  (proyecto dnclwawnjnzqqxgsuhpn · us-west-2)
                ├─ Auth ─────── cuentas; disparadores asignan tenant, rol y vínculo a la ficha
-               ├─ PostgreSQL ─ 26 tablas con RLS, 20 vistas security_invoker, 11 RPC invocador
+               ├─ PostgreSQL ─ 32 tablas con RLS, 26 vistas security_invoker, 14 RPC invocador
                └─ Storage ──── comprobantes (privado) · qr-pagos (público) · ejercicios (privado, URL firmada)
 ```
 
@@ -268,6 +268,8 @@ src/
         entrenadores/ [id]/ actions.ts        Equipo, cuenta, sedes, ausencias, socios y regla por plan (V3.1)
         entrenador/              Espacio de trabajo del entrenador: su perfil y sus socios (V3.1)
         ejercicios/ [id]/ actions.ts          Catálogo con medios, subida directa a Storage y cuota (V3.1)
+        rutinas/ [id]/ asignada/[id]/ actions.ts  Programas, rutinas, asignación por copia y marca de hecho (V3.2)
+        entrenamiento/           Métricas del gerente: ejercicio más hecho, qué hace cada socio, qué día es día de qué (V3.2)
         reportes/ [reporte]/ csv/ _filtros.ts Reportes híbridos
   core/
     domain/
@@ -285,20 +287,21 @@ src/
         branches.ts              Sucursal, validarSucursal, resolverSucursalOperativa, repartoPorSucursal, mapas
         trainers.ts              Entrenador, ausencias (turnos, solapes, disponibilidad), regla del plan (V3.1)
         exercises.ts             Catálogo, grupos musculares, política de medios, bytes mágicos, cuota, enlaces (V3.1)
+        training.ts              Rutinas y LECTURA del entrenamiento: etiqueta del día por grupo/familia, conclusiones (V3.2)
         periodo.ts               Presets hoy/ayer/7d/30d/mes/mes-anterior/año
         reports.ts               Catálogo de 9 reportes, resumen, serie, CSV seguro
     application/
       ports/                     tenant-repository, operations-repository, members-repository,
                                  receipts-repository (+ PaymentSettingsPort), reports-repository,
                                  branches-repository (+ PublicBranchesPort), trainers-repository,
-                                 exercises-repository, resultado
+                                 exercises-repository, training-repository, resultado
       tenant/get-tenant.usecase.ts, theming/build-theme.ts, auth/login.usecase.ts
   infrastructure/
     config/composition-root.ts   ÚNICO sitio que construye adaptadores
     tenants/                     tenant.registry.ts, static-tenant.repository.ts, tenant.validator.ts
     auth/                        supabase.config.ts, supabase.server.ts, supabase.public.ts (anónimo, sin cookies),
                                  cookie-options.ts, session-hint.ts
-    operations/                  supabase-{operations,members,receipts,reports,branches,trainers,exercises}.repository.ts, qr.ts
+    operations/                  supabase-{operations,members,receipts,reports,branches,trainers,exercises,training}.repository.ts, qr.ts
   presentation/
     ui/                          Átomos/moléculas: Button, Badge, Modal (Dialogo), StatCard, DataTable,
                                  Campo, BarChart, DonutChart, HeatMap, QrCode, EmptyState, Logo, Reveal…
@@ -307,7 +310,8 @@ src/
                                  PaymentQrModal, ContenidoDePagoQr, RachaCalendario, ReportFilters,
                                  NotificationsPanel, DashboardNav, AccionConEstado, SelectorDeImagen,
                                  SelectorDeSucursal, SucursalForm, TarjetaDeSucursal, EntrenadorForms,
-                                 EjercicioForms (compresión, póster y subida directa), UsoDeMedios…
+                                 EjercicioForms (compresión, póster y subida directa), UsoDeMedios,
+                                 RutinaForms (programa, rutina, ejercicio, asignación y marca de hecho)…
     sections/                    Secciones del sitio público (Hero, Plans, TrainingPlans, Products, Branches…)
     layouts/PageHero.tsx, icons/Icon.tsx
   lib/                           cn, formato (fechas/importes/hoyEnZona), page-guards, tenant-links,
@@ -324,7 +328,7 @@ src/
 estática). Los repositorios de datos (`operationsRepository`,
 `membersRepository`, `receiptsRepository`, `reportsRepository`,
 `paymentSettingsRepository`, `branchesRepository`, `trainersRepository`,
-`exercisesRepository`) **se crean por petición** con el cliente de
+`exercisesRepository`, `trainingRepository`) **se crean por petición** con el cliente de
 Supabase que lleva la cookie de quien pregunta: cachearlos serviría los datos
 del primer usuario a todos. Se importan de forma dinámica.
 
@@ -409,7 +413,8 @@ negocio: `repo.hoyDelGimnasio(slug)` (base, `app.hoy_del_gimnasio`) o
 | `enableMultiBranch` | **V3.0**: selector de sede, `/panel/sucursales`, vistas y reporte por sede, sección pública «Nuestras sucursales». Apagada = sede única (las entradas igual llevan sede) | ✅ | ❌ |
 | `enableTrainers` | **V3.1**: `/panel/entrenadores`, espacio `/panel/entrenador`, regla de entrenador por plan | ✅ | ❌ |
 | `enableExercises` | **V3.1**: `/panel/ejercicios` (catálogo, medios, cuota) | ✅ | ❌ |
-| `enableReservations`, `enableRoutines`, `enableClasses` | **Reservadas para V3.2–V3.4** | ❌ | ❌ |
+| `enableRoutines` | **V3.2**: `/panel/rutinas`, `/panel/entrenamiento`, rutina del socio y marca de ejercicios | ✅ | ❌ |
+| `enableReservations`, `enableClasses` | **Reservadas para V3.3–V3.4** | ❌ | ❌ |
 
 ¹ Ambos parten de `...DEFAULT_FEATURE_FLAGS`. Mítico tiene `showGallery` y
 `showSchedule` apagadas a la espera de fotos y horarios confirmados; Aurora
@@ -426,14 +431,14 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 ### 4.1 Principios que sostienen el aislamiento
 
 1. **`tenant_id` en toda tabla de negocio** y como primera columna de sus índices.
-2. **RLS activo en las 26 tablas**, sin política = denegado. 86 políticas en
+2. **RLS activo en las 32 tablas**, sin política = denegado. 106 políticas en
    `public` + 10 en `storage`.
 3. **El tenant sale de la identidad:** `app.current_tenant_id()`,
    `app.current_customer_id()`, `app.current_app_user_id()`. Autorización:
    `app.tenant_allows(tenant_id, 'modulo.accion')` y `app.has_permission`.
 4. **Esquema `app` fuera de la API.** Las funciones `SECURITY DEFINER` viven ahí
    (PostgREST publica todo `public` como `/rpc`). **En `public` no hay ninguna
-   función DEFINER**: las 11 RPC son `SECURITY INVOKER` y corren bajo RLS.
+   función DEFINER**: las 14 RPC son `SECURITY INVOKER` y corren bajo RLS.
 5. **Claves foráneas compuestas** `(tenant_id, customer_id) → customers(tenant_id, id)`
    (y análogas con planes, membresías, pagos, **sucursales** y **usuarios**): el
    motor impide que una fila de un gimnasio apunte a un socio o a una sede de otro.
@@ -450,11 +455,15 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 11. **Otorgar un rol mira QUÉ se otorga (V3.1):** fuera de la plataforma solo se
     insertan o borran roles de alcance `tenant`; `app_users` no se reescribe
     (`auth_user_id`, `tenant_id`) desde la API. Antes gerencia podía darse `super_admin`.
+13. **Un ayudante de autorización dice más de lo que su nombre sugiere (V3.2):**
+    `app.puede_entrenar_a` acepta a cualquiera con `customers.read` —recepción
+    incluida—, así que no sirve para decidir quién LEE el progreso. Cada política
+    nombra su condición en vez de reusar el ayudante más cercano.
 12. **Columnas, no filas, cuando RLS no alcanza (V3.1):** el entrenador ve a sus
     socios por una función DEFINER con columnas fijas; no hay política de lectura
     de `customers` para él (daría documento, teléfono y notas).
 
-### 4.2 Tablas (26)
+### 4.2 Tablas (32)
 
 | Área | Tabla | Notas |
 |---|---|---|
@@ -478,13 +487,19 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 | | `customer_trainers` | Socio ↔ entrenador `principal`/`secundario` (+ área). Un principal vigente, el mismo entrenador una vez; **regla del plan de la membresía vigente** en disparador; se finaliza (`ended_on`), no se borra |
 | | `exercises` | Catálogo por gimnasio: nombre único, `muscle_group` (14 códigos), equipo, descripción, instrucciones, activo |
 | | `exercise_media` | `imagen`/`gif`/`video`/`enlace` (YouTube/Vimeo por id). Tamaño y MIME **leídos de `storage.objects`**; imagen ≤ 1 MB, GIF ≤ 3 MB, clip ≤ 15 MB y ≤ 60 s, póster ≤ 300 KB; 6 por ejercicio; **cuota `tenants.media_quota_bytes`** |
+| Entrenamiento (V3.2) | `training_programs` | Plantilla por objetivo (`fuerza`, `hipertrofia`…), nivel y semanas. Nombre único por gimnasio |
+| | `routines` | Rutina de un día (`Día A`), con orden, notas y minutos. Puede colgar de un programa o ir suelta; si el programa se borra, la rutina queda suelta |
+| | `routine_exercises` | Ejercicio de la plantilla: series (1-12), repeticiones con formato validado (`10`, `8-12`, `al fallo`, `45 seg`), peso, descanso y nota. FK `RESTRICT` al catálogo: un ejercicio en uso no se borra |
+| | `customer_routines` | **Copia** de la rutina para un socio (nombre, día, notas, `starts_on`, `ended_on`). Se finaliza, no se borra. El entrenador solo asigna a SUS socios (disparador) |
+| | `customer_routine_exercises` | Los ejercicios de esa copia, editables solo para ese socio |
+| | `exercise_completions` | Progreso: una fila por ejercicio, socio y **fecha local del gimnasio**, con series y peso opcionales. `source` (`socio`/`entrenador`/`gerencia`) lo DEDUCE la base; una marca por día (índice único); ni futuro ni más de 7 días atrás. **De aquí salen todas las métricas** |
 | | `payment_qr_codes` | QR de cobro: `plan_id` NULL = **general** (siempre monto libre, uno por gimnasio) o de un plan (uno por plan, FK compuesta); `amount_mode` `libre`/`exacto` + `fixed_amount`; `expires_on`; ruta con prefijo del gimnasio (CHECK). Lectura: anónimo todo (es lo que se imprime en el mostrador), con sesión solo su gimnasio. Escritura: `settings.manage`, por RPC |
 
 Enums: `payment_method` (`cash, qr, transfer, card, other`), `attendance_method`
 (`manual, qr, kiosk`), `receipt_status`, `receipt_source`, estados de
 membresía/socio/tenant.
 
-### 4.3 Vistas (20, todas `security_invoker`)
+### 4.3 Vistas (26, todas `security_invoker`)
 
 `v_my_profile` (perfil + roles + permisos de quien entra) · `v_customer_overview`
 · `v_customer_detail` · `v_memberships` (estado efectivo) ·
@@ -497,7 +512,11 @@ membresía/socio/tenant.
 `v_branch_overview` (hoy, 7 d, 30 d, socios distintos 30 d y personal por sede) ·
 `v_mis_sucursales` (sedes del gimnasio con `puede_operar` de la sesión) ·
 **V3.1:** `v_trainers` (sedes, cuenta, asignaciones y ausencia de hoy) ·
-`v_customer_trainers` (asignación + plan vigente y su regla) · `v_uso_de_medios` (cuota y uso).
+`v_customer_trainers` (asignación + plan vigente y su regla) · `v_uso_de_medios` (cuota y uso) ·
+**V3.2:** `v_routines` (ejercicios, asignaciones y grupos que cubre) · `v_customer_routines`
+(rutina del socio + registros de 7 días) · `v_training_exercise_stats` (veces y socios por
+ejercicio, 30/90 d) · `v_training_customer_stats` (qué hace cada socio) · `v_training_weekday`
+(día × grupo muscular, 90 d) · `v_training_overview` (resumen, solo con `training.read`).
 
 > Los reportes leen de vistas y **no** de embebidos de PostgREST: con claves
 > foráneas compuestas hay dos relaciones posibles y el embebido falla.
@@ -517,10 +536,17 @@ membresía/socio/tenant.
 | `vincular_cuenta_de_entrenador(trainer, email)` | Vincula la cuenta **registrada y confirmada** del mismo gimnasio y otorga el rol `trainer` (vía `app.otorgar_cuenta_de_entrenador`) | `sin_permiso`, `cuenta_no_encontrada`, `correo_sin_confirmar`, `cuenta_ya_vinculada`, `entrenador_con_cuenta` |
 | `desvincular_cuenta_de_entrenador(trainer)` | Quita la cuenta y el rol `trainer`; el perfil queda | `sin_permiso` |
 | `mis_socios_asignados()` | Socios vigentes del entrenador de la sesión: código, nombre, plan, vigencia (vía `app.socios_del_entrenador`) | — |
+| `asignar_rutina(customer, routine, nota)` | **Copia** la rutina y sus ejercicios al socio, atómico. El entrenador solo a los suyos (`app.puede_entrenar_a`) | `rutina_no_disponible`, `rutina_sin_ejercicios`, `sin_permiso`, 23505 (ya asignada) |
+| `marcar_ejercicio(item, series, peso, nota, fecha)` | Marca un ejercicio como hecho. Socio y ejercicio salen de la FILA, no del formulario; repetir el mismo día no duplica | `ejercicio_no_disponible`, `fecha_futura`, `fecha_demasiado_antigua`, `sin_permiso` |
+| `desmarcar_ejercicio(id)` | Deshace una marca (del propio socio o con `training.log`) | `sin_permiso` |
 | `rotar_token_check_in(customer)` | Nuevo token QR (el disparador pone el valor aleatorio) | — |
 | `establecer_sucursal_primaria(branch)` | Cambia la sede principal (delega en `app.fijar_sucursal_primaria`, que repite el permiso) | `sin_permiso`, `sucursal_inactiva` |
 
-**Esquema `app` (39):** entrenamiento V3.1 (`current_trainer_id`, `preparar_entrenador`,
+**Esquema `app` (46):** rutinas y progreso V3.2 (`puede_entrenar_a` —gerencia sobre su
+gimnasio, entrenador sobre SUS socios—, `preparar_programa`, `preparar_rutina`,
+`preparar_ejercicio_de_rutina`, `validar_rutina_asignada`, `auditar_rutina_asignada`,
+`preparar_completado`: fija la fecha local, deduce el origen y rechaza fechas imposibles),
+entrenamiento V3.1 (`current_trainer_id`, `preparar_entrenador`,
 `auditar_entrenador`, `preparar_ausencia`, `validar_asignacion_de_entrenador`,
 `auditar_asignacion_de_entrenador`, `preparar_ejercicio`, `preparar_medio_de_ejercicio`,
 `otorgar_cuenta_de_entrenador`, `retirar_cuenta_de_entrenador`, `socios_del_entrenador`), cobro (`preparar_qr_de_cobro`, `fijar_importe_esperado`,
@@ -552,7 +578,7 @@ binaria, `no-store`, CSP de sandbox) y `/[tenant]/pago/qr` (público, 410 si el
 QR venció). La CSP (`img-src 'self'`) bloquearía imágenes de otro dominio en
 silencio. `storage.protect_delete` impide borrar objetos por SQL.
 
-### 4.6 Roles y permisos (27 permisos)
+### 4.6 Roles y permisos (32 permisos)
 
 | Permiso | Super admin | Gerente | Recepción | Entrenador | Socio |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -567,12 +593,17 @@ silencio. `storage.protect_delete` impide borrar objetos por SQL.
 | `payments.read`, `payments.create` | | ✅ | ✅ | | |
 | `attendance.read`, `attendance.create` | | ✅ | ✅ | | |
 | `plans.read` | | ✅ | ✅ | ✅¹ | ✅ |
+| `routines.read` (programas, rutinas y rutinas asignadas) | | ✅ | ✅ | ✅ | |
+| `routines.manage`, `routines.assign` (crear y asignar; el entrenador, solo a SUS socios) | | ✅ | | ✅ | |
+| `training.log` (marcar ejercicios de un socio; el socio marca los suyos sin permiso) | | ✅ | | ✅ | |
+| `training.read` (métricas del gimnasio) | | ✅ | | | |
+| `exercises.read` (catálogo: el socio necesita leer los ejercicios de su rutina) | | ✅ | | ✅ | ✅ |
 | `plans.manage`, `settings.manage`, `reports.read` | | ✅ | | | |
 | `branches.manage` (administrar sedes y asignar personal) | | ✅ | | | |
 | `branches.all` (operar en todas las sedes sin asignación; vista global) | | ✅ | | | |
 | `trainers.read`, `trainers.manage` (equipo, cuenta, sedes, ausencias, asignaciones) | | ✅ | | | |
 | `trainers.self` (su perfil y sus socios asignados) | | | | ✅ | |
-| `exercises.read`, `exercises.manage` (catálogo y medios) | | ✅ | | | |
+| `exercises.manage` (catálogo y medios) | | ✅ | | | |
 
 ¹ El entrenador llega con `plans.read` porque su cuenta nace de un registro web (rol `customer`); el rol `trainer` solo aporta `trainers.self`.
 
@@ -591,7 +622,7 @@ silencio. `storage.protect_delete` impide borrar objetos por SQL.
 
 ### 4.7 Migraciones
 
-**37 aplicadas** (`v2_0001` … `v3_1_mensajes_de_asignacion_y_especialidades`), listadas
+**42 aplicadas** (`v2_0001` … `v3_2_semilla_programa_y_entrenamiento_demo`), listadas
 con su propósito en [`supabase/migrations/README.md`](supabase/migrations/README.md).
 **Viven solo en el servidor**: materializarlas requiere `npx supabase link` +
 `npx supabase db pull`, que pide la contraseña de la base (no disponible en la
@@ -624,9 +655,12 @@ nombre `v3_x_…` en snake_case español, y añadir su fila al README de migraci
 | `…/panel/entrenadores`, `/[id]` | dinámica | `enableTrainers` + `trainers.read` (escribir: `trainers.manage`; regla del plan: `plans.manage`) | Equipo con disponibilidad de hoy; perfil, cuenta, sedes, ausencias (horas/turno/día/periodo), socios asignados según plan, historial; «Entrenador según el plan» |
 | `…/panel/entrenador` | dinámica | `enableTrainers` + `trainers.self` | Espacio del entrenador: su perfil, sus socios (código, nombre, plan, vigencia) y sus ausencias |
 | `…/panel/ejercicios`, `/[id]` | dinámica | `enableExercises` + `exercises.read` (escribir: `exercises.manage`) | Catálogo con búsqueda y grupo muscular, miniaturas firmadas, medios (imagen/GIF/clip/enlace), uso de la cuota y «Liberar archivos sin uso» |
+| `…/panel/rutinas`, `/[id]` | dinámica | `enableRoutines` + `routines.read` (escribir: `routines.manage`; asignar: `routines.assign`) | Programas con sus rutinas, ejercicios de cada rutina (series, repeticiones, descanso), asignación a socios y quién la está haciendo |
+| `…/panel/rutinas/asignada/[id]` | dinámica | `enableRoutines` + sesión | La rutina de UN socio: la abren el socio (marcar), su entrenador (ajustar y marcar) y gerencia. RLS decide qué ve cada uno |
+| `…/panel/entrenamiento` | dinámica | `enableRoutines` + `training.read` | Métricas: conclusiones automáticas, registros por día, mapa día × grupo muscular, tabla por ejercicio y por socio |
 | `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV |
 
-Build: 54 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
+Build: 58 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
 `/[tenant]`, `/[tenant]/sucursales` y `/[tenant]/contacto` son SSG con ISR de 300 s.
 
 ### 5.2 Flujos
@@ -728,6 +762,28 @@ y código de otro gimnasio dan la **misma** respuesta neutra.
 3. **Enlazar** un vídeo de YouTube/Vimeo (solo el id; 0 MB).
 4. Se ve con URLs firmadas de 1 h; listas con miniaturas; el clip no se descarga hasta reproducirlo.
 5. **Cuota** visible con barra (aviso al 80 %); «Liberar archivos sin uso» borra subidas abandonadas (> 1 h sin fila).
+
+**Rutinas y progreso (V3.2).**
+1. **Plantillas:** un PROGRAMA (objetivo y nivel) agrupa RUTINAS (Día A, Día B…) y cada rutina
+   lista EJERCICIOS del catálogo con series, repeticiones, peso, descanso y notas. Gerencia y
+   entrenadores las arman; recepción solo mira.
+2. **Asignar COPIA la rutina** al socio (`asignar_rutina`): ajustarla para él no toca la
+   plantilla, y editar la plantilla no le cambia lo suyo. Se finaliza, no se borra.
+3. **Marcar:** el socio desde su panel o su entrenador desde el suyo; una marca por ejercicio y
+   día, con series y peso opcionales. La base fija la fecha del gimnasio y deduce quién marcó.
+4. **Alcance:** el entrenador solo asigna y marca a SUS socios (`app.puede_entrenar_a`), y ve el
+   progreso de ellos; recepción ve las rutinas pero no el progreso; el socio, solo lo suyo.
+
+**Métricas de entrenamiento (V3.2).** `/panel/entrenamiento` (gerencia) responde lo que se
+preguntó el cliente: qué ejercicio hace más gente, qué hace cada persona, qué día se entrena
+qué músculo. Las vistas agregan; `training.ts` interpreta:
+- **Etiqueta del día:** un grupo con ≥ 35 % del día lo nombra («día de pecho»); si no, la familia
+  de movimiento con ≥ 50 % («día de pierna»); con menos de 5 registros dice «pocos registros» en
+  vez de inventar un patrón.
+- **Conclusiones automáticas** con el número que las sostiene: ejercicio más y menos hecho,
+  ejercicios del catálogo que nadie hace, grupo dominante, día de más movimiento, cobertura de
+  rutinas y socios que no registran hace una semana.
+- Gráfico de barras por día, mapa de calor día × grupo, tabla por ejercicio y tabla por socio.
 
 **Gestión de socios** (`socios/actions.ts`): `registrarSocio`,
 `actualizarSocio`, `archivarSocio`, `restaurarSocio`, `rotarQrDeSocio`,
@@ -905,6 +961,11 @@ entrenador demo (cuenta) `35b0cff9-48ee-44b8-8581-89cda456ca57`, (perfil) `36448
 **V3.1 (2026-09-11):** «Entrenador Demo» en Prado y Miraflores, sin socios asignados (los 13 planes nacen
 sin entrenador); 13 ejercicios base sin medios; cuota de medios 300 MB por gimnasio.
 
+**V3.2 (2026-09-12):** programa «Full Body 3 días» (Día A empuje · Día B pierna · Día C tirón),
+asignado a 5 socios (15 rutinas asignadas) y **seis semanas de ejercicios completados** con patrón
+lunes/miércoles/viernes: ~190 registros en 30 días. Son datos SEMBRADOS para que las métricas se
+puedan ver y probar; el patrón semanal que muestran es el de la semilla, no el de un gimnasio real.
+
 > Usuarios insertados a mano en `auth.users` necesitan `confirmation_token`,
 > `recovery_token`, `email_change_token_new` y `email_change` en `''` (no NULL)
 > y su fila en `auth.identities`; si no, GoTrue responde 500. El registro por
@@ -983,6 +1044,17 @@ ve su perfil, sus 2 sedes y SOLO sus socios (sin `customers`, `memberships`, `pa
 asigna; desactivado no ve socios; anónimo 42501; gerencia no se da `super_admin`. Script:
 [`docs/runbooks/pruebas-rls-v3.1-entrenadores-ejercicios.sql`](docs/runbooks/pruebas-rls-v3.1-entrenadores-ejercicios.sql).
 
+Batería V3.2 (2026-09-12, todo como se esperaba): gerencia crea plantillas, no mete un ejercicio de
+otro gimnasio (23503) ni repeticiones inventadas (23514), asigna copiando, no asigna dos veces la
+misma rutina (23505) ni una rutina ajena, marca (origen `gerencia`), no marca dos veces el mismo día,
+ni en el futuro, ni con 10 días de atraso, no ve ni edita plantillas de Aurora; recepción ve rutinas
+y asignadas pero no crea, no asigna, no marca y **no ve el progreso**; el entrenador crea rutinas y
+ve el catálogo, no asigna ni marca a quien no es su socio (`sin_permiso`), marca a los suyos (origen
+`entrenador`) y ve solo su progreso; el socio ve su rutina con los NOMBRES de sus ejercicios, marca
+(origen `socio`), desmarca lo suyo, no marca lo de otro ni inserta progreso a nombre ajeno (42501) y
+no ve plantillas; super admin y anónimo, nada. Script y casos:
+[`docs/runbooks/pruebas-rls-v3.2-rutinas-y-progreso.sql`](docs/runbooks/pruebas-rls-v3.2-rutinas-y-progreso.sql).
+
 Dos trampas que ya dieron falsos positivos:
 1. **Resolver los ids del ataque ANTES de cambiar de rol** y usarlos como
    literales: bajo RLS el subselect devuelve 0 filas y el INSERT «no falla».
@@ -1037,6 +1109,10 @@ ningún chunk servido.
 | Gerencia podía darse `super_admin` (existía desde V2) | `user_roles_write` comprobaba a QUIÉN se otorgaba (usuario del gimnasio), no QUÉ rol | Toda política que otorga capacidades restringe también lo otorgado (roles de alcance `tenant`) |
 | Un clip de 15 MB no cabe en una Server Action | Vercel corta a 4,5 MB | Subida directa a Storage con URL firmada de un solo uso + verificación de bytes en el servidor + tamaño real en la base |
 | El entrenador necesitaba ver 4 columnas de un socio | RLS filtra filas, no columnas | Función DEFINER en `app` con columnas fijas, envuelta por una RPC invocador |
+| Toda marca de ejercicio fallaba (42P10) | `ON CONFLICT` contra un índice PARCIAL sin repetir su predicado | Si el índice tiene `where`, el `ON CONFLICT` lo repite |
+| «permission denied» al marcar, con la política correcta | La RPC nombraba en el INSERT una columna que a propósito no se concede a nadie (`source`, que deduce la base) | Una RPC no lista columnas que el cliente no puede escribir; el disparador las rellena |
+| Recepción veía el progreso de entrenamiento | La política reusaba `app.puede_entrenar_a`, que acepta a cualquiera con `customers.read` | Cada política nombra su condición; un ayudante «cercano» no es la condición |
+| El socio veía su rutina sin el nombre de los ejercicios | Las vistas unen con `exercises`, que exige `exercises.read`, y su rol no lo tenía | Al dar acceso a algo propio, comprobar también lo que ese algo necesita LEER para tener sentido |
 | Capturas del panel de navegador vacías o recortadas con la ventana oculta | El panel no pinta si la app está minimizada | Edge headless por CDP (script sin dependencias); los iframes solo salen si están en la vista |
 
 ---
@@ -1079,6 +1155,9 @@ ningún chunk servido.
 29. **Quién puede tener entrenador lo decide el plan, en la base.** Asignaciones se finalizan, no se borran.
 30. **Medios con cuota por gimnasio medida por la base**, compresión en el navegador, clip corto + enlace para lo largo.
 31. **Archivos grandes: subida directa con URL firmada y verificación posterior**; bucket privado servido con URL firmada.
+32. **Asignar una rutina la COPIA** (ADR 0007): el entrenador la ajusta para ese socio sin tocar la plantilla, y editar la plantilla no cambia lo que alguien ya está haciendo.
+33. **El progreso es un hecho con fecha del gimnasio**, una marca por ejercicio y día, con el origen deducido de la sesión. Ni futuro ni más de una semana atrás.
+34. **Las métricas se agregan en la base y se INTERPRETAN en el dominio** (umbrales del «día de pierna» y conclusiones), para que la lectura tenga pruebas y no viva en una pantalla.
 
 ---
 
@@ -1126,6 +1205,15 @@ ningún chunk servido.
    la subida real con URL firmada necesita sesión y no la probó el asistente.
 5e. **Planes de Mítico sin regla de entrenador:** gerencia debe marcar qué planes incluyen entrenador
    antes de asignar socios (decisión del cliente).
+5f. **Revisión humana con sesión de V3.2:** `/panel/rutinas` (crear programa y rutina, agregar y
+   ajustar ejercicios, asignar), `/panel/rutinas/asignada/[id]` con las tres cuentas (gerencia,
+   `entrenador@miticofitness.com` y un socio) para marcar y desmarcar, `/panel/entrenamiento` y la
+   sección «Tu rutina» del panel del socio, en escritorio y móvil. Base, rutas y build verificados;
+   la UI con sesión, no.
+5g. **Datos de entrenamiento sembrados en Mítico:** el patrón lunes/miércoles/viernes y los ~190
+   registros salen de la semilla de demostración (§8), no de uso real. Antes de mostrar las métricas
+   como si fueran del gimnasio, decidir si se limpian (`delete from exercise_completions`) o se
+   dejan como demostración.
 6. **Despliegue por push roto** (§7): dos interruptores en el panel de Vercel.
 
 ### 🟡 Media
@@ -1147,6 +1235,13 @@ ningún chunk servido.
     estructurado del tenant (días cerrados). Si las sedes cierran días distintos,
     habrá que estructurarlo.
 10e. `/panel/sucursales` no tiene paginación ni búsqueda de personal (hoy son 3 cuentas).
+10h. **V3.2 — pendiente acotado:** las rutinas no tienen recurrencia (no existe «los lunes toca Día
+    A»: el día se deduce de lo que se marca); las métricas no comparan periodos («subió 12 % contra
+    el mes pasado»); el socio ve su rutina y lo marcado, pero no un gráfico de su progreso; la ficha
+    de socio de gerencia todavía no muestra su rutina; editar una plantilla no propaga a las copias
+    (decisión, ADR 0007, pero conviene un aviso en pantalla); `v_training_weekday` mira 90 días
+    fijos y `v_training_*` usan `app.hoy_del_gimnasio` en cada fila (suficiente con miles de
+    registros, no con millones).
 10g. **V3.1 — pendiente acotado:** el socio y la ficha de socio todavía no muestran su entrenador; ausencias
     sin recurrencia (cada lunes); el entrenador no ve el catálogo (se le dará `exercises.read` en V3.2);
     medios de ejercicios inactivos siguen contando en la cuota; «Liberar archivos sin uso» recorre
@@ -1199,30 +1294,30 @@ cargaron cuatro.
 
 ---
 
-## 13. V3.2 — punto de partida
+## 13. V3.3 — punto de partida
 
-**Alcance (roadmap V3):** programas (plantillas: objetivo, categoría, nivel),
-rutinas reutilizables con ejercicios (series, repeticiones, peso, descanso,
-notas), asignación de rutinas a socios (editable respecto del programa) y
-registro de «ejercicio completado» como progreso. Vistas de cliente, entrenador
-y consulta de recepción. **No** incluye clases/sesiones (V3.3) ni reservas
-(V3.4). Flag: `enableRoutines` (apagada hoy).
+**Alcance (roadmap V3):** clases grupales y sus sesiones. Una CLASE (nombre,
+descripción, categoría, capacidad, estado) y sus SESIONES concretas (fecha,
+hora, duración, entrenador, **sucursal**, capacidad efectiva, estado). La
+capacidad es obligatoria y se respeta en la sesión. **No** incluye reservas
+(V3.4). Flag: `enableClasses` (apagada hoy).
 
-**Lo que V3.1 deja listo:** `exercises` (catálogo por gimnasio con medios),
-`trainers` con cuenta y rol `trainer`, `customer_trainers` (quién entrena a
-quién, según el plan), `app.current_trainer_id()` y el patrón de «columnas
-fijas por función DEFINER» para que el entrenador vea solo lo suyo.
+**Lo que V3.2 deja listo:** `trainers` con alcance por socio
+(`app.puede_entrenar_a`), `exercises` y `routines` como catálogo,
+`exercise_completions` como registro de «esto ocurrió» con fecha local del
+gimnasio —el mismo patrón que necesitará la asistencia a una sesión— y las
+vistas de métricas, que se amplían con clases sin cambiar de forma.
 
-**Patrón establecido (V3.0 y V3.1 lo aplicaron de punta a punta):**
+**Patrón establecido (V3.0, V3.1 y V3.2 lo aplicaron de punta a punta):**
 
-1. **Rama** `feat/v3.2-rutinas-programas` desde `feat/v3.1-entrenadores-ejercicios`.
+1. **Rama** `feat/v3.3-clases-sesiones` desde `feat/v3.2-rutinas-programas`.
 2. **Base:** tablas con `tenant_id`, RLS + políticas por `app.tenant_allows`,
    FK compuestas (`(tenant_id, x)`), vistas `security_invoker`, grants por
    columna, autoría por default de sesión, auditoría por disparador, RPC
    invocador para operaciones de varias tablas; DEFINER solo en `app` y
-   repitiendo permiso y gimnasio. Permisos `modulo.accion` sembrados en
-   `permissions` y `role_permissions`. Probar con §9.2 por rol (incluido
-   entrenador), gimnasio ajeno y anónimo.
+   repitiendo permiso y gimnasio. **Cada política nombra su condición** (lección
+   de V3.2). La sesión lleva `branch_id` y se comprueba con
+   `app.puede_operar_sucursal`. Probar con §9.2 por rol, gimnasio ajeno y anónimo.
 3. **Dominio** puro en `core/domain/operations/<modulo>.ts` + pruebas en
    `apps/web/tests` → **puerto** → **adaptador** Supabase → composition root.
 4. **Rutas** `/[tenant]/panel/<modulo>` con `loadTenantPage([... flag])` +
@@ -1233,10 +1328,11 @@ fijas por función DEFINER» para que el entrenador vea solo lo suyo.
 7. Verificar (§9), actualizar `supabase/migrations/README.md`, este archivo y, si
    la decisión es de fondo, un ADR.
 
-Preguntas para el cliente antes de modelar V3.2: ¿el entrenador crea rutinas
-o solo gerencia?, ¿una rutina se asigna por días de la semana o como lista?,
-¿el socio marca ejercicios o solo el entrenador?, ¿se guarda el peso real de
-cada serie o solo «completado»?, ¿el entrenador ve el catálogo completo?
+Preguntas para el cliente antes de modelar V3.3: ¿una clase se repite semanalmente
+(y hay que generar sesiones) o se cargan una por una?, ¿la capacidad es de la clase
+o de cada sesión?, ¿quién puede cancelar una sesión y con cuánta antelación?,
+¿la asistencia a una clase cuenta como entrada al gimnasio (asistencia) o es otra cosa?,
+¿el socio ve el calendario de clases en su panel o también en la vitrina pública?
 
 ---
 
@@ -1254,6 +1350,7 @@ cada serie o solo «completado»?, ¿el entrenador ve el catálogo completo?
 | Cierre V2 | 2026-09-10 | `d599bda` | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada; documentos alineados |
 | V3.0 vitrina | 2026-09-11 | `eb3b0ff` | Landing multisucursal: chips de sedes en el hero, sección de sucursales rediseñada (portada/detalle/mapas), página `/sucursales` en el menú, texto de vitrina por sede en el tenant (`content.branches`), FAQ y «Nosotros» con las dos sedes; resets CSS a `@layer base` (márgenes y contraste de botones); voseo retirado de galería, horarios, instalaciones y tenants. Planes y pagos sin cambios. Desplegada (`dpl_58gzS8aVddniDoLLmXnWhrKPajwY`): `/mitico/sucursales` 200, `/aurora-fit/sucursales` 404, planes intactos |
 | V3.0 cobro QR | 2026-09-11 | (este commit) | **Corrección urgente.** Causa raíz de «gerencia no puede guardar el QR»: `upsert` con `tenant_id` sin grant (42501) mal traducido como falta de rol; ahora RPC invocador, sin ampliar permisos. QR general y por plan (`payment_qr_codes`, modalidad `global`/`por_plan`, monto libre/exacto), selección con respaldo en el general, precio de la base en la vitrina; la base rechaza cobros por QR y aprobaciones por debajo del precio (180/179/181 probados) y cierra el enlace de un pago barato por UPDATE directo. Migraciones `v3_cobro_qr_por_plan_e_importe_verificado` y `v3_venta_y_alta_con_qr_exigen_importe_completo`; batería RLS en `docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`; 46 pruebas de dominio |
+| V3.2 | 2026-09-12 | (este commit) | Programas → rutinas → ejercicios; **asignar copia la rutina** al socio y se ajusta solo para él; progreso con una marca por ejercicio y día (fecha local del gimnasio, origen deducido por la base, series y peso opcionales); el socio marca desde su panel y el entrenador desde el suyo, cada uno acotado por `app.puede_entrenar_a`. **Métricas para gerencia** en `/panel/entrenamiento`: conclusiones automáticas, ejercicio más y menos hecho, qué hace cada socio, mapa día × grupo muscular y etiqueta del día («día de pierna») con umbrales probados en el dominio. Migraciones `v3_2_programas_rutinas_y_progreso` (+3 correcciones que encontró la batería de RLS) y semilla de demostración; ADR 0007; 102 pruebas de dominio |
 | V3.1 | 2026-09-11 | `9c55f7b` | Desplegada (`dpl_AkFXrLTgx88Mv8ceBmVPm22xQvyc`) y verificada sobre el alias: públicas 200, `/mitico/panel/{entrenadores,entrenador,ejercicios}` 307 sin sesión, las mismas rutas en Aurora 404, CSP con el origen del proyecto en `img-src`/`media-src` y reproductores sin cookies en `frame-src`, sin `service_role` en 11 chunks (608 KB). Entrenadores + ejercicios. Perfil con cuenta opcional vinculada por gerencia (rol `trainer`, solo `trainers.self`), sedes N:M, ausencias por horas/turno/día/periodo sin solapes, socios principal/secundarios según el PLAN (en la base), espacio `/panel/entrenador` con columnas fijas; catálogo de ejercicios con imagen/GIF/clip/enlace, compresión en el navegador, subida directa firmada, bucket privado con URL firmada, cuota de 300 MB medida por la base. **Corrige una escalada de privilegios de V2** (gerencia podía darse `super_admin`). Migraciones `v3_roles_de_gimnasio_no_otorgan_plataforma`, `v3_1_entrenadores_ejercicios_y_permisos`, `v3_1_semilla_entrenador_demo_y_ejercicios`, `v3_1_mensajes_de_asignacion_y_especialidades`; ADR 0006; batería RLS V3.1; 79 pruebas de dominio |
 | V3.0 | 2026-09-11 | `0227dd4`, `16fd88c` | Multisucursal: `branches`, `user_branches`, asistencia con sede (histórico sin sede), `branches.manage`/`branches.all`, sede de trabajo por dispositivo, dashboards global/por sede, `/panel/sucursales`, reportes por sede, «Nuestras sucursales» en la vitrina, auditoría por disparador, `npm test`. Mítico: Prado + Miraflores. Desplegada (`dpl_7DFPH7re52R8Q7kzHNwXo5sG99TQ`) y verificada sobre el alias: públicas 200 desde CDN, vitrina con las dos sedes y sus mapas, panel 307, `/aurora-fit/panel/sucursales` 404, CSV de la comparativa 401 sin sesión y 404 en Aurora, sin `service_role` en chunks |
 

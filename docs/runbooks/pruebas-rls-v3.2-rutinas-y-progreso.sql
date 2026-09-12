@@ -1,0 +1,63 @@
+-- =============================================================================
+-- Pruebas de RLS · V3.2 programas, rutinas, asignaciones y progreso
+--
+-- Cómo se usa: pegar en el editor SQL de Supabase (o `execute_sql` por MCP).
+-- No deja rastro: el bloque termina con una excepción que revierte todo y
+-- devuelve el resultado en el mensaje de error. Plantilla y trampas: CLAUDE.md §9.2.
+--
+-- El cuerpo del bloque es el que se ejecutó el 2026-09-12; para volver a
+-- correrlo, copiar el DO $$ … $$ de esa ejecución (queda en el historial del
+-- editor) o adaptarlo de esta guía de casos:
+--
+--   A · GERENCIA
+--     A1-A3 crea programa (nombre normalizado), rutina y ejercicios          ok
+--     A4  ejercicio de OTRO gimnasio en su rutina                            err 23503
+--     A5  repeticiones inválidas («muchas»)                                  err 23514
+--     A6  asignar_rutina copia los 2 ejercicios                              ok
+--     A7  asignar la misma rutina vigente otra vez                           err 23505
+--     A8  asignar una rutina de otro gimnasio                                err rutina_no_disponible
+--     A9  marcar ejercicio                                                   ok (origen=gerencia)
+--     A10 marcar dos veces el mismo día                                      ya_estaba=true (no duplica)
+--     A11 marcar con fecha futura                                            err fecha_futura
+--     A12 marcar con 10 días de antigüedad                                   err fecha_demasiado_antigua
+--     A13 progreso con tenant_id de otro gimnasio                            err 42501
+--     A14 v_training_overview                                                1 fila
+--     A15-A16 asignar a otro socio y finalizar la asignación                 ok / 1
+--     A17 reabrir una asignación finalizada                                  err asignacion_finalizada
+--     A18-A19 ver o editar plantillas de Aurora                              0 / 0
+--     A20-A21 métricas por ejercicio y por día de la semana                  con datos
+--
+--   B · RECEPCIÓN (solo routines.read)
+--     B1 ve rutinas · B2 ve rutinas asignadas                                > 0   (lo pide el roadmap)
+--     B3 crear programa · B4 asignar · B5 marcar                             err 42501
+--     B6 v_training_overview · B7 progreso de un socio                       0 / 0 (no mide ni registra)
+--
+--   C · ENTRENADOR
+--     C1 ve plantillas · C2 crea rutina · C4 ve el catálogo (13)             ok
+--     C3 asignar a un socio que NO es suyo                                   err sin_permiso
+--     C5 progreso antes de tener socios                                      0
+--     C6 marcar a SU socio                                                   ok (origen=entrenador)
+--     C7 marcar a un socio ajeno                                             err ejercicio_no_disponible
+--     C8 progreso visible (solo el de sus socios) · C9 overview              2 / 0
+--
+--   D · SOCIO
+--     D1 su rutina · D2 nombres de sus ejercicios                            1 / «Press de banca, Zancadas»
+--     D3 marcar lo suyo                                                      ok (origen=socio)
+--     D4 marcar lo de otro socio                                             err ejercicio_no_disponible
+--     D5 ver plantillas del gimnasio                                         0
+--     D6 desmarcar lo suyo                                                   ok
+--     D7 insertar progreso a nombre de otro                                  err 42501
+--     D8 sus estadísticas · D9 progreso visible                              1 / 2 (solo el suyo)
+--
+--   E · SUPER ADMIN: plantillas 0 · overview 0 (no ve datos de los gimnasios)
+--   F · ANÓNIMO: plantillas err 42501 · marcar err 42501
+--
+-- Dos defectos que encontró esta batería (corregidos en migraciones aparte):
+--   1. `marcar_ejercicio` usaba ON CONFLICT contra un índice PARCIAL sin repetir
+--      su predicado: toda marca fallaba con 42P10.
+--   2. La RPC nombraba `source` en el INSERT, columna que a propósito no se
+--      concede a nadie (la deduce la base): «permission denied».
+--   3. El progreso lo veía recepción (la política reusaba `puede_entrenar_a`,
+--      que acepta a cualquiera con `customers.read`) y, al revés, el socio no
+--      podía leer el NOMBRE de sus ejercicios (faltaba `exercises.read` en su rol).
+-- =============================================================================
