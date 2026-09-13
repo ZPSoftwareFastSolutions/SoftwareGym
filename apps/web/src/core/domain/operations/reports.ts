@@ -27,7 +27,9 @@ export type ClaveDeReporte =
   | 'ingresos-por-plan'
   | 'comprobantes'
   | 'clientes'
-  | 'usuarios';
+  | 'usuarios'
+  | 'asistencia-a-clases'
+  | 'reservas-de-clases';
 
 export type TipoDeFiltro =
   | 'periodo'
@@ -156,6 +158,51 @@ export const REPORTES: readonly DefinicionDeReporte[] = [
       { clave: 'porcentaje', titulo: '% del total', numerica: true },
     ],
     grafico: { titulo: 'Entradas por sucursal', agruparPor: 'sucursal', medida: 'entradas', orden: 'valor' },
+  },
+  {
+    clave: 'asistencia-a-clases',
+    titulo: 'Asistencia a clases',
+    descripcion: 'Cada socio registrado en una clase grupal: clase, fecha, hora, sede, plan, método y si llegó con reserva.',
+    icono: 'group',
+    categoria: 'operacion',
+    permiso: 'classes.manage',
+    capacidad: 'enableClasses',
+    filtros: ['periodo', 'sucursal', 'busqueda'],
+    periodoPorDefecto: '30d',
+    columnas: [
+      { clave: 'fecha', titulo: 'Fecha' },
+      { clave: 'hora', titulo: 'Hora' },
+      { clave: 'clase', titulo: 'Clase' },
+      { clave: 'socio', titulo: 'Socio' },
+      { clave: 'codigo', titulo: 'Código' },
+      { clave: 'plan', titulo: 'Plan' },
+      { clave: 'sucursal', titulo: 'Sucursal' },
+      { clave: 'metodo', titulo: 'Método' },
+      { clave: 'reserva', titulo: 'Con reserva' },
+    ],
+    grafico: { titulo: 'Asistencias por clase', agruparPor: 'clase', orden: 'valor' },
+  },
+  {
+    clave: 'reservas-de-clases',
+    titulo: 'Reservas de clases',
+    descripcion: 'Cada reserva con su resultado: vino, faltó, en espera, cancelada a tiempo o tarde, o cancelada por el gimnasio.',
+    icono: 'calendar',
+    categoria: 'operacion',
+    permiso: 'classes.manage',
+    capacidad: 'enableReservations',
+    filtros: ['periodo', 'sucursal', 'busqueda'],
+    periodoPorDefecto: '30d',
+    columnas: [
+      { clave: 'fecha', titulo: 'Fecha' },
+      { clave: 'hora', titulo: 'Hora' },
+      { clave: 'clase', titulo: 'Clase' },
+      { clave: 'socio', titulo: 'Socio' },
+      { clave: 'codigo', titulo: 'Código' },
+      { clave: 'sucursal', titulo: 'Sucursal' },
+      { clave: 'resultado', titulo: 'Resultado' },
+      { clave: 'origen', titulo: 'Origen' },
+    ],
+    grafico: { titulo: 'Reservas por resultado', agruparPor: 'resultado', orden: 'valor' },
   },
   {
     clave: 'asistencia-por-socio',

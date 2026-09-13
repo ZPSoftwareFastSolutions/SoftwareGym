@@ -16,7 +16,24 @@
  * los únicos que no se pueden deducir de ningún dato.
  */
 
-export type TipoDeNotificacion = 'vencimiento' | 'vencida' | 'aviso' | 'bienvenida';
+export type TipoDeNotificacion = 'vencimiento' | 'vencida' | 'aviso' | 'bienvenida' | 'reserva';
+
+/**
+ * Aviso personal que escribe la base por un hecho de reservas (V3.4): se liberó
+ * un lugar, se canceló una clase reservada, reservas bloqueadas. Como el aviso
+ * manual, se persiste porque no se deduce de ningún dato que siga vigente.
+ */
+export interface AvisoPersonal {
+  readonly id: string;
+  readonly kind: string;
+  readonly title: string;
+  readonly body: string;
+  readonly createdAt: string;
+  readonly leido: boolean;
+}
+
+/** Prefijo del identificador de un aviso personal: marcarlo leído toca otra tabla. */
+export const PREFIJO_DE_AVISO_PERSONAL = 'mensaje:';
 
 export type UrgenciaDeNotificacion = 'alta' | 'media' | 'informativa';
 
@@ -59,8 +76,24 @@ export function construirNotificaciones(
   membresia: MembresiaParaAvisar | null,
   avisos: readonly AvisoInterno[],
   sinFicha: boolean,
+  personales: readonly AvisoPersonal[] = [],
 ): readonly Notificacion[] {
   const lista: Notificacion[] = [];
+
+  // Lo personal de reservas va antes que los avisos generales: «se liberó tu
+  // lugar para mañana» caduca antes que un aviso de feriado.
+  for (const aviso of personales) {
+    lista.push({
+      id: `${PREFIJO_DE_AVISO_PERSONAL}${aviso.id}`,
+      tipo: 'reserva',
+      urgencia: aviso.leido ? 'informativa' : aviso.kind === 'reservas_bloqueadas' ? 'alta' : 'media',
+      titulo: aviso.title,
+      cuerpo: aviso.body,
+      fecha: aviso.createdAt,
+      leida: aviso.leido,
+      descartable: true,
+    });
+  }
 
   if (membresia) {
     if (membresia.effectiveStatus === 'expired') {

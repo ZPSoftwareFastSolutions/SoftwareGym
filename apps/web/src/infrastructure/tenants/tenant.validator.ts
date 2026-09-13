@@ -187,6 +187,12 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('La entrada de navegación "clases" debe exigir la capacidad enableClasses.');
   }
 
+  // V3.4: una reserva es de una sesión de clase. Reservas sin clases dejarían
+  // pantallas y reportes de reservas encendidos sobre un módulo que no existe.
+  if (tenant.features.enableReservations && !tenant.features.enableClasses) {
+    issues.push('La capacidad enableReservations exige enableClasses.');
+  }
+
   // Turnos del personal (V3.1). El código se guarda con cada ausencia (mismo
   // patrón que la restricción de la base) y las horas deben ser un tramo real.
   const turnos = tenant.hours.staffShifts;

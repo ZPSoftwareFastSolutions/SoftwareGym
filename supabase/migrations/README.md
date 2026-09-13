@@ -125,3 +125,14 @@ Pruebas por rol, gimnasio ajeno, anónimo y reglas de progreso:
 
 Pruebas por rol, sede sin asignación, gimnasio ajeno, anónimo y reglas de plan y cupo:
 [`docs/runbooks/pruebas-rls-v3.3-clases-y-sesiones.sql`](../../docs/runbooks/pruebas-rls-v3.3-clases-y-sesiones.sql).
+
+## V3.4 · Reservas, lista de espera y faltas (2026-09-12)
+
+| Versión | Nombre | Qué introduce |
+|---|---|---|
+| 20260913015837 | `v3_4_reservas_lista_de_espera_e_inasistencias` | `tenant_reservation_settings` (reglas por gimnasio con valores recomendados), `classes.walkin_spots` (lugares sin reserva, menos que la capacidad), `class_reservations` (`reservada`/`en_espera`/`asistio`/`no_asistio`/`cancelada`/`justificada`, origen, cancelación tardía o por el gimnasio; una viva por socio y sesión) y `customer_messages` (avisos personales). Disparadores: `app.preparar_reserva` (sesión programada y activa, ventana, plan, bloqueo, tope de activas, cruce horario, cupo compartido o espera, con `FOR UPDATE`), `app.cambiar_estado_de_reserva` (cada transición exige su hecho), promoción automática de la espera con aviso, la asistencia cierra y reabre la reserva, cancelar una sesión cancela sus reservas y avisa, la capacidad no baja de lo reservado. `app.validar_asistencia_a_clase` pasa a cupo compartido (quien reservó entra a su lugar). Faltas DERIVADAS en `app.reservas_bloqueadas_hasta`. RPC `reservar_clase`, `cancelar_reserva`, `justificar_inasistencia`, `cerrar_lista_de_sesion`, `guardar_ajustes_de_reservas`, `reservas_de_sesion` (columnas fijas) y `mi_estado_de_reservas`. `v_class_sessions` se recrea con ocupación, espera y la reserva de quien mira; vistas `v_class_reservations`, `v_reservation_stats`, `v_reservation_overview`, `v_reservation_no_shows`, `v_class_attendance_report` y `v_class_reservation_report` |
+| 20260913020027 | `v3_4_semilla_ejercicios_programa_y_reservas_demo` | Mítico: 33 ejercicios más (todos los grupos, con equipo e instrucciones: 46 en total), programa «Fuerza principiantes · 2 días», reglas recomendadas explícitas y reservas de DEMOSTRACIÓN: tres semanas de historial (reservas que terminaron en asistencia, faltas, cancelaciones tardías), MF-003 bloqueado por tres faltas, reservas de la semana que viene y el Fit funcional del lunes 14 con cupo 4 y dos en espera. Disparadores de reservas apagados solo para la carga |
+| 20260913020536 | `v3_4_v_classes_con_lugares_sin_reserva` | `v_classes` expone `walkin_spots` (columna agregada al final) |
+
+Pruebas por rol, promoción de la espera, bloqueo y justificación, cancelación de sesión y registro tardío:
+[`docs/runbooks/pruebas-rls-v3.4-reservas.sql`](../../docs/runbooks/pruebas-rls-v3.4-reservas.sql).

@@ -40,6 +40,7 @@ import { NOMBRE_DE_ROL, type CodigoDeRol } from '@core/domain/operations/workspa
 import { numero } from '@core/domain/operations/dashboard';
 import { ETIQUETA_SIN_SUCURSAL, FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import { diasDelRango, porcentaje } from '@core/domain/operations/reports';
+import { esEstadoDeReserva, NOMBRE_DE_ESTADO_DE_RESERVA } from '@core/domain/operations/reservations';
 
 const TOPE = 2000;
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -127,7 +128,73 @@ export class SupabaseReportsRepository implements ReportsRepositoryPort {
         return this.clientes(filtro);
       case 'usuarios':
         return this.usuarios(filtro);
+      case 'asistencia-a-clases':
+        return this.asistenciaAClases(filtro);
+      case 'reservas-de-clases':
+        return this.reservasDeClases(filtro);
     }
+  }
+
+  /** V3.3: asistencia a clases grupales. La vista solo devuelve filas a gerencia (`classes.manage`). */
+  private async asistenciaAClases(filtro: FiltroDeReporte): Promise<readonly FilaDeReporte[]> {
+    let consulta = this.supabase
+      .from('v_class_attendance_report')
+      .select('session_date, start_time, class_name, customer_name, customer_code, plan_name, branch_name, branch_code, method, con_reserva')
+      .order('session_date', { ascending: false })
+      .order('start_time', { ascending: false })
+      .limit(TOPE);
+    if (filtro.desde) consulta = consulta.gte('session_date', filtro.desde);
+    if (filtro.hasta) consulta = consulta.lte('session_date', filtro.hasta);
+    if (filtro.sucursal && filtro.sucursal !== FILTRO_SIN_SUCURSAL) consulta = consulta.eq('branch_code', filtro.sucursal);
+    if (filtro.q) consulta = consulta.or(`customer_name.ilike.%${filtro.q}%,customer_code.ilike.%${filtro.q}%,class_name.ilike.%${filtro.q}%`);
+    const { data } = await consulta;
+    return (data ?? []).map((fila) => ({
+      fecha: texto(fila.session_date),
+      hora: texto(fila.start_time).slice(0, 5),
+      clase: texto(fila.class_name),
+      socio: texto(fila.customer_name),
+      codigo: texto(fila.customer_code),
+      plan: texto(fila.plan_name) || 'Acceso libre',
+      sucursal: texto(fila.branch_name),
+      metodo: fila.method === 'qr' ? 'QR' : 'Manual',
+      reserva: fila.con_reserva === true ? 'Sí' : 'No',
+    }));
+  }
+
+  /** V3.4: reservas con su resultado efectivo (una reservada de una sesión terminada es una falta). */
+  private async reservasDeClases(filtro: FiltroDeReporte): Promise<readonly FilaDeReporte[]> {
+    let consulta = this.supabase
+      .from('v_class_reservation_report')
+      .select('session_date, start_time, class_name, customer_name, customer_code, branch_name, branch_code, estado_efectivo, source, late_cancel, cancelled_by_gym')
+      .order('session_date', { ascending: false })
+      .order('start_time', { ascending: false })
+      .limit(TOPE);
+    if (filtro.desde) consulta = consulta.gte('session_date', filtro.desde);
+    if (filtro.hasta) consulta = consulta.lte('session_date', filtro.hasta);
+    if (filtro.sucursal && filtro.sucursal !== FILTRO_SIN_SUCURSAL) consulta = consulta.eq('branch_code', filtro.sucursal);
+    if (filtro.q) consulta = consulta.or(`customer_name.ilike.%${filtro.q}%,customer_code.ilike.%${filtro.q}%,class_name.ilike.%${filtro.q}%`);
+    const { data } = await consulta;
+    return (data ?? []).map((fila) => {
+      const estado = esEstadoDeReserva(fila.estado_efectivo) ? fila.estado_efectivo : 'cancelada';
+      const resultado =
+        estado === 'cancelada'
+          ? fila.cancelled_by_gym === true
+            ? 'Cancelada por el gimnasio'
+            : fila.late_cancel === true
+              ? 'Cancelación tardía'
+              : 'Cancelada a tiempo'
+          : NOMBRE_DE_ESTADO_DE_RESERVA[estado];
+      return {
+        fecha: texto(fila.session_date),
+        hora: texto(fila.start_time).slice(0, 5),
+        clase: texto(fila.class_name),
+        socio: texto(fila.customer_name),
+        codigo: texto(fila.customer_code),
+        sucursal: texto(fila.branch_name),
+        resultado,
+        origen: fila.source === 'personal' ? 'Por el gimnasio' : 'Desde su panel',
+      };
+    });
   }
 
   /** Nombre del plan a partir de su id, para las vistas que solo traen el nombre. */

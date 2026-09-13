@@ -10,6 +10,7 @@
  */
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { fechaCorta } from '@/lib/formato';
 import { cn } from '@/lib/cn';
 import {
@@ -28,7 +29,18 @@ import { Badge } from '../ui/Badge';
 import { Icon } from '../icons/Icon';
 
 /** Barra de ocupación con su lectura textual (no depende del color). */
-export function BarraDeOcupacion({ asistentes, capacidad, className }: { readonly asistentes: number; readonly capacidad: number; readonly className?: string }) {
+export function BarraDeOcupacion({
+  asistentes,
+  capacidad,
+  enEspera = 0,
+  className,
+}: {
+  /** Lugares tomados: asistentes + reservas que todavía no llegaron (V3.4). */
+  readonly asistentes: number;
+  readonly capacidad: number;
+  readonly enEspera?: number;
+  readonly className?: string;
+}) {
   const porcentaje = porcentajeDeOcupacion(asistentes, capacidad);
   const nivel = nivelDeOcupacion(asistentes, capacidad);
   return (
@@ -48,6 +60,7 @@ export function BarraDeOcupacion({ asistentes, capacidad, className }: { readonl
       </div>
       <span className="text-[0.76rem] text-muted">
         {asistentes} de {capacidad} · {nivel === 'llena' ? 'llena' : `${Math.max(0, capacidad - asistentes)} libres`}
+        {enEspera > 0 ? ` · ${enEspera} en espera` : ''}
       </span>
     </div>
   );
@@ -68,12 +81,15 @@ export function FilaDeSesion({
   mostrarFecha = false,
   mostrarSede = true,
   destacada = false,
+  accion,
 }: {
   readonly sesion: SesionDeClase;
   readonly href?: string;
   readonly mostrarFecha?: boolean;
   readonly mostrarSede?: boolean;
   readonly destacada?: boolean;
+  /** Control propio de la fila (el botón de reservar del socio). Solo sin `href`: un botón no va dentro de un enlace. */
+  readonly accion?: ReactNode;
 }) {
   const cancelada = sesion.estado === 'cancelada';
   const contenido = (
@@ -100,8 +116,9 @@ export function FilaDeSesion({
         </span>
         {cancelada && sesion.cancelReason && <span className="text-[0.78rem] text-structural">Cancelada: {sesion.cancelReason}</span>}
       </span>
-      {!cancelada && <BarraDeOcupacion asistentes={sesion.asistentes} capacidad={sesion.capacity} className="w-28 shrink-0" />}
+      {!cancelada && <BarraDeOcupacion asistentes={sesion.ocupados} capacidad={sesion.capacity} enEspera={sesion.enEspera} className="w-32 shrink-0" />}
       {href && <Icon name="arrowRight" size={16} className="shrink-0 text-action" />}
+      {!href && accion && <span className="ms-auto shrink-0">{accion}</span>}
     </>
   );
 

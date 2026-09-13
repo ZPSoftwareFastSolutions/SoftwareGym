@@ -157,7 +157,10 @@ export default async function ClasesPublicasPage({ params }: TenantPageParams) {
                 <h2 id="titulo-horario-semanal" className="t-h2">
                   Horario de la semana
                 </h2>
-                <p className="mt-3 max-w-2xl text-muted">Se repite cada semana. Si una clase se suspende un día, lo avisamos en recepción y en redes.</p>
+                <p className="mt-3 max-w-2xl text-muted">
+                  Se repite cada semana. Si una clase se suspende un día, lo avisamos en recepción y en redes.
+                  {features.enableReservations && features.memberLogin ? ' Si ya eres socio, reserva tu lugar desde tu panel: el cupo es limitado y quien reservó tiene prioridad.' : ''}
+                </p>
                 <ol className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {semana.map(({ dia, franjas }) => (
                     <li key={dia} className="surface-card flex flex-col gap-3 p-5">
@@ -182,6 +185,11 @@ export default async function ClasesPublicasPage({ params }: TenantPageParams) {
                   <LinkButton href={tenantHref(slug, 'planes')} variant="primary" size="md" icon="arrowRight">
                     Ver paquetes
                   </LinkButton>
+                  {features.enableReservations && features.memberLogin && (
+                    <LinkButton href={tenantHref(slug, 'panel/socio')} variant="secondary" size="md" icon="calendar">
+                      Reservar mi lugar
+                    </LinkButton>
+                  )}
                 </div>
               </div>
             </section>

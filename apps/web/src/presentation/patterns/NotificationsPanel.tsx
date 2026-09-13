@@ -32,6 +32,7 @@ const ICONO: Record<Notificacion['tipo'], AnyIconKey> = {
   vencimiento: 'clock',
   aviso: 'sparkle',
   bienvenida: 'heart',
+  reserva: 'calendar',
 };
 
 const ESTILO: Record<Notificacion['urgencia'], string> = {
@@ -125,7 +126,8 @@ export function NotificationsPanel({ slug, notificaciones }: NotificationsPanelP
             {notificacion.descartable && !notificacion.leida && (
               <form action={marcarAvisoLeido} className="shrink-0">
                 <input type="hidden" name="tenantSlug" value={slug} />
-                <input type="hidden" name="avisoId" value={notificacion.id.replace(/^aviso:/, '')} />
+                {/* El id va con su prefijo: `aviso:` y `mensaje:` son tablas distintas. */}
+                <input type="hidden" name="avisoId" value={notificacion.id} />
                 <button
                   type="submit"
                   // El área táctil es de 44 px aunque el icono mida 16: es un

@@ -133,6 +133,7 @@ export function ClaseForm({ slug, clase, instructores }: { readonly slug: string
     accessMode: clase?.accessMode ?? 'planes',
     durationMinutes: clase?.durationMinutes?.toString() ?? '60',
     capacity: clase?.capacity?.toString() ?? '',
+    walkinSpots: clase?.walkinSpots?.toString() ?? '0',
     trainerId: clase?.trainerId ?? '',
     isPublic: clase?.isPublic ? 'on' : '',
   };
@@ -187,6 +188,10 @@ export function ClaseForm({ slug, clase, instructores }: { readonly slug: string
         </Campo>
         <SelectorDeInstructor id="clase-instructor" instructores={instructores} valor={valores.trainerId ?? ''} error={errores.trainerId} ayuda="El habitual; cada horario puede tener otro." />
       </div>
+
+      <Campo id="clase-sin-reserva" etiqueta="Lugares sin reserva" error={errores.walkinSpots} ayuda="Del cupo, cuántos quedan para quien llega al mostrador sin reservar. 0 = todo se puede reservar.">
+        <input name="walkinSpots" inputMode="numeric" defaultValue={valores.walkinSpots} maxLength={3} className={CLASE_DE_CONTROL} />
+      </Campo>
 
       <Campo id="clase-acceso" etiqueta="Quién puede entrar" error={errores.accessMode} obligatorio ayuda="Con «solo los planes que la incluyen», márcalos después en la ficha de la clase.">
         <select name="accessMode" defaultValue={valores.accessMode} className={CLASE_DE_CONTROL}>

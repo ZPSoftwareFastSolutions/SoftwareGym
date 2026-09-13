@@ -18,6 +18,7 @@ import type {
 } from '@core/application/ports/branches-repository.port';
 import type { ClassesRepositoryPort, PublicClassesPort } from '@core/application/ports/classes-repository.port';
 import type { MembersRepositoryPort } from '@core/application/ports/members-repository.port';
+import type { ReservationsRepositoryPort } from '@core/application/ports/reservations-repository.port';
 import type { OperationsRepositoryPort } from '@core/application/ports/operations-repository.port';
 import type {
   PaymentSettingsPort,
@@ -107,6 +108,13 @@ export async function classesRepository(): Promise<ClassesRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseClassesRepository } = await import('../operations/supabase-classes.repository');
   return new SupabaseClassesRepository(await createSupabaseServerClient());
+}
+
+/** Reservas de clases, lista de espera, faltas y avisos al socio (V3.4). */
+export async function reservationsRepository(): Promise<ReservationsRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseReservationsRepository } = await import('../operations/supabase-reservations.repository');
+  return new SupabaseReservationsRepository(await createSupabaseServerClient());
 }
 
 /**

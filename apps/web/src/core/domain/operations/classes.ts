@@ -129,6 +129,8 @@ export interface Clase {
   readonly accessMode: ModoDeAcceso;
   readonly durationMinutes: number;
   readonly capacity: number;
+  /** Lugares que la reserva no puede tomar: quedan para quien llega al mostrador (V3.4). */
+  readonly walkinSpots: number;
   readonly trainerId: string | null;
   readonly trainerName: string | null;
   readonly isPublic: boolean;
@@ -180,6 +182,15 @@ export interface SesionDeClase {
   readonly durationMinutes: number;
   readonly capacity: number;
   readonly asistentes: number;
+  /** V3.4: reservas que todavía no llegaron, lista de espera y lugares tomados (asistentes + reservas). */
+  readonly reservadas: number;
+  readonly enEspera: number;
+  readonly ocupados: number;
+  readonly walkinSpots: number;
+  /** La reserva de quien mira (socio), si tiene una viva en esta sesión. */
+  readonly miReservaId: string | null;
+  readonly miReservaEstado: string | null;
+  readonly miPosicion: number | null;
   readonly title: string | null;
   readonly notes: string | null;
   readonly status: 'programada' | 'cancelada';
@@ -426,8 +437,9 @@ export function nivelDeOcupacion(asistentes: number, capacidad: number): NivelDe
   return 'baja';
 }
 
-export function cuposLibres(sesion: Pick<SesionDeClase, 'capacity' | 'asistentes'>): number {
-  return Math.max(0, sesion.capacity - sesion.asistentes);
+/** Lugares libres: la capacidad menos asistentes y reservas que todavía no llegaron. */
+export function cuposLibres(sesion: Pick<SesionDeClase, 'capacity' | 'ocupados'>): number {
+  return Math.max(0, sesion.capacity - sesion.ocupados);
 }
 
 /** Sesiones agrupadas por fecha y ordenadas por hora, para la agenda. */
@@ -463,6 +475,8 @@ export interface FormularioDeClase {
   readonly accessMode: string;
   readonly durationMinutes: string;
   readonly capacity: string;
+  /** Opcional en el formulario: vacío = 0. */
+  readonly walkinSpots?: string;
   readonly trainerId: string;
   readonly isPublic: boolean;
 }
@@ -476,6 +490,7 @@ export interface DatosDeClase {
   readonly accessMode: ModoDeAcceso;
   readonly durationMinutes: number;
   readonly capacity: number;
+  readonly walkinSpots: number;
   readonly trainerId: string | null;
   readonly isPublic: boolean;
 }
@@ -500,6 +515,12 @@ export function validarClase(formulario: FormularioDeClase): Validacion<DatosDeC
   const capacity = entero(formulario.capacity);
   if (capacity === null || capacity < 1 || capacity > 200) errores.capacity = 'La capacidad es obligatoria: entre 1 y 200 personas.';
 
+  const lugaresTexto = (formulario.walkinSpots ?? '').trim();
+  const walkinSpots = lugaresTexto === '' ? 0 : entero(lugaresTexto);
+  if (walkinSpots === null || (capacity !== null && walkinSpots >= capacity)) {
+    errores.walkinSpots = 'Menos lugares que la capacidad (0 = todo se puede reservar).';
+  }
+
   const trainerCrudo = formulario.trainerId.trim();
   if (trainerCrudo !== '' && !PATRON_UUID.test(trainerCrudo)) errores.trainerId = 'Elige un instructor de la lista.';
 
@@ -510,7 +531,8 @@ export function validarClase(formulario: FormularioDeClase): Validacion<DatosDeC
     !esTipoDeClase(kind) ||
     !esModoDeAcceso(accessMode) ||
     durationMinutes === null ||
-    capacity === null
+    capacity === null ||
+    walkinSpots === null
   ) {
     return { ok: false, errores };
   }
@@ -525,6 +547,7 @@ export function validarClase(formulario: FormularioDeClase): Validacion<DatosDeC
       accessMode,
       durationMinutes,
       capacity,
+      walkinSpots,
       trainerId: trainerCrudo === '' ? null : trainerCrudo,
       isPublic: formulario.isPublic,
     },
@@ -827,6 +850,8 @@ export function mensajeDeErrorDeClases(codigo: string): string {
   if (c.includes('sesion_pasada')) return 'Esa sesión ya pasó: no se puede programar ni cambiar.';
   if (c.includes('motivo_requerido')) return 'Escribe el motivo de la cancelación.';
   if (c.includes('capacidad_menor_que_asistentes')) return 'La capacidad no puede quedar por debajo de los asistentes ya registrados.';
+  if (c.includes('capacidad_menor_que_reservas')) return 'La capacidad no puede quedar por debajo de los lugares ya reservados.';
+  if (c.includes('clases_lugares_sin_reserva')) return 'Los lugares sin reserva tienen que ser menos que la capacidad.';
   if (c.includes('entrenador_ocupado')) return 'El instructor ya tiene otra sesión a esa hora.';
   if (c.includes('entrenador_ausente')) return 'El instructor tiene una ausencia registrada a esa hora.';
   if (c.includes('entrenador_sin_sede')) return 'Ese instructor no trabaja en esa sede. Asígnale la sede en su perfil.';

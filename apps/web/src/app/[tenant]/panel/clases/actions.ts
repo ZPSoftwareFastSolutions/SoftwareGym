@@ -56,6 +56,7 @@ export async function guardarClase(_previo: EstadoDeFormulario, form: FormData):
     accessMode: texto(form, 'accessMode', 20),
     durationMinutes: texto(form, 'durationMinutes', 4),
     capacity: texto(form, 'capacity', 4),
+    walkinSpots: texto(form, 'walkinSpots', 4),
     trainerId: texto(form, 'trainerId', 40),
   };
   const valores = { ...crudo, isPublic: form.get('isPublic') === 'on' ? 'on' : '' } as Record<string, string>;

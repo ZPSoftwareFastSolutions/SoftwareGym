@@ -40,6 +40,7 @@ import { Modal } from '@/presentation/ui/Modal';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon, type AnyIconKey } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
+import { SeccionDeReservas } from './_reservas';
 
 export const metadata: Metadata = { title: 'Clases', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -142,7 +143,7 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
   const deHoy = sesiones.filter((s) => s.sessionDate === hoy);
   const agenda = agendaPorDia(sesiones, semana);
   const programadasSemana = sesiones.filter((s) => s.estado !== 'cancelada');
-  const cuposSemana = programadasSemana.reduce((suma, s) => suma + Math.max(0, s.capacity - s.asistentes), 0);
+  const cuposSemana = programadasSemana.reduce((suma, s) => suma + Math.max(0, s.capacity - s.ocupados), 0);
   const sinAcceso = activas.filter(claseSinAcceso).length;
   const hrefDeSesion = (id: string) => `${tenantHref(slug, 'panel/clases/sesion')}/${id}`;
   const base = tenantHref(slug, 'panel/clases');
@@ -390,6 +391,8 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
           </section>
         </>
       )}
+
+      {puedeGestionar && features.enableReservations && <SeccionDeReservas slug={slug} />}
     </div>
   );
 }

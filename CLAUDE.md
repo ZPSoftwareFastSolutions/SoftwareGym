@@ -4,10 +4,10 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-12 · cierre de **V3.3 clases grupales, sesiones y acceso por plan**.
-> - **Rama de trabajo vigente:** `feat/v3.3-clases-sesiones` → de ella sale V3.4.
+> - **Última actualización:** 2026-09-12 · cierre de **V3.4 reservas de clases, lista de espera y faltas**.
+> - **Rama de trabajo vigente:** `feat/v3.4-reservas` (sale de `feat/v3.3-clases-sesiones`) → de ella sale V4.
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
->   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md).
+>   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
 > - **Historia completa** (cada fase, cada defecto con su prueba, cada decisión
 >   con su contexto): [`docs/historial/bitacora-v1-a-v2.2.md`](docs/historial/bitacora-v1-a-v2.2.md).
 >   No se mantiene; si contradice a este archivo, manda este archivo.
@@ -28,8 +28,8 @@
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
 | **En producción** | https://gym-platform-alpha.vercel.app (ver §14: último despliegue y desde qué commit) |
 | **Clientes demo** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) |
-| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · **V3.3 ✅ clases + sesiones + acceso por plan** |
-| **Siguiente** | **V3.4**: reservas sobre `class_sessions` (§13). Luego V4 |
+| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · **V3.4 ✅ reservas + lista de espera + faltas** |
+| **Siguiente** | **V4**: suscripciones, licencias, facturación e integraciones (avisos por WhatsApp/correo) (§13) |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
 de datos) y §12 (deuda viva).
@@ -77,8 +77,8 @@ V3.0 ✅  Multisucursal: sedes, usuario↔sede, asistencia por sede, vistas y vi
 V3.1 ✅  Entrenadores (perfil, cuenta opcional, sedes, ausencias, socios según plan) + ejercicios con medios
 V3.2 ✅  Programas → rutinas → ejercicios, asignación por copia, progreso y métricas de entrenamiento
 V3.3 ✅  Clases grupales por plan, horario semanal, sesiones generadas por sede, capacidad, asistencia a clase y vitrina
-V3.4 ⏭  Reservas
-V4       Suscripciones, licencias, facturación, integraciones
+V3.4 ✅  Reservas con reglas por gimnasio, lista de espera automática, faltas y bloqueo, avisos al socio, reportes
+V4   ⏭  Suscripciones, licencias, facturación, integraciones
 ```
 
 Son **fases del mismo producto**: el código evoluciona, no se copia. La API
@@ -224,7 +224,7 @@ propio en `presentation/icons/Icon.tsx`), de animación, `tailwind-merge`, de ZI
                         ▼
                Supabase  (proyecto dnclwawnjnzqqxgsuhpn · us-west-2)
                ├─ Auth ─────── cuentas; disparadores asignan tenant, rol y vínculo a la ficha
-               ├─ PostgreSQL ─ 37 tablas con RLS, 33 vistas security_invoker, 20 RPC invocador
+               ├─ PostgreSQL ─ 40 tablas con RLS, 39 vistas security_invoker, 27 RPC invocador
                └─ Storage ──── comprobantes (privado) · qr-pagos (público) · ejercicios (privado, URL firmada)
 ```
 
@@ -271,6 +271,7 @@ src/
         rutinas/ [id]/ asignada/[id]/ actions.ts  Programas, rutinas, asignación por copia y marca de hecho (V3.2)
         entrenamiento/           Métricas del gerente: ejercicio más hecho, qué hace cada socio, qué día es día de qué (V3.2)
         clases/ [id]/ sesion/[id]/ actions.ts  Agenda, catálogo con planes, horarios, generación, sesión y toma de asistencia, métricas (V3.3)
+          reservas-actions.ts, _reservas.tsx   Reservar, cancelar, justificar, cerrar lista, reglas; sección de reservas de gerencia (V3.4)
         reportes/ [reporte]/ csv/ _filtros.ts Reportes híbridos
   core/
     domain/
@@ -290,6 +291,7 @@ src/
         exercises.ts             Catálogo, grupos musculares, política de medios, bytes mágicos, cuota, enlaces (V3.1)
         training.ts              Rutinas y LECTURA del entrenamiento: etiqueta del día por grupo/familia, conclusiones (V3.2)
         classes.ts               Clases: acceso por plan, fechas de un horario, cruces, estado de sesión, ocupación, conclusiones (V3.3)
+        reservations.ts          Reservas: ventana, cancelación tardía, cupo y espera, bloqueo por faltas, reglas, conclusiones (V3.4)
         periodo.ts               Presets hoy/ayer/7d/30d/mes/mes-anterior/año
         reports.ts               Catálogo de 9 reportes, resumen, serie, CSV seguro
     application/
@@ -297,14 +299,14 @@ src/
                                  receipts-repository (+ PaymentSettingsPort), reports-repository,
                                  branches-repository (+ PublicBranchesPort), trainers-repository,
                                  exercises-repository, training-repository,
-                                 classes-repository (+ PublicClassesPort), resultado
+                                 classes-repository (+ PublicClassesPort), reservations-repository, resultado
       tenant/get-tenant.usecase.ts, theming/build-theme.ts, auth/login.usecase.ts
   infrastructure/
     config/composition-root.ts   ÚNICO sitio que construye adaptadores
     tenants/                     tenant.registry.ts, static-tenant.repository.ts, tenant.validator.ts
     auth/                        supabase.config.ts, supabase.server.ts, supabase.public.ts (anónimo, sin cookies),
                                  cookie-options.ts, session-hint.ts
-    operations/                  supabase-{operations,members,receipts,reports,branches,trainers,exercises,training,classes}.repository.ts, qr.ts
+    operations/                  supabase-{operations,members,receipts,reports,branches,trainers,exercises,training,classes,reservations}.repository.ts, qr.ts
   presentation/
     ui/                          Átomos/moléculas: Button, Badge, Modal (Dialogo), StatCard, DataTable,
                                  Campo, BarChart, DonutChart, HeatMap, QrCode, EmptyState, Logo, Reveal…
@@ -316,7 +318,8 @@ src/
                                  EjercicioForms (compresión, póster y subida directa), UsoDeMedios,
                                  RutinaForms (programa, rutina, ejercicio, asignación y marca de hecho),
                                  ClaseForms (clase, planes, horario, sesión, generar, cancelar, tomar asistencia),
-                                 AgendaDeClases (FilaDeSesion, AgendaSemanal, BarraDeOcupacion)…
+                                 AgendaDeClases (FilaDeSesion, AgendaSemanal, BarraDeOcupacion),
+                                 ReservaForms (BotonDeReserva, CancelarReserva, AjustesDeReservaForm, ReservarParaSocio, MarcarQueVino)…
     sections/                    Secciones del sitio público (Hero, Plans, TrainingPlans, Products, Branches…)
     layouts/PageHero.tsx, icons/Icon.tsx
   lib/                           cn, formato (fechas/importes/hoyEnZona), page-guards, tenant-links,
@@ -333,7 +336,7 @@ src/
 estática). Los repositorios de datos (`operationsRepository`,
 `membersRepository`, `receiptsRepository`, `reportsRepository`,
 `paymentSettingsRepository`, `branchesRepository`, `trainersRepository`,
-`exercisesRepository`, `trainingRepository`, `classesRepository`) **se crean por petición** con el cliente de
+`exercisesRepository`, `trainingRepository`, `classesRepository`, `reservationsRepository`) **se crean por petición** con el cliente de
 Supabase que lleva la cookie de quien pregunta: cachearlos serviría los datos
 del primer usuario a todos. Se importan de forma dinámica.
 
@@ -420,7 +423,7 @@ negocio: `repo.hoyDelGimnasio(slug)` (base, `app.hoy_del_gimnasio`) o
 | `enableExercises` | **V3.1**: `/panel/ejercicios` (catálogo, medios, cuota) | ✅ | ❌ |
 | `enableRoutines` | **V3.2**: `/panel/rutinas`, `/panel/entrenamiento`, rutina del socio y marca de ejercicios | ✅ | ❌ |
 | `enableClasses` | **V3.3**: `/panel/clases` (agenda, catálogo, horarios, sesiones, asistencia y métricas), «Tus clases» del socio y del entrenador, página pública `/clases` (entrada de menú que exige la flag; el validador lo comprueba) | ✅ | ❌ |
-| `enableReservations` | **Reservada para V3.4** | ❌ | ❌ |
+| `enableReservations` | **V3.4** (exige `enableClasses`, lo comprueba el validador): reservar desde «Tus clases», lista de reservas y «Vino»/«Cerrar lista» en la sesión, reglas y faltas en `/panel/clases`, avisos personales, reporte `reservas-de-clases` | ✅ | ❌ |
 
 ¹ Ambos parten de `...DEFAULT_FEATURE_FLAGS`. Mítico tiene `showGallery` y
 `showSchedule` apagadas a la espera de fotos y horarios confirmados; Aurora
@@ -437,14 +440,14 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 ### 4.1 Principios que sostienen el aislamiento
 
 1. **`tenant_id` en toda tabla de negocio** y como primera columna de sus índices.
-2. **RLS activo en las 37 tablas**, sin política = denegado. 124 políticas en
+2. **RLS activo en las 40 tablas**, sin política = denegado. 132 políticas en
    `public` + 10 en `storage`.
 3. **El tenant sale de la identidad:** `app.current_tenant_id()`,
    `app.current_customer_id()`, `app.current_app_user_id()`. Autorización:
    `app.tenant_allows(tenant_id, 'modulo.accion')` y `app.has_permission`.
 4. **Esquema `app` fuera de la API.** Las funciones `SECURITY DEFINER` viven ahí
    (PostgREST publica todo `public` como `/rpc`). **En `public` no hay ninguna
-   función DEFINER**: las 20 RPC son `SECURITY INVOKER` y corren bajo RLS.
+   función DEFINER**: las 27 RPC son `SECURITY INVOKER` y corren bajo RLS.
 5. **Claves foráneas compuestas** `(tenant_id, customer_id) → customers(tenant_id, id)`
    (y análogas con planes, membresías, pagos, **sucursales** y **usuarios**): el
    motor impide que una fila de un gimnasio apunte a un socio o a una sede de otro.
@@ -475,7 +478,7 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
     y ocupación, por funciones DEFINER de un dato (`app.nombre_de_entrenador`,
     `app.asistentes_de_sesion`).
 
-### 4.2 Tablas (37)
+### 4.2 Tablas (40)
 
 | Área | Tabla | Notas |
 |---|---|---|
@@ -510,13 +513,16 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 | | `class_schedules` | Horario semanal: día ISO, hora, sede, instructor, duración y cupo opcionales (heredan), `starts_on`/`ends_on`, activo. Único por clase+sede+día+hora activos. El instructor tiene que trabajar en la sede |
 | | `class_sessions` | Sesión concreta: fecha local, hora, duración, **cupo efectivo**, sede, instructor, título y notas; `programada`/`cancelada` (cancelada ⇔ motivo, CHECK). **Una por horario y fecha, también cancelada** (índice único). No en el pasado, sin cruce del instructor ni ausencia, no se reabre, no se cancela con asistentes |
 | | `class_attendances` | Una por socio y sesión; `membership_id` que la habilitó (la deduce la base), `method` manual/qr, `marked_by` de la sesión. Plan, ventana (−30 min / +7 días) y cupo con `FOR UPDATE` en el disparador. **No es una entrada al gimnasio** |
+| Reservas (V3.4) | `tenant_reservation_settings` | Reglas por gimnasio (apertura en días, cierre y cancelación libre en minutos, tope de activas, espera y su máximo, faltas que bloquean, ventana, días de bloqueo, si la cancelación tardía cuenta). Sin fila = recomendadas. Se escribe por RPC |
+| | `class_reservations` | Una viva por socio y sesión. `reservada`/`en_espera`/`asistio`/`no_asistio`/`cancelada`/`justificada`; `source` socio/personal, `late_cancel`, `cancelled_by_gym`, membresía que la habilitó; todo lo pone la base. Solo se conceden `status` y `cancel_reason` para actualizar |
+| | `customer_messages` | Avisos personales que escribe la base (lugar liberado, clase cancelada, bloqueo, falta justificada). El socio solo marca `read_at` |
 | | `payment_qr_codes` | QR de cobro: `plan_id` NULL = **general** (siempre monto libre, uno por gimnasio) o de un plan (uno por plan, FK compuesta); `amount_mode` `libre`/`exacto` + `fixed_amount`; `expires_on`; ruta con prefijo del gimnasio (CHECK). Lectura: anónimo todo (es lo que se imprime en el mostrador), con sesión solo su gimnasio. Escritura: `settings.manage`, por RPC |
 
 Enums: `payment_method` (`cash, qr, transfer, card, other`), `attendance_method`
 (`manual, qr, kiosk`), `receipt_status`, `receipt_source`, estados de
 membresía/socio/tenant.
 
-### 4.3 Vistas (33, todas `security_invoker`)
+### 4.3 Vistas (39, todas `security_invoker`)
 
 `v_my_profile` (perfil + roles + permisos de quien entra) · `v_customer_overview`
 · `v_customer_detail` · `v_memberships` (estado efectivo) ·
@@ -537,7 +543,11 @@ ejercicio, 30/90 d) · `v_training_customer_stats` (qué hace cada socio) · `v_
 **V3.3:** `v_classes` (planes, horarios, próximas 7 d, nombre del instructor) · `v_class_schedules` ·
 `v_class_sessions` (ocupación y **estado efectivo** programada/en_curso/realizada/cancelada con la hora
 del gimnasio) · `v_class_attendance_log` · `v_class_stats` (ocupación 30 d por clase), `v_class_slot_stats`
-(día × hora, 90 d) y `v_class_overview` (las tres, solo con `classes.manage`).
+(día × hora, 90 d) y `v_class_overview` (las tres, solo con `classes.manage`) ·
+**V3.4:** `v_class_sessions` recreada con `reservadas`, `en_espera`, `ocupados`, `walkin_spots` y la reserva de quien
+mira (`mi_reserva_*`, `mi_posicion`) · `v_class_reservations` (con `estado_efectivo`: la falta derivada) ·
+`v_reservation_stats`, `v_reservation_overview`, `v_reservation_no_shows`, `v_class_attendance_report` y
+`v_class_reservation_report` (todas de gerencia).
 
 > Los reportes leen de vistas y **no** de embebidos de PostgREST: con claves
 > foráneas compuestas hay dos relaciones posibles y el embebido falla.
@@ -565,10 +575,18 @@ del gimnasio) · `v_class_attendance_log` · `v_class_stats` (ocupación 30 d po
 | `fijar_planes_de_clase(clase, planes[])` | Deja los planes de la clase exactamente como llegan | `sin_permiso` |
 | `cancelar_sesiones_de_horario(horario, motivo)` | Cancela las futuras sin asistentes (al retirar un horario) | `sin_permiso`, `motivo_requerido` |
 | `asistentes_de_sesion(session)` · `candidatos_de_sesion(session, buscar)` | Nombre, código y plan de asistentes y candidatos (con si la clase lo admite); buscan por código, nombre o token del QR. Columnas fijas vía DEFINER en `app`, solo para quien toma asistencia en esa sesión | — |
+| `reservar_clase(session, customer?)` | Reserva (sin socio, el de la sesión); devuelve estado y posición en espera | `sin_permiso`, `reserva_no_abierta`, `reserva_cerrada`, `reservas_bloqueadas` (detalle = fecha), `limite_de_reservas`, `ya_reservado`, `ya_registrado`, `reserva_cruzada`, `clase_llena`, `plan_no_incluye_clase`, `sin_membresia_vigente` |
+| `cancelar_reserva(id, motivo)` · `justificar_inasistencia(id)` · `cerrar_lista_de_sesion(session)` | Cancelar (marca tardía y promueve la espera), justificar (gerencia) y escribir las faltas de una sesión terminada | `sesion_iniciada`, `reserva_no_cancelable`, `inasistencia_no_valida`, `sesion_sin_terminar`, `sin_permiso` |
+| `guardar_ajustes_de_reservas(…)` · `reservas_de_sesion(session)` · `mi_estado_de_reservas()` | Reglas del gimnasio (gerencia), lista de la sesión con nombres (columnas fijas) y bloqueo/activas/reglas del socio | `sin_permiso` |
 | `rotar_token_check_in(customer)` | Nuevo token QR (el disparador pone el valor aleatorio) | — |
 | `establecer_sucursal_primaria(branch)` | Cambia la sede principal (delega en `app.fijar_sucursal_primaria`, que repite el permiso) | `sin_permiso`, `sucursal_inactiva` |
 
-**Esquema `app` (60):** clases V3.3 (`ahora_del_gimnasio`, `nombre_de_entrenador`,
+**Esquema `app` (77):** reservas V3.4 (`ajustes_de_reservas`, `ocupacion_de_sesion` —el cupo compartido—,
+`reservas_bloqueadas_hasta` —faltas guardadas y derivadas—, `posicion_en_espera`, `promover_lista_de_espera`,
+`avisar_al_socio`, `describir_sesion`, `preparar_reserva`, `cambiar_estado_de_reserva`,
+`despues_de_cambiar_reserva`, `reserva_sigue_a_la_asistencia`, `reservas_siguen_a_la_sesion`,
+`capacidad_no_baja_de_lo_reservado`, `lista_de_reservas`, `preparar_mensaje_al_socio`,
+`preparar_ajustes_de_reservas`, `inicio_de_sesion`), clases V3.3 (`ahora_del_gimnasio`, `nombre_de_entrenador`,
 `asistentes_de_sesion`, `puede_tomar_asistencia`, `acceso_a_clase` —la regla del plan—,
 `exigir_entrenador_en_sede`, `preparar_clase`, `preparar_horario_de_clase`,
 `preparar_sesion_de_clase`, `validar_asistencia_a_clase`, `auditar_clases`,
@@ -636,7 +654,11 @@ silencio. `storage.protect_delete` impide borrar objetos por SQL.
 | `exercises.manage` (catálogo y medios) | | ✅ | | | |
 | `classes.read` (calendario de clases con ocupación; el socio lo lee sin permiso, por ser del gimnasio) | | ✅ | ✅ | ✅ | |
 | `classes.manage` (clases, planes que las incluyen, horarios, generar y cancelar sesiones, métricas) | | ✅ | | | |
-| `classes.attend` (registrar y quitar asistencia: recepción en SUS sedes, el entrenador en SUS sesiones) | | ✅ | ✅ | ✅ | |
+| `classes.attend` (registrar y quitar asistencia: recepción en SUS sedes, el entrenador en SUS sesiones; desde V3.4 también reservar por un socio y cerrar la lista ahí) | | ✅ | ✅ | ✅ | |
+
+V3.4 no agrega permisos: el socio reserva y cancela lo suyo SIN permiso (política «self»), el
+personal usa `classes.attend` en la sesión donde opera y gerencia `classes.manage` (reglas,
+justificar, reservar por encima de topes y bloqueo).
 
 ¹ El entrenador llega con `plans.read` porque su cuenta nace de un registro web (rol `customer`); el rol `trainer` solo aporta `trainers.self`.
 
@@ -655,7 +677,7 @@ silencio. `storage.protect_delete` impide borrar objetos por SQL.
 
 ### 4.7 Migraciones
 
-**46 aplicadas** (`v2_0001` … `v3_3_asistencia_a_clase_con_el_alcance_justo`), listadas
+**49 aplicadas** (`v2_0001` … `v3_4_v_classes_con_lugares_sin_reserva`), listadas
 con su propósito en [`supabase/migrations/README.md`](supabase/migrations/README.md).
 **Viven solo en el servidor**: materializarlas requiere `npx supabase link` +
 `npx supabase db pull`, que pide la contraseña de la base (no disponible en la
@@ -694,7 +716,7 @@ nombre `v3_x_…` en snake_case español, y añadir su fila al README de migraci
 | `…/panel/entrenamiento` | dinámica | `enableRoutines` + `training.read` | Métricas: conclusiones automáticas, registros por día, mapa día × grupo muscular, tabla por ejercicio y por socio |
 | `…/panel/clases` | dinámica | `enableClasses` + `classes.read` (gestión: `classes.manage`) | Agenda de hoy y de la semana (filtro por sede y «solo las que dicto»), catálogo con planes, nueva clase, sesión o evento, generar sesiones; gerencia: conclusiones, ocupación por clase y mapa día × hora |
 | `…/panel/clases/[id]` | dinámica | `enableClasses` + `classes.read` | Planes que incluyen la clase, horario semanal (agregar varios días, retirar), próximas sesiones y últimas dos semanas, datos, archivar |
-| `…/panel/clases/sesion/[id]` | dinámica | `enableClasses` + `classes.read` (registrar: `classes.attend`) | Ocupación, asistentes (hora, método, quién registró), buscador por nombre/código/QR con «Registrar» o el motivo por el que no puede, editar y cancelar (gerencia) |
+| `…/panel/clases/sesion/[id]` | dinámica | `enableClasses` + `classes.read` (registrar: `classes.attend`) | Ocupación, asistentes (hora, método, quién registró), buscador por nombre/código/QR con «Registrar» o el motivo por el que no puede, editar y cancelar (gerencia). **V3.4:** lista de reservas con «Vino», «Cancelar», «Justificar», «Cerrar lista» y «Reservar para un socio» |
 | `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV |
 
 Build: 62 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
@@ -847,6 +869,26 @@ qué músculo. Las vistas agregan; `training.ts` interpreta:
    horario), ocupación por clase y mapa día × hora.
 9. **Vitrina `/clases`:** solo las clases publicadas, con horario por sede y los paquetes que las incluyen.
 
+**Reservas (V3.4).** Ver [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
+1. **Socio:** en «Tus clases» cada sesión trae su botón: «Reservar», «Entrar en lista de espera», «Reserva desde
+   jue 17 · 18:00», «Reservas cerradas», «Llena», o, si ya reservó, «Tienes tu lugar» / «Puesto 2 en la lista de
+   espera» con «Cancelar» (avisa si cancelar ahora cuenta como tardía). Ve cuántos días abre la reserva (7-14),
+   sus reservas y su historial (vino, no vino, cancelación tardía, cancelada por el gimnasio), las reglas y, si
+   está bloqueado, hasta cuándo. Avisos personales en su bandeja de notificaciones.
+2. **Cupo único:** asistentes + reservas que no llegaron; la reserva no toma los «lugares sin reserva» de la clase.
+   Quien reservó entra a su lugar aunque la sesión esté llena; registrar su asistencia pasa la reserva a «asistió».
+3. **Lista de espera:** si se libera un lugar (cancelación o cupo mayor) pasa el primero y recibe un aviso.
+4. **Faltas:** reserva sin asistencia de una sesión terminada (derivada; «Cerrar lista» la escribe) y cancelación
+   tardía. 3 en 30 días bloquean 7 días desde la última. Gerencia justifica y la falta deja de contar (aviso al socio).
+5. **Mostrador (recepción e instructor):** en la sesión, lista de reservas con «Vino», cancelar y reservar por un
+   socio; «Cerrar lista» al terminar.
+6. **Gerencia:** «Reglas de reserva» (todas editables), tarjetas (reservas por venir, en espera, asistencia con
+   reserva, bloqueados), conclusiones (tasa de asistencia, clase con más faltas, demanda con lista de espera,
+   bloqueados), cumplimiento por clase y faltas recientes con «Justificar». Cancelar una sesión cancela sus reservas
+   sin falta y avisa.
+7. **Reportes:** `asistencia-a-clases` (con «con reserva») y `reservas-de-clases` (resultado de cada reserva), con CSV.
+8. **Catálogo:** 46 ejercicios en Mítico y un segundo programa, «Fuerza principiantes · 2 días».
+
 **Gestión de socios** (`socios/actions.ts`): `registrarSocio`,
 `actualizarSocio`, `archivarSocio`, `restaurarSocio`, `rotarQrDeSocio`,
 `desvincularCuentaDeSocio`, `venderMembresia`, `actualizarMembresia`,
@@ -972,7 +1014,7 @@ terminal la renueva. Usar `GIT_TERMINAL_PROMPT=0` en la sesión.
 main (8a0208a, solo el commit inicial)
  └ feat/v1-public-site ─ feat/v2-public-site ─ feat/v2.1-operacion ─ feat/v2.2-gestion
    └ feat/v3.0-multisucursal ─ feat/v3.1-entrenadores-ejercicios ─ feat/v3.2-rutinas-programas
-     └ feat/v3.3-clases-sesiones  ← VIGENTE
+     └ feat/v3.3-clases-sesiones ─ feat/v3.4-reservas  ← VIGENTE
 ```
 
 **Entorno de esta máquina (sesión V3.3).** No hay Node en el PATH: se usa el
@@ -985,7 +1027,12 @@ type string»). La CLI de Vercel estaba sin sesión.
 local de `feat/v1-public-site` va 2 commits por delante de su remoto (también
 contenidos en v2.2). **Nada se ha fusionado a `main`**: decidir con el usuario
 si se abre PR de la cadena antes o después de V3. **V3.3 sale de
-`feat/v3.2-rutinas-programas`; V3.4 saldrá de `feat/v3.3-clases-sesiones`.**
+`feat/v3.2-rutinas-programas`; V3.4 salió de `feat/v3.3-clases-sesiones`; V4 saldrá de `feat/v3.4-reservas`.**
+
+**Push desde esta máquina (2026-09-12).** Git Credential Manager ya tiene la cuenta
+`ZPSoftwareFastSolutions` (se autorizó en el navegador con `git credential-manager github login
+--username ZPSoftwareFastSolutions --browser`, que necesita `GCM_INTERACTIVE=always` en la sesión).
+Con `credential.username` fijado en `.git/config`, `git push` funciona sin preguntar.
 
 ---
 
@@ -1035,6 +1082,11 @@ asignado a 5 socios (15 rutinas asignadas) y **seis semanas de ejercicios comple
 lunes/miércoles/viernes: ~190 registros en 30 días. Son datos SEMBRADOS para que las métricas se
 puedan ver y probar; el patrón semanal que muestran es el de la semilla, no el de un gimnasio real.
 
+**V3.4 (2026-09-12):** 46 ejercicios (33 nuevos) y programa «Fuerza principiantes · 2 días». Reglas de reserva
+recomendadas guardadas. Reservas de DEMOSTRACIÓN: ~110 (tres semanas de historial con asistencias, faltas y
+cancelaciones tardías; reservas de la semana próxima). **MF-003 bloqueado hasta el 18/09** por tres faltas en Fit
+funcional. **Fit funcional del lunes 14 a las 07:00 con cupo 4 y dos en lista de espera** para ver la promoción.
+
 **V3.3 (2026-09-12):** 7 clases en Mítico. **Baile fitness, Bachata y Twerking** salen del material del
 cliente (paquetes Dance y Mítico Fitness) y están **publicadas** en `/mitico/clases`. **Fit funcional**
 (cualquier membresía), **Box** y **Karate** (por plan) y el evento **«Masterclass de Box»** (abierto, sábado
@@ -1059,7 +1111,7 @@ aviso que V3.2: la ocupación que muestran las métricas es de la semilla.
 cd apps/web
 npm run typecheck    # incluye apps/web/tests
 npm test             # node --test, sin dependencias: dominio puro (sedes, racha, cobro QR,
-                     # entrenadores, ejercicios, rutinas, métricas y clases) — 133 pruebas
+                     # entrenadores, ejercicios, rutinas, métricas, clases y reservas) — 153 pruebas
 npm run build        # valida también la configuración de todos los tenants
 npm audit            # debe dar 0
 ```
@@ -1147,6 +1199,16 @@ registra ni borra lo ajeno ni edita clases. Super admin, nada. Anónimo: 3 clase
 sus planes y 42501 en sesiones, asistencia, columnas no concedidas, vistas y RPC. Bloques ejecutables:
 [`docs/runbooks/pruebas-rls-v3.3-clases-y-sesiones.sql`](docs/runbooks/pruebas-rls-v3.3-clases-y-sesiones.sql).
 
+Batería V3.4 (2026-09-12, todo como se esperaba): el socio reserva, no duplica, no reserva por otro, ni una clase
+que su plan no incluye, ni fuera de la ventana, ni una cuarta activa; no ve reservas ajenas, no se marca «asistió»,
+no cancela lo ajeno; al cancelar su lugar en la sesión llena, el primero de la espera pasa a reservado con aviso;
+el socio bloqueado no reserva y solo ve sus avisos. Recepción reserva por un socio en su sede (origen personal),
+ve la lista, no justifica ni cambia reglas. El entrenador ve la lista de SU sesión y no la ajena. Gerencia reserva
+por encima del bloqueo, justifica (bloqueo libre), no baja el cupo bajo lo reservado, al subirlo promueve, al
+cancelar la sesión cancela reservas y avisa; la asistencia tardía cierra la reserva y quitarla la vuelve falta.
+Super admin 0; anónimo 42501. Bloques ejecutables:
+[`docs/runbooks/pruebas-rls-v3.4-reservas.sql`](docs/runbooks/pruebas-rls-v3.4-reservas.sql).
+
 Dos trampas que ya dieron falsos positivos:
 1. **Resolver los ids del ataque ANTES de cambiar de rol** y usarlos como
    literales: bajo RLS el subselect devuelve 0 filas y el INSERT «no falla».
@@ -1208,6 +1270,9 @@ ningún chunk servido.
 | Regenerar sesiones daba «instructor ocupado» en cada fecha ya generada | El disparador BEFORE corre antes de que `ON CONFLICT DO NOTHING` descarte el duplicado, y encontraba la propia sesión como cruce | Una validación de «choque» excluye el duplicado que el índice único ya resuelve; y quien genera salta lo que existe |
 | El entrenador veía la asistencia de todas las clases | La política aceptaba `classes.attend`, que también tiene recepción: el permiso dice QUÉ puede hacer, no DÓNDE | Alcance con la función que ya decide dónde (`app.puede_tomar_asistencia`), no con el permiso suelto |
 | Un socio con «Mítico» vendido no entraba a Box | Su plan vigente HOY era «Básico»; «Mítico» empezaba el mes siguiente | La regla de acceso mira la membresía que cubre el DÍA de la sesión; la pantalla lo anticipa, la base decide |
+| Registro por defecto de un tipo compuesto rechazado | `row(…)::tabla` con enteros contra columnas `smallint` | En PL/pgSQL, declarar la variable del tipo y asignar campo a campo |
+| Un contador de «ocupados» que cuenta dos veces a quien reservó y vino | Sumar reservas y asistencias por separado | La asistencia de quien reservó cierra su reserva; ocupados = asistentes + reservas sin asistencia |
+| Un bloqueo que depende de que alguien «cierre la lista» | Faltas guardadas por un proceso que puede no correr | Derivar la falta del hecho (sesión terminada sin asistencia) y escribirla solo como registro |
 | `npm ci` fallaba en `postinstall` en Windows | `ComSpec` no definido en el entorno de la sesión | Definir `ComSpec` antes de `npm` |
 | Capturas del panel de navegador vacías o recortadas con la ventana oculta | El panel no pinta si la app está minimizada | Edge headless por CDP (script sin dependencias); los iframes solo salen si están en la vista |
 
@@ -1258,6 +1323,10 @@ ningún chunk servido.
 36. **Horario semanal + sesiones generadas por rango**; una sesión por horario y fecha, también cancelada, para que regenerar no duplique ni resucite. Eventos = sesiones sin horario.
 37. **La capacidad se respeta con bloqueo de la sesión**, no con un conteo en pantalla.
 38. **Asistir a una clase no es entrar al gimnasio**: tabla aparte; la entrada la marca el QR de recepción. El socio no se registra solo (eso es reserva, V3.4).
+39. **Las reglas de reserva son del gimnasio y viven en la base** (ADR 0009); el dominio las replica para anticipar.
+40. **Un solo cupo**: asistentes + reservas que no llegaron; quien reservó entra a su lugar; la reserva no toma los lugares sin reserva.
+41. **Las faltas se derivan** de la sesión terminada sin asistencia; «Cerrar lista» solo las escribe. Justificar las saca del conteo.
+42. **La lista de espera se mueve sola y avisa**; cancelar una sesión cancela sus reservas sin falta y avisa.
 
 ---
 
@@ -1269,7 +1338,8 @@ ningún chunk servido.
    dnclwawnjnzqqxgsuhpn` + `npx supabase db pull` (lo hace una persona con la
    contraseña de la base). Mientras tanto, el inventario vive en
    `supabase/migrations/README.md`.
-2. **Tests parciales, sin CI.** V3.0 añadió `npm test` y hoy son **133 pruebas**
+2. **Tests parciales, sin CI.** V3.0 añadió `npm test` y hoy son **153 pruebas** (V3.4 suma ventana,
+   cancelación tardía, cupo y espera, bloqueo, reglas y avisos personales)
    (sedes, racha con varias sedes, catálogo y CSV de reportes, selección de QR e
    importes 180/179/181, entrenadores y ausencias, política de medios, la lectura
    de las métricas de entrenamiento y, desde V3.3, acceso a clases por plan, fechas
@@ -1324,6 +1394,12 @@ ningún chunk servido.
    con lector de QR); con `entrenador@miticofitness.com`, «Tus clases de esta semana» y registrar en su
    sesión de Box; con un socio, «Tus clases» en su panel. Escritorio y móvil 375 px. Base, rutas, build
    y vitrina `/mitico/clases` verificados; la UI con sesión, no.
+5j. **Revisión humana con sesión de V3.4:** con un socio (p. ej. MF-005), reservar, entrar en espera en el Fit
+   funcional del lunes 14, cancelar a tiempo y tarde, ver avisos; con MF-003, el bloqueo; con recepción, «Reservar
+   para un socio», «Vino» y «Cerrar lista»; con gerencia, reglas, justificar, cancelar una sesión con reservas y los
+   dos reportes nuevos. Escritorio y móvil. Base (batería RLS), dominio, build y rutas verificados; la UI con sesión, no.
+5k. **Reservas de demostración en Mítico:** antes de uso real, decidir si se borran (`delete from class_reservations`
+   y `customer_messages`) y confirmar con el cliente las reglas (hoy, las recomendadas).
 5i. **Oferta de clases de Mítico por confirmar:** Box, Karate, Fit funcional y la Masterclass son de
    demostración (no publicadas); horarios, instructores y cupos de Baile fitness, Bachata y Twerking
    son propuesta. Gerencia los ajusta en el panel y decide qué publica. La cifra «18 clases semanales»
@@ -1356,8 +1432,11 @@ ningún chunk servido.
     (decisión, ADR 0007, pero conviene un aviso en pantalla); `v_training_weekday` mira 90 días
     fijos y `v_training_*` usan `app.hoy_del_gimnasio` en cada fila (suficiente con miles de
     registros, no con millones).
-10i. **V3.3 — pendiente acotado:** sin reservas ni lista de espera (V3.4); el socio no recibe aviso cuando
-    se cancela una sesión (la ve tachada con el motivo); sin reporte CSV de asistencia a clases; el horario
+10j. **V3.4 — pendiente acotado:** avisos solo en el panel (sin WhatsApp, correo ni recordatorio el día anterior: V4);
+    sin reservas recurrentes («todos los lunes»); los feriados no cierran reservas; cambiar `walkin_spots` de una clase
+    no promueve la espera de sus sesiones futuras (sí subir el cupo de una sesión); `v_reservation_overview` recorre
+    reservas para contar bloqueados; la ficha de socio de gerencia no muestra sus reservas ni faltas.
+10i. **V3.3 — pendiente acotado:** desde V3.4 el socio recibe aviso cuando se cancela una sesión que reservó; sin reporte CSV de asistencia a clases; el horario
     no conoce feriados ni los días cerrados del tenant (se cancela a mano); editar un horario no propaga a
     sesiones ya generadas (decisión, ADR 0008); la ficha de socio de gerencia no muestra sus clases;
     `v_class_stats`/`v_class_slot_stats` cuentan con subconsultas por sesión (bien para cientos al mes); la
@@ -1414,22 +1493,22 @@ cargaron cuatro.
 
 ---
 
-## 13. V3.4 — punto de partida
+## 13. V4 — punto de partida
 
-**Alcance (roadmap V3):** reservas de clases. El socio aparta un lugar en una
-sesión antes de que empiece; el cupo lo cuentan reservas + asistencias. Flag:
-`enableReservations` (apagada hoy).
+**Alcance (roadmap):** suscripciones, licencias, facturación e integraciones. Lo
+que V3 dejó pedido para V4: avisos por WhatsApp o correo (hoy solo en el panel:
+`customer_messages` ya es la cola de lo que habría que enviar), recordatorio de
+clase el día anterior, cobro recurrente de membresías y licencia por gimnasio
+(las capacidades `features` hoy viven en el archivo del tenant: §12.11).
 
-**Lo que V3.3 deja listo:** `class_sessions` con cupo efectivo, sede, instructor
-y estado; `app.acceso_a_clase` (la regla del plan, contra la membresía que cubre
-el DÍA de la sesión) para decidir quién puede reservar; el bloqueo `FOR UPDATE`
-de la sesión que ya serializa el último lugar; `app.puede_tomar_asistencia` para
-confirmar en el mostrador; «Tus clases» del socio, donde irá el botón de reservar;
-y la cancelación con motivo, que tendrá que liberar o avisar a quien reservó.
+**Lo que V3.4 deja listo:** `customer_messages` como registro de avisos
+personales con `kind`, `session_id` y `read_at`; reglas por gimnasio en la base
+(`tenant_reservation_settings`), el patrón para mudar otras configuraciones
+operativas; reportes con capacidad contratada por reporte.
 
-**Patrón establecido (V3.0 a V3.3 lo aplicaron de punta a punta):**
+**Patrón establecido (V3.0 a V3.4 lo aplicaron de punta a punta):**
 
-1. **Rama** `feat/v3.4-reservas` desde `feat/v3.3-clases-sesiones`.
+1. **Rama** `feat/v4-…` desde `feat/v3.4-reservas`.
 2. **Base:** tablas con `tenant_id`, RLS + políticas por `app.tenant_allows`,
    FK compuestas (`(tenant_id, x)`), vistas `security_invoker`, grants por
    columna, autoría por default de sesión, auditoría por disparador, RPC
@@ -1449,11 +1528,16 @@ y la cancelación con motivo, que tendrá que liberar o avisar a quien reservó.
 7. Verificar (§9), actualizar `supabase/migrations/README.md`, este archivo y, si
    la decisión es de fondo, un ADR.
 
-Preguntas para el cliente antes de modelar V3.4: ¿con cuánta antelación se abre y
-se cierra la reserva?, ¿cuántas reservas simultáneas puede tener un socio?, ¿qué
-pasa si reserva y no viene (penalización, bloqueo)?, ¿hay lista de espera y se
-promueve sola?, ¿un cupo se reserva todo o se deja una parte para quien llega sin
-reservar?, ¿cómo se avisa una cancelación (WhatsApp, correo, solo en el panel)?
+Preguntas para el cliente antes de modelar V4: ¿qué canal de avisos (WhatsApp
+Business API, correo, ambos) y quién paga el envío?, ¿el socio se suscribe con
+cobro automático o sigue pagando por QR/recepción?, ¿qué factura el gimnasio
+(¿Bolivia: facturación electrónica del SIN?)?, ¿cómo se vende el producto a otros
+gimnasios (plan mensual por sede, por socio activo)?
+
+**Cómo se resolvieron las preguntas de V3.4** (ADR 0009, reglas recomendadas que
+confirmó el usuario): la reserva se abre 7 días antes y se cierra al empezar;
+3 activas; cancelar hasta 2 h antes no cuenta; 3 faltas en 30 días bloquean 7 días;
+lista de espera automática; lugares opcionales sin reserva; avisos en el panel.
 
 **Cómo se resolvieron las preguntas de V3.3** (ADR 0008): la clase se repite por
 horario semanal y las sesiones se generan (también hay sueltas); la capacidad es
@@ -1476,7 +1560,8 @@ clases en su panel y la vitrina muestra las publicadas.
 | Cierre V2 | 2026-09-10 | `d599bda` | CLAUDE.md reescrito como referencia del estado actual; bitácora archivada; documentos alineados |
 | V3.0 vitrina | 2026-09-11 | `eb3b0ff` | Landing multisucursal: chips de sedes en el hero, sección de sucursales rediseñada (portada/detalle/mapas), página `/sucursales` en el menú, texto de vitrina por sede en el tenant (`content.branches`), FAQ y «Nosotros» con las dos sedes; resets CSS a `@layer base` (márgenes y contraste de botones); voseo retirado de galería, horarios, instalaciones y tenants. Planes y pagos sin cambios. Desplegada (`dpl_58gzS8aVddniDoLLmXnWhrKPajwY`): `/mitico/sucursales` 200, `/aurora-fit/sucursales` 404, planes intactos |
 | V3.0 cobro QR | 2026-09-11 | `27279ef` | **Corrección urgente.** Causa raíz de «gerencia no puede guardar el QR»: `upsert` con `tenant_id` sin grant (42501) mal traducido como falta de rol; ahora RPC invocador, sin ampliar permisos. QR general y por plan (`payment_qr_codes`, modalidad `global`/`por_plan`, monto libre/exacto), selección con respaldo en el general, precio de la base en la vitrina; la base rechaza cobros por QR y aprobaciones por debajo del precio (180/179/181 probados) y cierra el enlace de un pago barato por UPDATE directo. Migraciones `v3_cobro_qr_por_plan_e_importe_verificado` y `v3_venta_y_alta_con_qr_exigen_importe_completo`; batería RLS en `docs/runbooks/pruebas-rls-v3.0-cobro-qr.sql`; 46 pruebas de dominio |
-| V3.3 | 2026-09-12 | `feat(v3.3)` (rama `feat/v3.3-clases-sesiones`) | Clases grupales con **acceso por plan** (`membresia`/`planes`/`abierta`, contra la membresía del día de la sesión), horario semanal por sede, **sesiones generadas** (hasta 62 días, conflictos informados) y sueltas/eventos, capacidad obligatoria respetada con bloqueo, cancelación con motivo, **asistencia a clase** por recepción (sus sedes) o el instructor (sus sesiones) con buscador por nombre/código/QR, «Tus clases» del socio y del entrenador, métricas de ocupación con conclusiones y vitrina `/clases`. Migraciones `v3_3_clases_horarios_sesiones_y_asistencia` (+2 correcciones que encontró la batería de RLS: cruce falso al regenerar y asistencia visible para cualquier entrenador) y semilla de demostración; ADR 0008; 133 pruebas de dominio |
+| V3.4 | 2026-09-12 | `feat(v3.4)` (rama `feat/v3.4-reservas`) | **Reservas de clases**: reglas por gimnasio en la base (ventana, cierre, cancelación libre, tope de activas, espera, faltas y bloqueo), cupo único de asistentes + reservas pendientes con lugares opcionales sin reserva, lista de espera automática con aviso, faltas derivadas y «Cerrar lista», bloqueo y justificación, cancelar una sesión cancela reservas y avisa, avisos personales en la bandeja del socio, botón de reserva en «Tus clases», reservas y «Vino» en la sesión, sección de reservas de gerencia y reportes `asistencia-a-clases` y `reservas-de-clases`. 33 ejercicios y un programa más en Mítico. Migraciones `v3_4_reservas_lista_de_espera_e_inasistencias`, semilla y `v3_4_v_classes_con_lugares_sin_reserva`; ADR 0009; batería RLS V3.4; 153 pruebas de dominio |
+| V3.3 | 2026-09-12 | `34ebdb0` (rama `feat/v3.3-clases-sesiones`, en GitHub) | Clases grupales con **acceso por plan** (`membresia`/`planes`/`abierta`, contra la membresía del día de la sesión), horario semanal por sede, **sesiones generadas** (hasta 62 días, conflictos informados) y sueltas/eventos, capacidad obligatoria respetada con bloqueo, cancelación con motivo, **asistencia a clase** por recepción (sus sedes) o el instructor (sus sesiones) con buscador por nombre/código/QR, «Tus clases» del socio y del entrenador, métricas de ocupación con conclusiones y vitrina `/clases`. Migraciones `v3_3_clases_horarios_sesiones_y_asistencia` (+2 correcciones que encontró la batería de RLS: cruce falso al regenerar y asistencia visible para cualquier entrenador) y semilla de demostración; ADR 0008; 133 pruebas de dominio |
 | V3.2 | 2026-09-12 | `79d8de2` | Desplegada (`dpl_3YaGKuHdfqZk7jS6rT4vrds1oyrc`) y verificada sobre el alias: públicas 200, `/mitico/panel/{rutinas,entrenamiento,rutinas/asignada/[id]}` 307 sin sesión, las mismas en Aurora 404, sin `service_role` en 11 chunks. Programas → rutinas → ejercicios; **asignar copia la rutina** al socio y se ajusta solo para él; progreso con una marca por ejercicio y día (fecha local del gimnasio, origen deducido por la base, series y peso opcionales); el socio marca desde su panel y el entrenador desde el suyo, cada uno acotado por `app.puede_entrenar_a`. **Métricas para gerencia** en `/panel/entrenamiento`: conclusiones automáticas, ejercicio más y menos hecho, qué hace cada socio, mapa día × grupo muscular y etiqueta del día («día de pierna») con umbrales probados en el dominio. Migraciones `v3_2_programas_rutinas_y_progreso` (+3 correcciones que encontró la batería de RLS) y semilla de demostración; ADR 0007; 102 pruebas de dominio |
 | V3.1 | 2026-09-11 | `9c55f7b` | Desplegada (`dpl_AkFXrLTgx88Mv8ceBmVPm22xQvyc`) y verificada sobre el alias: públicas 200, `/mitico/panel/{entrenadores,entrenador,ejercicios}` 307 sin sesión, las mismas rutas en Aurora 404, CSP con el origen del proyecto en `img-src`/`media-src` y reproductores sin cookies en `frame-src`, sin `service_role` en 11 chunks (608 KB). Entrenadores + ejercicios. Perfil con cuenta opcional vinculada por gerencia (rol `trainer`, solo `trainers.self`), sedes N:M, ausencias por horas/turno/día/periodo sin solapes, socios principal/secundarios según el PLAN (en la base), espacio `/panel/entrenador` con columnas fijas; catálogo de ejercicios con imagen/GIF/clip/enlace, compresión en el navegador, subida directa firmada, bucket privado con URL firmada, cuota de 300 MB medida por la base. **Corrige una escalada de privilegios de V2** (gerencia podía darse `super_admin`). Migraciones `v3_roles_de_gimnasio_no_otorgan_plataforma`, `v3_1_entrenadores_ejercicios_y_permisos`, `v3_1_semilla_entrenador_demo_y_ejercicios`, `v3_1_mensajes_de_asignacion_y_especialidades`; ADR 0006; batería RLS V3.1; 79 pruebas de dominio |
 | V3.0 | 2026-09-11 | `0227dd4`, `16fd88c` | Multisucursal: `branches`, `user_branches`, asistencia con sede (histórico sin sede), `branches.manage`/`branches.all`, sede de trabajo por dispositivo, dashboards global/por sede, `/panel/sucursales`, reportes por sede, «Nuestras sucursales» en la vitrina, auditoría por disparador, `npm test`. Mítico: Prado + Miraflores. Desplegada (`dpl_7DFPH7re52R8Q7kzHNwXo5sG99TQ`) y verificada sobre el alias: públicas 200 desde CDN, vitrina con las dos sedes y sus mapas, panel 307, `/aurora-fit/panel/sucursales` 404, CSV de la comparativa 401 sin sesión y 404 en Aurora, sin `service_role` en chunks |

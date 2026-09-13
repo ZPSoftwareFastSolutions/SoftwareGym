@@ -172,6 +172,10 @@ export const miticoTenant: TenantConfig = {
     // Las clases son datos de la base; la página pública solo enseña las que
     // gerencia marca como publicadas.
     enableClasses: true,
+
+    // V3.4: reservas de clases con lista de espera, faltas y bloqueo. Las reglas
+    // (ventana, tope, cancelación libre, bloqueo) las ajusta gerencia en el panel.
+    enableReservations: true,
   },
 
   seo: {

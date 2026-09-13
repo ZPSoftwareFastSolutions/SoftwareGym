@@ -21,8 +21,20 @@ import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operatio
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
 import { clasesDelPlan, sumarDias } from '@core/domain/operations/classes';
-import { classesRepository, membersRepository, receiptsRepository, trainingRepository } from '@infra/config/composition-root';
+import {
+  AJUSTES_RECOMENDADOS,
+  cancelacionSeriaTardia,
+  describirAjustes,
+  NOMBRE_DE_ESTADO_DE_RESERVA,
+  resultadoDeReservar,
+  textoDePosicion,
+  ventanaDeReserva,
+  type Reserva,
+} from '@core/domain/operations/reservations';
+import { horaEnZona } from '@/lib/formato';
+import { classesRepository, membersRepository, receiptsRepository, reservationsRepository, trainingRepository } from '@infra/config/composition-root';
 import { FilaDeSesion } from '@/presentation/patterns/AgendaDeClases';
+import { BotonDeReserva, type EstadoDeReservaDeSesion } from '@/presentation/patterns/ReservaForms';
 import { matrizQr } from '@infra/operations/qr';
 import { NotificationsPanel } from '@/presentation/patterns/NotificationsPanel';
 import { RachaCalendario } from '@/presentation/patterns/RachaCalendario';
@@ -91,27 +103,54 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   // V3.3: las clases que incluye su plan y las que tomó. El calendario lo ve
   // cualquier cuenta del gimnasio; la asistencia, RLS la reduce a la propia.
   const conClases = features.enableClasses === true && Boolean(customerId);
+  // V3.4: con reservas, el socio ve tantos días como abre la reserva (tope 14).
+  const conReservas = conClases && features.enableReservations === true;
+  const reservas = conReservas ? await reservationsRepository() : null;
+  const [estadoDeReservas, avisosDeReservas] = reservas ? await Promise.all([reservas.miEstado(), reservas.avisos()]) : [null, []];
+  const ajustes = estadoDeReservas?.ajustes ?? AJUSTES_RECOMENDADOS;
+  const diasVisibles = conReservas ? Math.min(Math.max(ajustes.openDaysBefore, 7), 14) : 7;
   const clasesRepo = conClases ? await classesRepository() : null;
-  const [clasesDelGimnasio, sesionesDeLaSemana, clasesTomadas] = clasesRepo
+  const [clasesDelGimnasio, sesionesDeLaSemana, clasesTomadas, misReservas] = clasesRepo
     ? await Promise.all([
         clasesRepo.clases(),
-        clasesRepo.sesiones({ desde: hoy, hasta: sumarDias(hoy, 6), soloProgramadas: true }),
+        clasesRepo.sesiones({ desde: hoy, hasta: sumarDias(hoy, diasVisibles - 1), soloProgramadas: true }),
         clasesRepo.clasesAsistidas(customerId ?? '', 6),
+        reservas && customerId ? reservas.reservasDelSocio(customerId, sumarDias(hoy, -21), 60) : Promise.resolve([] as readonly Reserva[]),
       ])
-    : [[], [], []];
+    : [[], [], [], [] as readonly Reserva[]];
   // Orientativo: la base vuelve a mirar la membresía que cubre el DÍA de cada sesión al registrar.
   const planVigente =
     ficha?.planId && (ficha.membershipStatus === 'active' || ficha.membershipStatus === 'expiring_soon') ? ficha.planId : null;
   const misClases = clasesDelPlan(clasesDelGimnasio, planVigente);
   const otrasClases = clasesDelGimnasio.filter((c) => c.isActive && !misClases.some((m) => m.id === c.id));
-  const misSesiones = sesionesDeLaSemana.filter((s) => misClases.some((c) => c.id === s.classId) && s.estado !== 'realizada').slice(0, 8);
+  const misSesiones = sesionesDeLaSemana
+    .filter((s) => (misClases.some((c) => c.id === s.classId) || s.miReservaId) && s.estado !== 'realizada')
+    .slice(0, 12);
+  const ahora = `${hoy}T${horaEnZona(tenant.hours.timezone)}`;
+  const estadoDeReservaDe = (s: (typeof misSesiones)[number]): EstadoDeReservaDeSesion => {
+    const ventana = ventanaDeReserva(s, ajustes, ahora);
+    return {
+      sessionId: s.id,
+      miReservaId: s.miReservaId,
+      miReservaEstado: s.miReservaEstado,
+      miPosicion: s.miPosicion,
+      ventana: ventana.estado,
+      abreTexto: `${fechaCorta(ventana.abre.slice(0, 10))} · ${ventana.abre.slice(11, 16)}`,
+      prevision: resultadoDeReservar(s, ajustes),
+      cancelacionTardia: s.miReservaEstado === 'reservada' && cancelacionSeriaTardia(s, 'reservada', ajustes, ahora),
+      bloqueadoHasta: estadoDeReservas?.bloqueadoHasta ?? null,
+      limiteAlcanzado: (estadoDeReservas?.activas ?? 0) >= ajustes.maxActive,
+    };
+  };
+  const proximasReservas = misReservas.filter((r) => (r.status === 'reservada' || r.status === 'en_espera') && r.estadoEfectivo !== 'no_asistio' && !r.sessionCancelled);
+  const historialDeReservas = misReservas.filter((r) => !proximasReservas.includes(r)).reverse().slice(0, 8);
 
   const membresia =
     ficha?.membershipStatus && ficha.endDate && ficha.daysRemaining !== null
       ? { endDate: ficha.endDate, effectiveStatus: ficha.membershipStatus, daysRemaining: ficha.daysRemaining }
       : null;
 
-  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId) : [];
+  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId, avisosDeReservas) : [];
   const racha = calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
   const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
   // La racha y el conteo salen de las FECHAS, sin mirar la sede: ir a una sede un
@@ -411,23 +450,92 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
 
           {conClases && clasesDelGimnasio.some((c) => c.isActive) && (
             <section id="mis-clases" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-clases">
-              <h2 id="titulo-mis-clases" className="t-h3">Tus clases</h2>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h2 id="titulo-mis-clases" className="t-h3">Tus clases</h2>
+                {conReservas && (
+                  <Modal
+                    titulo="Cómo funcionan las reservas"
+                    anchoMaximo="md"
+                    disparador={
+                      <Button variant="ghost" size="sm" icon="eye" iconPosition="start">
+                        Reglas de reserva
+                      </Button>
+                    }
+                  >
+                    <ul className="flex list-disc flex-col gap-2 ps-5 text-[0.9rem] leading-relaxed text-ink">
+                      {describirAjustes(ajustes).map((linea) => (
+                        <li key={linea}>{linea}</li>
+                      ))}
+                    </ul>
+                  </Modal>
+                )}
+              </div>
               <p className="mt-1.5 text-[0.86rem] text-muted">
                 {misClases.length > 0
-                  ? `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Llega unos minutos antes: el cupo es limitado y el instructor o recepción registra tu asistencia.`
+                  ? conReservas
+                    ? `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Reserva tu lugar: el cupo es limitado y quien reservó tiene prioridad.`
+                    : `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Llega unos minutos antes: el cupo es limitado y el instructor o recepción registra tu asistencia.`
                   : 'Tu plan actual no incluye clases grupales.'}
               </p>
+
+              {estadoDeReservas?.bloqueadoHasta && (
+                <p className="mt-4 flex items-start gap-2.5 rounded-[var(--t-radius-md)] border border-structural/50 bg-structural/10 px-4 py-3 text-[0.88rem] text-ink">
+                  <Icon name="alert" size={17} className="mt-0.5 shrink-0 text-structural" />
+                  No puedes reservar hasta el {fechaCorta(estadoDeReservas.bloqueadoHasta)} por faltas recientes. Si hubo un motivo, habla con recepción.
+                </p>
+              )}
 
               {misSesiones.length > 0 ? (
                 <ul className="mt-5 flex flex-col gap-2">
                   {misSesiones.map((s) => (
                     <li key={s.id}>
-                      <FilaDeSesion sesion={s} mostrarFecha mostrarSede={multisede} destacada={s.estado === 'en_curso'} />
+                      <FilaDeSesion
+                        sesion={s}
+                        mostrarFecha
+                        mostrarSede={multisede}
+                        destacada={s.estado === 'en_curso' || s.miReservaEstado === 'reservada'}
+                        accion={conReservas && s.estado !== 'cancelada' ? <BotonDeReserva slug={slug} e={estadoDeReservaDe(s)} /> : undefined}
+                      />
                     </li>
                   ))}
                 </ul>
               ) : (
-                misClases.length > 0 && <EmptyState className="mt-5" icono="calendar" titulo="No hay sesiones de tus clases en los próximos 7 días" />
+                misClases.length > 0 && <EmptyState className="mt-5" icono="calendar" titulo={`No hay sesiones de tus clases en los próximos ${diasVisibles} días`} />
+              )}
+
+              {conReservas && (proximasReservas.length > 0 || historialDeReservas.length > 0) && (
+                <div className="mt-6 border-t border-line pt-5">
+                  <p className="mb-3 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-muted">
+                    Tus reservas · {estadoDeReservas?.activas ?? proximasReservas.length} de {ajustes.maxActive} activas
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {[...proximasReservas, ...historialDeReservas].map((r) => (
+                      <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] bg-raised px-4 py-2.5 text-[0.86rem]">
+                        <span className="text-ink">
+                          {r.className} · {fechaCorta(r.sessionDate)} {r.startTime}
+                          {multisede ? ` · ${r.branchName}` : ''}
+                        </span>
+                        <span
+                          className={
+                            r.estadoEfectivo === 'no_asistio' || r.lateCancel
+                              ? 'text-structural'
+                              : r.estadoEfectivo === 'asistio' || r.estadoEfectivo === 'reservada'
+                                ? 'text-action'
+                                : 'text-muted'
+                          }
+                        >
+                          {r.estadoEfectivo === 'en_espera'
+                            ? textoDePosicion(r.posicion)
+                            : r.cancelledByGym
+                              ? 'Cancelada por el gimnasio'
+                              : r.lateCancel
+                                ? 'Cancelación tardía'
+                                : NOMBRE_DE_ESTADO_DE_RESERVA[r.estadoEfectivo]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {otrasClases.length > 0 && (

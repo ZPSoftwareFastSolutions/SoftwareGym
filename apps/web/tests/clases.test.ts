@@ -154,7 +154,8 @@ describe('ocupación', () => {
     assert.equal(nivelDeOcupacion(6, 12), 'media');
     assert.equal(nivelDeOcupacion(10, 12), 'alta');
     assert.equal(nivelDeOcupacion(12, 12), 'llena');
-    assert.equal(cuposLibres({ capacity: 10, asistentes: 12 }), 0);
+    assert.equal(cuposLibres({ capacity: 10, ocupados: 12 }), 0);
+    assert.equal(cuposLibres({ capacity: 10, ocupados: 7 }), 3);
   });
 
   it('la agenda agrupa por día y ordena por hora', () => {

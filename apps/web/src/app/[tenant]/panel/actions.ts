@@ -14,7 +14,8 @@ import { cookies } from 'next/headers';
 import type { ResultadoDeCheckIn } from '@core/domain/operations/attendance';
 import { resolverSucursalOperativa } from '@core/domain/operations/branches';
 import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
-import { branchesRepository, operationsRepository, tenantRepository } from '@infra/config/composition-root';
+import { PREFIJO_DE_AVISO_PERSONAL } from '@core/domain/operations/notifications';
+import { branchesRepository, operationsRepository, reservationsRepository, tenantRepository } from '@infra/config/composition-root';
 import { createSupabaseServerClient } from '@infra/auth/supabase.server';
 import { isSupabaseConfigured } from '@infra/auth/supabase.config';
 import { contextoDeAccion } from './_acciones';
@@ -125,9 +126,18 @@ export async function cambiarSucursalDeTrabajo(form: FormData): Promise<void> {
  */
 export async function marcarAvisoLeido(form: FormData): Promise<void> {
   const slug = await resolverTenant(form.get('tenantSlug'));
-  const avisoId = texto(form, 'avisoId').trim();
+  const crudo = texto(form, 'avisoId').trim();
 
-  if (!slug || !avisoId || !isSupabaseConfigured()) return;
+  if (!slug || !crudo || !isSupabaseConfigured()) return;
+
+  // V3.4: los avisos personales de reservas viven en `customer_messages`; su
+  // política solo deja marcar los del propio socio.
+  if (crudo.startsWith(PREFIJO_DE_AVISO_PERSONAL)) {
+    await (await reservationsRepository()).marcarAvisoLeido(crudo.slice(PREFIJO_DE_AVISO_PERSONAL.length));
+    revalidatePath(`/${slug}/panel`, 'layout');
+    return;
+  }
+  const avisoId = crudo.replace(/^aviso:/, '');
 
   const supabase = await createSupabaseServerClient();
 
