@@ -1092,6 +1092,13 @@ de Vercel: apagar Comments/Toolbar y fijar la Production Branch. El conector
 MCP de Vercel da 403 sobre el equipo; la CLI sí lo alcanza. Las URL con hash
 piden login de Vercel: **se comparte siempre el alias**.
 
+**Despliegue desde Git en el proyecto `web` (corregido 2026-09-14).** El push a `feat/v4-seradmingym` fallaba en
+`npm install` con «Could not read package.json»: el proyecto se creó por CLI desde `apps/web` y quedó con **Root
+Directory = `.`**, pero Git clona el repositorio entero. Se corrigió SOLO ese ajuste a **`apps/web`** (igual que
+`gym-platform`) con `npx vercel api /v9/projects/<id>?teamId=<equipo> -X PATCH -f rootDirectory=apps/web`, sin tocar
+archivos, comandos ni ramas. Production Branch del proyecto `web`: `main` (los pushes a ramas de trabajo son vista
+previa). Si otro proyecto enlazado vuelve a fallar así, revisar primero el Root Directory.
+
 **Vista previa antes que producción (V4).** `npx vercel deploy --yes` (sin `--prod`) publica una URL de vista previa
 que no toca producción. Es lo que se usa cuando el código depende de migraciones aún no aplicadas: la vista previa
 usa la MISMA base, así que sus pantallas nuevas fallan igual hasta migrar, pero producción sigue intacta. `vercel curl`
