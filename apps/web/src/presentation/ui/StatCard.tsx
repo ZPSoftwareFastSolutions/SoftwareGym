@@ -19,6 +19,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon, type AnyIconKey } from '../icons/Icon';
+import { IconoDeEnlace } from './IconoDeEnlace';
 
 export type TonoDeIndicador = 'neutro' | 'accion' | 'alerta';
 
@@ -123,7 +124,12 @@ export function StatCard({
           className="mt-auto inline-flex items-center gap-1.5 pt-1 text-[0.78rem] font-semibold text-action opacity-80 transition-opacity group-hover:opacity-100"
         >
           {accion ?? 'Ver detalle'}
-          <Icon name="arrowRight" size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+          {/* Como enlace, la flecha gira mientras carga el destino (V4); como botón de modal, no navega. */}
+          {href ? (
+            <IconoDeEnlace name="arrowRight" size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+          ) : (
+            <Icon name="arrowRight" size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+          )}
         </span>
       )}
     </>

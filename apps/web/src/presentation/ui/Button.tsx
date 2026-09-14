@@ -13,6 +13,7 @@ import Link from 'next/link';
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon, type AnyIconKey } from '../icons/Icon';
+import { GiroDeEnlace, IconoDeEnlace } from './IconoDeEnlace';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -76,6 +77,18 @@ function Content({ icon, iconPosition = 'end', children }: CommonProps) {
   );
 }
 
+/** Igual que `Content`, pero dentro de un `<Link>`: el icono gira mientras carga el destino (V4). */
+function LinkContent({ icon, iconPosition = 'end', children }: CommonProps) {
+  return (
+    <>
+      {icon && iconPosition === 'start' && <IconoDeEnlace name={icon} size={18} />}
+      <span>{children}</span>
+      {icon && iconPosition === 'end' && <IconoDeEnlace name={icon} size={18} />}
+      {!icon && <GiroDeEnlace size={16} />}
+    </>
+  );
+}
+
 type ButtonProps = CommonProps & Omit<ButtonHTMLAttributes<HTMLButtonElement>, keyof CommonProps>;
 
 export function Button({ type = 'button', ...props }: ButtonProps) {
@@ -128,7 +141,7 @@ export function LinkButton(props: LinkButtonProps) {
 
   return (
     <Link href={href} className={classes} {...rest}>
-      <Content {...props} />
+      <LinkContent {...props} />
     </Link>
   );
 }

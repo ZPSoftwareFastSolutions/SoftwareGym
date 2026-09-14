@@ -32,6 +32,7 @@ import {
   type GrupoDeNavegacion,
 } from '@/lib/navegacion';
 import { Icon, type AnyIconKey } from '../icons/Icon';
+import { IconoDeEnlace } from '../ui/IconoDeEnlace';
 
 export interface EntradaDePanel {
   readonly href: string;
@@ -68,7 +69,7 @@ function Pestana({ entrada, activa }: { readonly entrada: EntradaDePanel; readon
         activa ? 'text-action' : 'text-muted hover:text-ink',
       )}
     >
-      <Icon name={entrada.icono} size={16} />
+      <IconoDeEnlace name={entrada.icono} size={16} />
       {entrada.etiqueta}
       <Insignia valor={entrada.insignia} />
       <span
@@ -93,7 +94,7 @@ function OpcionDeMenu({ entrada, activa }: { readonly entrada: EntradaDePanel; r
         activa ? 'bg-action/10 font-semibold text-action' : 'text-ink hover:bg-raised',
       )}
     >
-      <Icon name={entrada.icono} size={16} className={activa ? 'text-action' : 'text-muted'} />
+      <IconoDeEnlace name={entrada.icono} size={16} className={activa ? 'text-action' : 'text-muted'} />
       <span className="flex-1">{entrada.etiqueta}</span>
       <Insignia valor={entrada.insignia} />
     </Link>
