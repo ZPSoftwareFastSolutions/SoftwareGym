@@ -77,7 +77,8 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
     repo.asignaciones({ trainerId: id }),
     repo.ausencias(id),
     (await branchesRepository()).listar(),
-    puedeAsignar ? (await membersRepository()).listar({}, hoy) : Promise.resolve([]),
+    // Solo quien puede recibir entrenador: membresía vigente (la base lo vuelve a exigir).
+    puedeAsignar ? (await membersRepository()).conMembresiaVigente() : Promise.resolve([]),
     puedeAsignar ? repo.reglasDePlanes() : Promise.resolve([]),
   ]);
 
@@ -90,10 +91,9 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
   const reglaPorPlan = new Map(reglas.map((r) => [r.planId, r]));
   const yaAsignados = new Set(vigentes.map((a) => a.customerId));
   const opciones: OpcionDeSocio[] = socios
-    .filter((s) => !s.archivedAt && !yaAsignados.has(s.id))
+    .filter((s) => !yaAsignados.has(s.id))
     .map((s) => {
-      const vigente = (s.membershipStatus === 'active' || s.membershipStatus === 'expiring_soon') && s.planId;
-      const regla = vigente && s.planId ? reglaPorPlan.get(s.planId) : undefined;
+      const regla = s.planId ? reglaPorPlan.get(s.planId) : undefined;
       return {
         id: s.id,
         etiqueta: `${s.code ?? '—'} · ${s.fullName}${s.planName ? ` · ${s.planName}` : ''}`,

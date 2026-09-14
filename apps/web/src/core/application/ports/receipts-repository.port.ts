@@ -12,6 +12,7 @@ import type {
 } from '../../domain/operations/receipts';
 import type { MetodoDePago } from '../../domain/operations/members';
 import type { ModoDeMonto, ModoDeQr, PlanACobrar, QrDeCobro } from '../../domain/operations/cobro-qr';
+import type { Pagina } from '../../domain/shared/paginacion';
 import type { ResultadoDeOperacion } from './resultado';
 
 export interface ImagenValidada {
@@ -30,8 +31,19 @@ export interface NuevoComprobante {
   readonly imagen: ImagenValidada;
 }
 
+export interface TotalesDeComprobantes {
+  readonly cantidad: number;
+  readonly importe: number;
+}
+
 export interface ReceiptsRepositoryPort {
   listar(filtro: FiltroDeComprobantes): Promise<readonly Comprobante[]>;
+
+  /** V4: una página de la bandeja, con el total que cumple el filtro. */
+  pagina(filtro: FiltroDeComprobantes, pagina: number, porPagina: number): Promise<Pagina<Comprobante>>;
+
+  /** Cuántos y cuánto suman, sin traer las filas enteras (solo el importe). */
+  totales(filtro: FiltroDeComprobantes): Promise<TotalesDeComprobantes>;
 
   obtener(id: string): Promise<Comprobante | null>;
 

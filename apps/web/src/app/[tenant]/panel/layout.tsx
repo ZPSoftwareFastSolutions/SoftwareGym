@@ -12,15 +12,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { loadTenantPage } from '@/lib/page-guards';
-import { tenantHref } from '@/lib/tenant-links';
-import {
-  PERMISO,
-  SEGMENTO_DE_ESPACIO,
-  espacioDeTrabajo,
-  rolPrincipal,
-  tienePermiso,
-} from '@core/domain/operations/workspace';
-import { DashboardNav, type EntradaDePanel } from '@/presentation/patterns/DashboardNav';
+import { espacioDeTrabajo, rolPrincipal } from '@core/domain/operations/workspace';
+import { DashboardNav } from '@/presentation/patterns/DashboardNav';
 import { Badge } from '@/presentation/ui/Badge';
 import { Button } from '@/presentation/ui/Button';
 import { receiptsRepository } from '@infra/config/composition-root';
@@ -28,6 +21,7 @@ import { SelectorDeSucursal } from '@/presentation/patterns/SelectorDeSucursal';
 import { Icon } from '@/presentation/icons/Icon';
 import { cerrarSesion } from '../acceso/actions';
 import { perfilActual } from './_datos';
+import { entradasDelPanel } from './_navegacion';
 import { contextoDeSucursal } from './_sucursal';
 
 export const metadata: Metadata = {
@@ -56,92 +50,16 @@ export default async function PanelLayout({ children, params }: PanelLayoutProps
   if (!perfil) return <>{children}</>;
 
   const espacio = espacioDeTrabajo(perfil);
-  const entradas: EntradaDePanel[] = [
-    {
-      href: tenantHref(slug, SEGMENTO_DE_ESPACIO[espacio]),
-      etiqueta: espacio === 'socio' ? 'Mi panel' : espacio === 'entrenador' ? 'Mis socios' : 'Resumen',
-      icono: espacio === 'entrenador' ? 'trainer' : 'layers',
-    },
-  ];
-
-  // Un entrenador que además es socio del gimnasio sigue viendo su membresía.
-  if (espacio === 'entrenador' && perfil.customerId) {
-    entradas.push({ href: tenantHref(slug, 'panel/socio'), etiqueta: 'Mi membresía', icono: 'idcard' });
-  }
-
-  // Dos condiciones, y las dos hacen falta: la capacidad tiene que estar
-  // CONTRATADA por el gimnasio y la persona tiene que tener PERMISO. Una flag
-  // apagada no es «esta persona no puede», es «este gimnasio no lo compró», y
-  // por eso la ruta responde 404 y no un aviso de permisos.
   const { features } = tenant;
-  const esPersonal = espacio === 'gimnasio';
-
-  if (esPersonal && features.enableMemberManagement && tienePermiso(perfil, PERMISO.verSocios)) {
-    entradas.push({ href: tenantHref(slug, 'panel/socios'), etiqueta: 'Socios', icono: 'group' });
-  }
-
-  if (features.enableAttendance && tienePermiso(perfil, PERMISO.verAsistencia)) {
-    entradas.push({ href: tenantHref(slug, 'panel/asistencia'), etiqueta: 'Asistencia', icono: 'calendar' });
-  }
-
-  if (esPersonal && features.enablePayments && tienePermiso(perfil, PERMISO.verPagos)) {
-    // El contador sale de una consulta de solo cabeceras (`count`, sin filas):
-    // la pestaña avisa de que hay trabajo sin traerse los comprobantes.
-    const pendientes = await (await receiptsRepository()).contarPendientes();
-    entradas.push({
-      href: tenantHref(slug, 'panel/comprobantes'),
-      etiqueta: 'Comprobantes',
-      icono: 'receipt',
-      insignia: pendientes,
-    });
-  }
-
-  if (esPersonal && features.enableMultiBranch && tienePermiso(perfil, PERMISO.gestionarSucursales)) {
-    entradas.push({ href: tenantHref(slug, 'panel/sucursales'), etiqueta: 'Sucursales', icono: 'pin' });
-  }
-
-  if (esPersonal && features.enableTrainers && tienePermiso(perfil, PERMISO.verEntrenadores)) {
-    entradas.push({ href: tenantHref(slug, 'panel/entrenadores'), etiqueta: 'Entrenadores', icono: 'trainer' });
-  }
-
-  if (esPersonal && features.enableExercises && tienePermiso(perfil, PERMISO.verEjercicios)) {
-    entradas.push({ href: tenantHref(slug, 'panel/ejercicios'), etiqueta: 'Ejercicios', icono: 'dumbbell' });
-  }
-
-  // Las rutinas las ven el personal y también el entrenador desde su espacio:
-  // es su herramienta de trabajo, no una pantalla de gerencia.
-  if ((esPersonal || espacio === 'entrenador') && features.enableRoutines && tienePermiso(perfil, PERMISO.verRutinas)) {
-    entradas.push({ href: tenantHref(slug, 'panel/rutinas'), etiqueta: 'Rutinas', icono: 'layers' });
-  }
-
-  // Clases (V3.3): recepción y el instructor toman asistencia desde aquí; el
-  // socio ve las suyas en su propio panel, no en esta agenda.
-  if ((esPersonal || espacio === 'entrenador') && features.enableClasses && tienePermiso(perfil, PERMISO.verClases)) {
-    entradas.push({ href: tenantHref(slug, 'panel/clases'), etiqueta: 'Clases', icono: 'clock' });
-  }
-
-  if (esPersonal && features.enableRoutines && tienePermiso(perfil, PERMISO.verMetricasDeEntrenamiento)) {
-    entradas.push({ href: tenantHref(slug, 'panel/entrenamiento'), etiqueta: 'Entrenamiento', icono: 'chart' });
-  }
-
-  // Alguien del personal que además entrena socios (recepción con perfil de
-  // entrenador, por ejemplo) llega a su lista desde aquí.
-  if (esPersonal && features.enableTrainers && tienePermiso(perfil, PERMISO.trabajarComoEntrenador)) {
-    entradas.push({ href: tenantHref(slug, 'panel/entrenador'), etiqueta: 'Mis socios', icono: 'user' });
-  }
-
-  if (features.enableReports && tienePermiso(perfil, PERMISO.verReportes)) {
-    entradas.push({ href: tenantHref(slug, 'panel/reportes'), etiqueta: 'Reportes', icono: 'chart' });
-  }
-
-  if (esPersonal && features.enablePayments && tienePermiso(perfil, PERMISO.configurar)) {
-    entradas.push({ href: tenantHref(slug, 'panel/cobros'), etiqueta: 'Cobro QR', icono: 'qr' });
-  }
+  const esPersonal = espacio === 'gimnasio' || espacio === 'administracion';
 
   // Sede de trabajo: solo para el personal de un gimnasio multisucursal. El
   // socio no opera en ninguna sede, y un gimnasio de sede única no tiene nada
-  // que elegir.
-  const sede = esPersonal && features.enableMultiBranch ? await contextoDeSucursal(perfil) : null;
+  // que elegir. Se pide a la vez que las entradas: son independientes.
+  const [entradas, sede] = await Promise.all([
+    entradasDelPanel(tenant, perfil, { contarPendientes: async () => (await receiptsRepository()).contarPendientes() }),
+    esPersonal && features.enableMultiBranch ? contextoDeSucursal(perfil) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="section pb-16 pt-[calc(var(--header-height)+2rem)]">

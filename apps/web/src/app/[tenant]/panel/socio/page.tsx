@@ -21,6 +21,7 @@ import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operatio
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
 import { clasesDelPlan, sumarDias } from '@core/domain/operations/classes';
+import { tituloDeRutina } from '@core/domain/operations/training';
 import {
   AJUSTES_RECOMENDADOS,
   cancelacionSeriaTardia,
@@ -428,10 +429,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                       className="flex h-full flex-col gap-1.5 rounded-[var(--t-radius-md)] border border-line p-4 transition-colors hover:border-action"
                     >
                       <span className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-ink">
-                          {rutina.dayLabel ? `${rutina.dayLabel} · ` : ''}
-                          {rutina.name}
-                        </span>
+                        <span className="font-semibold text-ink">{tituloDeRutina(rutina)}</span>
                         <Icon name="arrowRight" size={16} className="text-action" />
                       </span>
                       <span className="text-[0.82rem] text-muted">

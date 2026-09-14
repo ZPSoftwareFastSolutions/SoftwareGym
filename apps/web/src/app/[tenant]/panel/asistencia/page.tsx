@@ -17,7 +17,10 @@ import type { Metadata } from 'next';
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
-import { NOMBRE_DE_METODO, calcularEstadisticas, type MetodoDeAsistencia } from '@core/domain/operations/attendance';
+import { NOMBRE_DE_METODO, calcularEstadisticas, resumirPatrones } from '@core/domain/operations/attendance';
+import { FILAS_POR_PAGINA, paginaDeLaUrl } from '@core/domain/shared/paginacion';
+import { BotonDeFiltrar, FormularioDeFiltro } from '@/presentation/patterns/FiltroConCarga';
+import { Paginacion } from '@/presentation/patterns/Paginacion';
 import type { PuntoDeSerie } from '@core/domain/operations/dashboard';
 import { normalizarRango } from '@core/domain/operations/periodo';
 import { CheckInPanel } from '@/presentation/patterns/CheckInPanel';
@@ -73,38 +76,23 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
     sucursalCruda === FILTRO_SIN_SUCURSAL || sede.sucursales.some((s) => s.id === sucursalCruda) ? sucursalCruda : '';
   const hayFiltro = Boolean(busqueda || desde || hasta || sucursalFiltro);
 
-  const [kpis, serie, registros, del30] = await Promise.all([
+  const pagina = paginaDeLaUrl(consulta.pagina);
+  // V4: la bitácora pagina en la base y las estadísticas salen de conteos que ya
+  // agregó la base (`v_attendance_patterns`). Antes: 80 filas de historial sin
+  // saber cuántas había, y las últimas 500 entradas enteras para contar aquí
+  // —con más de 500 en el mes, la «hora pico de 30 días» era de unos pocos días—.
+  const [kpis, serie, historial, patrones] = await Promise.all([
     repo.indicadores(slug),
     repo.asistenciaDiaria(30),
-    repo.historialDeAsistencia({ busqueda, desde, hasta, limite: 80, ...(sucursalFiltro ? { sucursal: sucursalFiltro } : {}) }),
-    // Una sola consulta alimenta hora pico, mapa de calor y métodos: salen de
-    // las mismas filas y no pueden contradecirse entre sí.
-    repo.historialDeAsistencia({ limite: 500 }),
+    repo.historialPaginado({ busqueda, desde, hasta, ...(sucursalFiltro ? { sucursal: sucursalFiltro } : {}) }, pagina, FILAS_POR_PAGINA),
+    repo.patronesDeAsistencia(),
   ]);
+  const registros = historial.filas;
 
   const hoy = kpis?.hoy ?? (await repo.hoyDelGimnasio(slug));
-  const hace30 = (() => {
-    const fecha = new Date(`${hoy}T12:00:00Z`);
-    fecha.setUTCDate(fecha.getUTCDate() - 29);
-    return fecha.toISOString().slice(0, 10);
-  })();
-  const ventana = del30.filter((r) => r.attendanceDate >= hace30);
-
-  const horas = ventana.map((r) => Number(hora(r.checkedInAt).slice(0, 2))).filter((h) => Number.isInteger(h));
-  const estadisticas = calcularEstadisticas(serie.map((p) => ({ dia: p.dia, visitas: p.visitas })), horas);
-
-  const calor = DIAS.map(() => HORAS.map(() => 0));
-  const porHora = new Map<number, number>();
-  const porMetodo = new Map<MetodoDeAsistencia, number>();
-  for (const registro of ventana) {
-    const h = Number(hora(registro.checkedInAt).slice(0, 2));
-    const dia = (new Date(`${registro.attendanceDate}T12:00:00Z`).getUTCDay() + 6) % 7;
-    const columna = HORAS.indexOf(h);
-    const fila = calor[dia];
-    if (fila && columna >= 0) fila[columna] = (fila[columna] ?? 0) + 1;
-    if (Number.isInteger(h)) porHora.set(h, (porHora.get(h) ?? 0) + 1);
-    porMetodo.set(registro.method, (porMetodo.get(registro.method) ?? 0) + 1);
-  }
+  const resumen = resumirPatrones(patrones, HORAS);
+  const estadisticas = calcularEstadisticas(serie.map((p) => ({ dia: p.dia, visitas: p.visitas })), []);
+  const { calor, porHora, porMetodo } = resumen;
 
   const puntosPorDia: PuntoDeSerie[] = [];
   const mapaDias = new Map(serie.map((p) => [p.dia, p.visitas]));
@@ -121,11 +109,11 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
     detalle: `${String(h).padStart(2, '0')}:00 a ${String(h).padStart(2, '0')}:59: ${porHora.get(h) ?? 0} entradas`,
   }));
 
-  const reparto = multisede ? repartoPorSucursal(ventana) : [];
+  const reparto = multisede ? repartoPorSucursal(patrones) : [];
   // Tokens de marca; el histórico sin sede va siempre en gris, aparte.
   const COLORES_DE_SEDE = ['var(--t-action)', 'var(--t-structural)', 'var(--t-accent)', 'var(--t-structural-deep)'];
-  const sociosUnicos = new Set(ventana.map((r) => r.customerId)).size;
-  const mejorDiaIndice = calor.map((fila) => fila.reduce((s, v) => s + v, 0)).reduce((mejor, total, i, todos) => (total > (todos[mejor] ?? 0) ? i : mejor), 0);
+  const sociosUnicos = kpis?.sociosActivosMes ?? 0;
+  const mejorDiaIndice = resumen.diaPico;
   const base = tenantHref(slug, 'panel/asistencia');
 
   return (
@@ -164,9 +152,9 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
           <StatCard
             href="#estadisticas"
             etiqueta="Hora pico"
-            valor={estadisticas.horaPico === null ? '—' : `${String(estadisticas.horaPico).padStart(2, '0')}:00`}
+            valor={resumen.horaPico === null ? '—' : `${String(resumen.horaPico).padStart(2, '0')}:00`}
             icono="clock"
-            comparacion={`día más movido: ${DIAS_LARGOS[mejorDiaIndice] ?? '—'}`}
+            comparacion={`día más movido: ${mejorDiaIndice === null ? '—' : (DIAS_LARGOS[mejorDiaIndice] ?? '—')}`}
             accion="Ver mapa de calor"
           />
           <StatCard
@@ -207,7 +195,7 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
             <DonutChart
               titulo="Entradas por método de registro"
               className="mt-6"
-              centroValor={`${ventana.length}`}
+              centroValor={`${resumen.total}`}
               centroEtiqueta="entradas"
               segmentos={[
                 { etiqueta: NOMBRE_DE_METODO.qr, valor: porMetodo.get('qr') ?? 0, color: 'var(--t-action)' },
@@ -234,7 +222,7 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
             <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
               <DonutChart
                 titulo="Entradas por sucursal en los últimos 30 días"
-                centroValor={`${ventana.length}`}
+                centroValor={`${resumen.total}`}
                 centroEtiqueta="entradas"
                 segmentos={reparto.map((r, i) => ({
                   etiqueta: r.nombre,
@@ -273,13 +261,11 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
               <h2 id="titulo-historial" className="t-h3">Historial</h2>
               <p className="mt-1.5 text-[0.86rem] text-muted">Toca un socio para ver su ficha completa.</p>
             </div>
-            {hayFiltro && <Badge tone="neutral">{registros.length} resultados</Badge>}
+            <Badge tone="neutral">{historial.total} {hayFiltro ? 'resultados' : 'entradas'}</Badge>
           </div>
 
-          <form
-            method="get"
-            action={`${base}#historial`}
-            data-print="hide"
+          <FormularioDeFiltro
+            ruta={base}
             className={
               multisede
                 ? 'mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] lg:items-end'
@@ -314,10 +300,10 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
               <input id="hasta" name="hasta" type="date" defaultValue={hasta ?? ''} className={CLASE_DE_CONTROL} />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" variant="primary" size="md" icon="search" iconPosition="start">Buscar</Button>
+              <BotonDeFiltrar texto="Buscar" icono="search" />
               {hayFiltro && <LinkButton href={`${base}#historial`} variant="ghost" size="md">Limpiar</LinkButton>}
             </div>
-          </form>
+          </FormularioDeFiltro>
 
           <DataTable
             titulo="Entradas registradas"
@@ -341,6 +327,17 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
                 descripcion={hayFiltro ? 'Prueba con otro nombre, otro código o un rango de fechas más amplio.' : 'Registra la primera desde el mostrador.'}
               />
             }
+          />
+
+          <Paginacion
+            className="mt-5"
+            ruta={base}
+            parametros={consulta}
+            pagina={pagina}
+            porPagina={historial.porPagina}
+            total={historial.total}
+            filasEnPagina={registros.length}
+            ancla="historial"
           />
         </section>
       </div>

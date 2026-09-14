@@ -14,9 +14,11 @@ import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { fechaCorta } from '@/lib/formato';
 import { nombreDeGrupoMuscular } from '@core/domain/operations/exercises';
+import { etiquetaDeOpcionDeSocio } from '@core/domain/operations/members';
 import {
   NOMBRE_DE_NIVEL,
   NOMBRE_DE_OBJETIVO,
+  tituloDeRutina,
   type Programa,
   type Rutina,
   type RutinaAsignada,
@@ -104,10 +106,7 @@ function TarjetaDePrograma({
                 className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--t-radius-md)] border border-line px-4 py-3 transition-colors hover:border-action"
               >
                 <span className="flex min-w-0 flex-col">
-                  <span className="font-medium text-ink">
-                    {r.dayLabel ? `${r.dayLabel} · ` : ''}
-                    {r.name}
-                  </span>
+                  <span className="font-medium text-ink">{tituloDeRutina(r)}</span>
                   <span className="text-[0.78rem] text-muted">
                     {r.ejercicios} ejercicios
                     {r.grupos.length > 0 ? ` · ${r.grupos.map(nombreDeGrupoMuscular).join(', ')}` : ''}
@@ -147,10 +146,8 @@ export default async function RutinasPage({ params }: TenantPageParams) {
   let socios: readonly OpcionDeSocioParaRutina[] = [];
   if (puedeAsignar) {
     if (tienePermiso(perfil, PERMISO.verSocios)) {
-      const fichas = await (await membersRepository()).listar({}, hoy);
-      socios = fichas
-        .filter((f) => !f.archivedAt)
-        .map((f) => ({ id: f.id, etiqueta: `${f.code ?? '—'} · ${f.fullName}` }));
+      const opciones = await (await membersRepository()).opciones();
+      socios = opciones.map((o) => ({ id: o.id, etiqueta: etiquetaDeOpcionDeSocio(o) }));
     } else {
       const mios = await (await trainersRepository()).misSocios();
       socios = mios.map((s) => ({ id: s.customerId, etiqueta: `${s.customerCode ?? '—'} · ${s.fullName}` }));
@@ -253,7 +250,7 @@ export default async function RutinasPage({ params }: TenantPageParams) {
                         className="flex items-center justify-between gap-3 rounded-[var(--t-radius-md)] border border-line px-4 py-3 transition-colors hover:border-action"
                       >
                         <span className="flex flex-col">
-                          <span className="font-medium text-ink">{r.name}</span>
+                          <span className="font-medium text-ink">{tituloDeRutina(r)}</span>
                           <span className="text-[0.78rem] text-muted">{r.ejercicios} ejercicios</span>
                         </span>
                         <Icon name="arrowRight" size={16} className="text-action" />
@@ -309,7 +306,7 @@ export default async function RutinasPage({ params }: TenantPageParams) {
               titulo: 'Rutina',
               celda: (a) => (
                 <span className="flex flex-col">
-                  <span>{a.name}</span>
+                  <span>{tituloDeRutina(a)}</span>
                   {a.programName && <span className="text-[0.76rem] text-muted">{a.programName}</span>}
                 </span>
               ),
@@ -337,7 +334,7 @@ export default async function RutinasPage({ params }: TenantPageParams) {
                     etiqueta="Finalizar"
                     icono="close"
                     variante="peligro"
-                    confirmar={`¿Finalizar la rutina «${a.name}» de ${a.customerName}? El historial de entrenamientos se conserva.`}
+                    confirmar={`¿Finalizar la rutina «${tituloDeRutina(a)}» de ${a.customerName}? El historial de entrenamientos se conserva.`}
                   />
                 ) : null,
             },

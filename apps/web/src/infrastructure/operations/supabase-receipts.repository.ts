@@ -20,7 +20,9 @@ import type {
   PaymentSettingsPort,
   PlanPublico,
   ReceiptsRepositoryPort,
+  TotalesDeComprobantes,
 } from '@core/application/ports/receipts-repository.port';
+import { acotarPorPagina, rangoDePagina, type Pagina } from '@core/domain/shared/paginacion';
 import {
   esModoDeMonto,
   esModoDeQr,
@@ -47,6 +49,35 @@ const BUCKET_QR = 'qr-pagos';
 
 function texto(valor: unknown): string | null {
   return typeof valor === 'string' && valor.trim() !== '' ? valor : null;
+}
+
+/** Los totales solo leen el importe; más allá de esto la bandeja pide un reporte. */
+const TOPE_DE_TOTALES = 5000;
+
+/** Lo que `conFiltro` necesita de una consulta de PostgREST. */
+interface ConsultaFiltrable<Q> {
+  gte(columna: string, valor: string): Q;
+  lte(columna: string, valor: string): Q;
+  eq(columna: string, valor: string): Q;
+  or(filtros: string): Q;
+}
+
+/**
+ * Los mismos filtros para la lista, la página y los totales: una bandeja que
+ * contara con un filtro y listara con otro diría «12 comprobantes» y enseñaría 9.
+ */
+function conFiltro<Q extends ConsultaFiltrable<Q>>(consulta: Q, filtro: FiltroDeComprobantes): Q {
+  let q = consulta;
+  if (filtro.desde) q = q.gte('receipt_date', filtro.desde);
+  if (filtro.hasta) q = q.lte('receipt_date', filtro.hasta);
+  if (filtro.estado) q = q.eq('status', filtro.estado);
+  if (filtro.origen) q = q.eq('source', filtro.origen);
+  if (filtro.metodo) q = q.eq('method', filtro.metodo);
+  if (filtro.planId && PATRON_UUID.test(filtro.planId)) q = q.eq('plan_id', filtro.planId);
+  if (filtro.customerId && PATRON_UUID.test(filtro.customerId)) q = q.eq('customer_id', filtro.customerId);
+  const busqueda = (filtro.q ?? '').replace(/[,()*%\\]/g, ' ').trim().slice(0, 60);
+  if (busqueda) q = q.or(`customer_name.ilike.%${busqueda}%,customer_code.ilike.%${busqueda}%`);
+  return q;
 }
 
 function importeONulo(valor: unknown): number | null {
@@ -99,29 +130,37 @@ export class SupabaseReceiptsRepository implements ReceiptsRepositoryPort {
   constructor(private readonly supabase: SupabaseClient) {}
 
   async listar(filtro: FiltroDeComprobantes): Promise<readonly Comprobante[]> {
-    let consulta = this.supabase
-      .from('v_receipts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(Math.min(filtro.limite ?? 300, 500));
-
-    if (filtro.desde) consulta = consulta.gte('receipt_date', filtro.desde);
-    if (filtro.hasta) consulta = consulta.lte('receipt_date', filtro.hasta);
-    if (filtro.estado) consulta = consulta.eq('status', filtro.estado);
-    if (filtro.origen) consulta = consulta.eq('source', filtro.origen);
-    if (filtro.metodo) consulta = consulta.eq('method', filtro.metodo);
-    if (filtro.planId && PATRON_UUID.test(filtro.planId)) consulta = consulta.eq('plan_id', filtro.planId);
-    if (filtro.customerId && PATRON_UUID.test(filtro.customerId)) {
-      consulta = consulta.eq('customer_id', filtro.customerId);
-    }
-
-    const busqueda = (filtro.q ?? '').replace(/[,()*%\\]/g, ' ').trim().slice(0, 60);
-    if (busqueda) {
-      consulta = consulta.or(`customer_name.ilike.%${busqueda}%,customer_code.ilike.%${busqueda}%`);
-    }
-
+    const consulta = conFiltro(
+      this.supabase.from('v_receipts').select('*').order('created_at', { ascending: false }).limit(Math.min(filtro.limite ?? 300, 500)),
+      filtro,
+    );
     const { data } = await consulta;
     return (data ?? []).map((fila) => mapear(fila as Record<string, unknown>));
+  }
+
+  async pagina(filtro: FiltroDeComprobantes, pagina: number, porPagina: number): Promise<Pagina<Comprobante>> {
+    const tamano = acotarPorPagina(porPagina);
+    const { desde, hasta } = rangoDePagina(pagina, tamano);
+    const consulta = conFiltro(
+      this.supabase
+        .from('v_receipts')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(desde, hasta),
+      filtro,
+    );
+    const { data, count } = await consulta;
+    return { filas: (data ?? []).map((fila) => mapear(fila as Record<string, unknown>)), total: count ?? 0, pagina, porPagina: tamano };
+  }
+
+  async totales(filtro: FiltroDeComprobantes): Promise<TotalesDeComprobantes> {
+    const consulta = conFiltro(this.supabase.from('v_receipts').select('amount', { count: 'exact' }).limit(TOPE_DE_TOTALES), filtro);
+    const { data, count } = await consulta;
+    return {
+      cantidad: count ?? 0,
+      importe: (data ?? []).reduce((suma, fila) => suma + numero((fila as Record<string, unknown>).amount), 0),
+    };
   }
 
   async obtener(id: string): Promise<Comprobante | null> {

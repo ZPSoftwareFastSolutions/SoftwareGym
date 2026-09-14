@@ -11,14 +11,18 @@
  */
 
 import type {
+  ConteoDeSocios,
   EstadoDeMembresia,
   FichaDeSocio,
   FiltroDeSocios,
   MembresiaDeHistorial,
   MetodoDePago,
+  OpcionDeSocio,
   PagoDeHistorial,
   PlanVendible,
+  SocioDeLista,
 } from '../../domain/operations/members';
+import type { Pagina } from '../../domain/shared/paginacion';
 import type { ResultadoDeOperacion } from './resultado';
 
 /** Datos de alta ya validados y normalizados (vacíos convertidos en `null`). */
@@ -71,7 +75,20 @@ export interface CambiosDeMembresia {
 }
 
 export interface MembersRepositoryPort {
-  listar(filtro: FiltroDeSocios, hoy: string): Promise<readonly FichaDeSocio[]>;
+  /**
+   * V4: una PÁGINA de la lista, filtrada, ordenada y contada por la base. Antes
+   * devolvía hasta 500 fichas completas y filtraba en el servidor web.
+   */
+  listar(filtro: FiltroDeSocios, pagina: number, porPagina: number): Promise<Pagina<SocioDeLista>>;
+
+  /** Accesos rápidos (activos, por vencer, sin venir…) en una sola consulta. */
+  conteos(): Promise<ConteoDeSocios>;
+
+  /** Socios no archivados para un desplegable: solo id, código y nombre. */
+  opciones(): Promise<readonly OpcionDeSocio[]>;
+
+  /** Socios con membresía vigente (activa o por vencer), con su plan: a quién se le puede asignar entrenador. */
+  conMembresiaVigente(): Promise<readonly SocioDeLista[]>;
 
   /** Ficha de cualquier socio visible para quien pregunta. */
   ficha(customerId: string): Promise<FichaDeSocio | null>;

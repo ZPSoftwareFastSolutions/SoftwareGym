@@ -15,7 +15,7 @@ import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { fechaCorta } from '@/lib/formato';
 import { nombreDeGrupoMuscular } from '@core/domain/operations/exercises';
-import { describirSerie, type EjercicioAsignado } from '@core/domain/operations/training';
+import { describirSerie, tituloDeRutina, type EjercicioAsignado } from '@core/domain/operations/training';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { exercisesRepository, trainingRepository } from '@infra/config/composition-root';
 import { AccionConEstado } from '@/presentation/patterns/AccionConEstado';
@@ -72,10 +72,7 @@ export default async function RutinaAsignadaPage({ params }: RutinaAsignadaPageP
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="t-h3">
-              {asignacion.dayLabel ? `${asignacion.dayLabel} · ` : ''}
-              {asignacion.name}
-            </h2>
+            <h2 className="t-h3">{tituloDeRutina(asignacion)}</h2>
             {asignacion.endedOn ? <Badge tone="structural">Finalizada</Badge> : <Badge tone="action">Vigente</Badge>}
           </div>
           <p className="mt-1 text-[0.86rem] text-muted">

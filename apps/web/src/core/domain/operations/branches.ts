@@ -237,7 +237,7 @@ export interface VisitasPorSucursal {
  * se agrupa aparte y va siempre al final: no es una sede más a comparar.
  */
 export function repartoPorSucursal(
-  registros: readonly { readonly branchId: string | null; readonly branchName: string | null }[],
+  registros: readonly { readonly branchId: string | null; readonly branchName: string | null; readonly veces?: number }[],
 ): readonly VisitasPorSucursal[] {
   const conteo = new Map<string | null, VisitasPorSucursal>();
   for (const registro of registros) {
@@ -246,7 +246,8 @@ export function repartoPorSucursal(
     conteo.set(clave, {
       branchId: clave,
       nombre: clave === null ? ETIQUETA_SIN_SUCURSAL : registro.branchName ?? 'Sucursal',
-      visitas: (actual?.visitas ?? 0) + 1,
+      // V4: una fila puede ser un conteo ya agregado por la base (`veces`); sin él, cuenta uno.
+      visitas: (actual?.visitas ?? 0) + (registro.veces ?? 1),
     });
   }
   return [...conteo.values()].sort((a, b) => {

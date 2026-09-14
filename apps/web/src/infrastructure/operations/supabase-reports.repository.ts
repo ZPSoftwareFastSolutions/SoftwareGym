@@ -41,8 +41,9 @@ import { numero } from '@core/domain/operations/dashboard';
 import { ETIQUETA_SIN_SUCURSAL, FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import { diasDelRango, porcentaje } from '@core/domain/operations/reports';
 import { esEstadoDeReserva, NOMBRE_DE_ESTADO_DE_RESERVA } from '@core/domain/operations/reservations';
+import { TOPE_DE_FILAS_DE_REPORTE } from '@core/domain/operations/reports';
 
-const TOPE = 2000;
+const TOPE = TOPE_DE_FILAS_DE_REPORTE;
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ESTADO_DE_CUENTA: Readonly<Record<string, string>> = {

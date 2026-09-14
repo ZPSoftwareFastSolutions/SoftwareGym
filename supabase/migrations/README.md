@@ -1,7 +1,8 @@
 # Migraciones aplicadas
 
-> **Esta carpeta está vacía de `.sql` a propósito y es una deuda conocida, no
-> un descuido.** El esquema vive hoy solo en el servidor de Supabase. Traerlo
+> **Hasta V3.4 esta carpeta no tuvo `.sql`, y eso es una deuda conocida, no un
+> descuido.** Desde V4 cada migración nueva se versiona también como archivo
+> (ver la sección V4); las anteriores viven solo en el servidor de Supabase. Traerlas
 > aquí requiere `npx supabase link --project-ref dnclwawnjnzqqxgsuhpn` seguido
 > de `npx supabase db pull`, y eso pide la contraseña de la base, que no está
 > —ni debe estar— en el repositorio ni en una sesión automatizada.
@@ -136,3 +137,22 @@ Pruebas por rol, sede sin asignación, gimnasio ajeno, anónimo y reglas de plan
 
 Pruebas por rol, promoción de la espera, bloqueo y justificación, cancelación de sesión y registro tardío:
 [`docs/runbooks/pruebas-rls-v3.4-reservas.sql`](../../docs/runbooks/pruebas-rls-v3.4-reservas.sql).
+
+## V4 · Administración del gimnasio y rendimiento (2026-09-14)
+
+> **Primeras migraciones versionadas como archivo** en esta carpeta (`*.sql`). Se
+> escribieron en la sesión V4 y **quedan pendientes de aplicar**: la herramienta de
+> permisos de la sesión bloqueó aplicar DDL sobre la base de producción. Aplicarlas
+> en orden (por MCP `apply_migration` con el mismo nombre o desde el SQL editor) y
+> correr antes y después la huella del bloque 0 del runbook de V4.
+
+| Archivo | Qué introduce |
+|---|---|
+| `20260914010000_v4_rls_con_contexto_evaluado_una_vez_por_consulta.sql` | **Corrige** la lentitud con volumen: las 126 llamadas `app.tenant_allows(col, 'p')` de las políticas de `public` se reescriben como `col = (select app.current_tenant_id()) and (select app.has_permission('p'))` y el contexto se envuelve en `(select …)`. Mismo significado, evaluado una vez por consulta. Falla si queda alguna llamada por fila |
+| `20260914010100_v4_lista_y_conteos_de_socios_en_la_base.sql` | `v_customer_list` (lista paginable con última visita, `days_since_visit` y `birthday_this_month` con la fecha del gimnasio), `v_customer_counts` (accesos rápidos en una fila) y `v_customer_detail` con `tenant_id` en cada subconsulta (mismas columnas) |
+| `20260914010150_v4_patrones_de_asistencia_agregados_en_la_base.sql` | `v_attendance_patterns`: entradas de 30 días por día ISO, hora local, método y sede |
+| `20260914010200_v4_rol_administrador_del_gimnasio_y_jerarquia.sql` | `roles.level`; permiso `roles.manage`; rol `admin` (todo lo de gimnasio, nada de plataforma); `app.nivel_de_la_sesion`, `app.nivel_de_cuenta`, `app.puede_otorgar_nivel`, `app.puede_administrar_cuenta`; políticas de `user_roles` (insertar/borrar por nivel) y de UPDATE de `app_users`; disparadores de autoría, último administrador y auditoría; RPC `otorgar_rol`, `retirar_rol`, `cambiar_estado_de_cuenta`, `designar_administrador_de_gimnasio`; vista `v_staff` |
+| `20260914010300_v4_rutinas_sin_el_dia_repetido_en_el_nombre.sql` | **Corrige** «Día A · Día A · Empuje»: `app.nombre_sin_etiqueta_del_dia`, disparadores en `routines` y `customer_routines` y limpieza de los nombres existentes |
+
+Pruebas (huella antes/después, rendimiento con volumen, jerarquía, aislamiento, último administrador, rutinas):
+[`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](../../docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).

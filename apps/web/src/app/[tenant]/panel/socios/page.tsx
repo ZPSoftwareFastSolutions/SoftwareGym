@@ -15,15 +15,16 @@ import { tenantHref } from '@/lib/tenant-links';
 import { cn } from '@/lib/cn';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import {
-  cumpleEsteMes,
   diasDesde,
   esEstadoDeMembresia,
   NOMBRE_DE_ESTADO_DE_MEMBRESIA,
-  type FichaDeSocio,
   type FiltroDeSocios,
 } from '@core/domain/operations/members';
+import { FILAS_POR_PAGINA, paginaDeLaUrl } from '@core/domain/shared/paginacion';
 import { membersRepository } from '@infra/config/composition-root';
 import { BotonFicha, FichaDeSocioProvider } from '@/presentation/patterns/FichaDeSocio';
+import { BotonDeFiltrar, FormularioDeFiltro } from '@/presentation/patterns/FiltroConCarga';
+import { Paginacion } from '@/presentation/patterns/Paginacion';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
 import { Badge } from '@/presentation/ui/Badge';
@@ -73,34 +74,31 @@ export default async function SociosPage({ params, searchParams }: SociosPagePro
     cumpleMes: vista === 'cumple',
     inactivosDias: vista === 'inactivos' ? 7 : undefined,
   };
+  const pagina = paginaDeLaUrl(consulta.pagina);
 
+  // V4: una sola vuelta a la base para cada cosa, en paralelo. Antes: todas las
+  // fichas para contar, otra vez todas para filtrar, y el corte a 500 en silencio.
   const socios = await membersRepository();
-  const [hoy, todos, planes] = await Promise.all([
+  const [hoy, conteo, lista, planes] = await Promise.all([
     repo.hoyDelGimnasio(slug),
-    socios.listar({}, ''),
+    socios.conteos(),
+    socios.listar(filtro, pagina, FILAS_POR_PAGINA),
     socios.planesVendibles(),
   ]);
-  // La lista filtrada espera a `hoy`: «sin venir 7 días» y «cumple este mes» se
-  // miden en la fecha del gimnasio, nunca en la del servidor.
-  const filas = await socios.listar(filtro, hoy);
-
-  const contar = (condicion: (ficha: FichaDeSocio) => boolean) => todos.filter(condicion).length;
+  const filas = lista.filas;
   const base = tenantHref(slug, 'panel/socios');
 
   const accesos: readonly { etiqueta: string; valor: number; href: string; icono: AnyIconKey; activo: boolean }[] = [
-    { etiqueta: 'Todos', valor: todos.length, href: base, icono: 'group', activo: !estado && !vista },
-    { etiqueta: 'Activos', valor: contar((f) => f.membershipStatus === 'active'), href: `${base}?estado=active`, icono: 'shield', activo: estado === 'active' },
-    { etiqueta: 'Por vencer', valor: contar((f) => f.membershipStatus === 'expiring_soon'), href: `${base}?estado=expiring_soon`, icono: 'clock', activo: estado === 'expiring_soon' },
-    { etiqueta: 'Vencidos', valor: contar((f) => f.membershipStatus === 'expired'), href: `${base}?estado=expired`, icono: 'alert', activo: estado === 'expired' },
-    { etiqueta: 'Sin membresía', valor: contar((f) => f.membershipId === null), href: `${base}?estado=sin-membresia`, icono: 'user', activo: estado === 'sin-membresia' },
-    {
-      etiqueta: 'Sin venir 7+ días',
-      valor: contar((f) => (f.membershipStatus === 'active' || f.membershipStatus === 'expiring_soon') && (diasDesde(f.lastVisit, hoy) ?? 999) >= 7),
-      href: `${base}?vista=inactivos`,
-      icono: 'fire',
-      activo: vista === 'inactivos',
-    },
-    { etiqueta: 'Cumplen este mes', valor: contar((f) => cumpleEsteMes(f.birthDate, hoy)), href: `${base}?vista=cumple`, icono: 'cake', activo: vista === 'cumple' },
+    { etiqueta: 'Todos', valor: conteo.todos, href: base, icono: 'group', activo: !estado && !vista },
+    { etiqueta: 'Activos', valor: conteo.activos, href: `${base}?estado=active`, icono: 'shield', activo: estado === 'active' },
+    { etiqueta: 'Por vencer', valor: conteo.porVencer, href: `${base}?estado=expiring_soon`, icono: 'clock', activo: estado === 'expiring_soon' },
+    { etiqueta: 'Vencidos', valor: conteo.vencidos, href: `${base}?estado=expired`, icono: 'alert', activo: estado === 'expired' },
+    { etiqueta: 'Sin membresía', valor: conteo.sinMembresia, href: `${base}?estado=sin-membresia`, icono: 'user', activo: estado === 'sin-membresia' },
+    { etiqueta: 'Sin venir 7+ días', valor: conteo.sinVenir7d, href: `${base}?vista=inactivos`, icono: 'fire', activo: vista === 'inactivos' },
+    { etiqueta: 'Cumplen este mes', valor: conteo.cumplenMes, href: `${base}?vista=cumple`, icono: 'cake', activo: vista === 'cumple' },
+    ...(puedeArchivar
+      ? [{ etiqueta: 'Archivados', valor: conteo.archivados, href: `${base}?vista=archivados`, icono: 'archive' as AnyIconKey, activo: vista === 'archivados' }]
+      : []),
   ];
 
   return (
@@ -127,31 +125,33 @@ export default async function SociosPage({ params, searchParams }: SociosPagePro
           </div>
         </section>
 
-        <nav aria-label="Filtros rápidos" className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-          <ul className="flex w-max gap-2.5">
-            {[...accesos, ...(puedeArchivar ? [{ etiqueta: 'Archivados', valor: -1, href: `${base}?vista=archivados`, icono: 'archive' as AnyIconKey, activo: vista === 'archivados' }] : [])].map((acceso) => (
+        {/* Rejilla que envuelve línea: con ocho accesos, una fila con
+            desplazamiento horizontal escondía los últimos en un teléfono. */}
+        <nav aria-label="Filtros rápidos">
+          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-8">
+            {accesos.map((acceso) => (
               <li key={acceso.etiqueta}>
                 <Link
                   href={acceso.href}
                   aria-current={acceso.activo ? 'page' : undefined}
                   className={cn(
-                    'flex h-[4.5rem] min-w-[9rem] flex-col justify-center gap-1 rounded-[var(--t-radius-md)] border px-4 transition-colors',
+                    'flex h-[4.5rem] flex-col justify-center gap-1 rounded-[var(--t-radius-md)] border px-3.5 transition-colors',
                     acceso.activo ? 'border-action bg-action/10' : 'border-line bg-surface hover:border-action/60',
                   )}
                 >
-                  <span className="flex items-center gap-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.1em] text-muted">
-                    <Icon name={acceso.icono} size={14} className={acceso.activo ? 'text-action' : ''} />
+                  <span className="flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase leading-tight tracking-[0.08em] text-muted">
+                    <Icon name={acceso.icono} size={14} className={cn('shrink-0', acceso.activo && 'text-action')} />
                     {acceso.etiqueta}
                   </span>
-                  {acceso.valor >= 0 && <span className="text-[1.35rem] font-bold leading-none text-ink">{acceso.valor}</span>}
+                  <span className="text-[1.35rem] font-bold leading-none text-ink">{acceso.valor}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
 
-        <section className="surface-card p-6 sm:p-7">
-          <form method="get" className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto] sm:items-end">
+        <section id="lista" className="surface-card scroll-mt-28 p-6 sm:p-7">
+          <FormularioDeFiltro ruta={base} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto] sm:items-end">
             {estado && <input type="hidden" name="estado" value={estado} />}
             {vista && <input type="hidden" name="vista" value={vista} />}
             <div className="relative">
@@ -168,13 +168,12 @@ export default async function SociosPage({ params, searchParams }: SociosPagePro
                 ))}
               </select>
             </div>
-            <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[var(--t-radius-md)] bg-action px-5 font-semibold text-on-action hover:bg-action-strong">
-              <Icon name="filter" size={16} />
-              Filtrar
-            </button>
-          </form>
+            <BotonDeFiltrar />
+          </FormularioDeFiltro>
 
-          <p className="mt-5 text-[0.82rem] text-muted">{filas.length} {filas.length === 1 ? 'socio' : 'socios'}</p>
+          <p className="mt-5 text-[0.82rem] text-muted">
+            {lista.total} {lista.total === 1 ? 'socio' : 'socios'}
+          </p>
 
           <DataTable
             titulo="Socios del gimnasio"
@@ -241,6 +240,17 @@ export default async function SociosPage({ params, searchParams }: SociosPagePro
                 }
               />
             }
+          />
+
+          <Paginacion
+            className="mt-5"
+            ruta={base}
+            parametros={consulta}
+            pagina={pagina}
+            porPagina={lista.porPagina}
+            total={lista.total}
+            filasEnPagina={filas.length}
+            ancla="lista"
           />
         </section>
       </div>

@@ -31,6 +31,62 @@ export interface RegistroDeAsistencia {
   readonly membershipId: string | null;
 }
 
+/** V4 · Entradas de 30 días agregadas por la base: día ISO (1 = lunes), hora local, método y sede. */
+export interface PatronDeAsistencia {
+  readonly diaIso: number;
+  readonly hora: number;
+  readonly metodo: MetodoDeAsistencia;
+  readonly branchId: string | null;
+  readonly branchName: string | null;
+  readonly veces: number;
+}
+
+export interface ResumenDePatrones {
+  readonly total: number;
+  /** 7 filas (lunes a domingo) × las horas pedidas. */
+  readonly calor: readonly (readonly number[])[];
+  readonly porHora: ReadonlyMap<number, number>;
+  readonly porMetodo: ReadonlyMap<MetodoDeAsistencia, number>;
+  readonly horaPico: number | null;
+  /** Índice 0 = lunes; `null` sin entradas. */
+  readonly diaPico: number | null;
+}
+
+/**
+ * Mapa de calor, reparto por hora y por método a partir de los conteos que ya
+ * agregó la base. Antes se contaban aquí las 500 últimas filas enteras, y con
+ * más entradas que eso las estadísticas «de 30 días» eran de los últimos días.
+ */
+export function resumirPatrones(patrones: readonly PatronDeAsistencia[], horas: readonly number[]): ResumenDePatrones {
+  const calor = Array.from({ length: 7 }, () => horas.map(() => 0));
+  const porHora = new Map<number, number>();
+  const porMetodo = new Map<MetodoDeAsistencia, number>();
+  let total = 0;
+  for (const patron of patrones) {
+    if (!Number.isInteger(patron.veces) || patron.veces <= 0) continue;
+    total += patron.veces;
+    porHora.set(patron.hora, (porHora.get(patron.hora) ?? 0) + patron.veces);
+    porMetodo.set(patron.metodo, (porMetodo.get(patron.metodo) ?? 0) + patron.veces);
+    const fila = calor[patron.diaIso - 1];
+    const columna = horas.indexOf(patron.hora);
+    if (fila && columna >= 0) fila[columna] = (fila[columna] ?? 0) + patron.veces;
+  }
+
+  let horaPico: number | null = null;
+  for (const [hora, veces] of porHora) {
+    if (horaPico === null || veces > (porHora.get(horaPico) ?? 0) || (veces === porHora.get(horaPico) && hora < horaPico)) horaPico = hora;
+  }
+
+  const porDia = Array.from({ length: 7 }, () => 0);
+  for (const patron of patrones) {
+    if (patron.diaIso >= 1 && patron.diaIso <= 7 && patron.veces > 0) porDia[patron.diaIso - 1] = (porDia[patron.diaIso - 1] ?? 0) + patron.veces;
+  }
+  const maximo = Math.max(...porDia);
+  const diaPico = maximo > 0 ? porDia.indexOf(maximo) : null;
+
+  return { total, calor, porHora, porMetodo, horaPico, diaPico };
+}
+
 export interface EstadisticasDeAsistencia {
   readonly totalPeriodo: number;
   readonly promedioDiario: number;

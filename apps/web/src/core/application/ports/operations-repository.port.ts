@@ -30,9 +30,11 @@ import type {
   VencimientoProximo,
 } from '../../domain/operations/dashboard';
 import type {
+  PatronDeAsistencia,
   RegistroDeAsistencia,
   ResultadoDeCheckIn,
 } from '../../domain/operations/attendance';
+import type { Pagina } from '../../domain/shared/paginacion';
 import type { AvisoInterno, MembresiaParaAvisar } from '../../domain/operations/notifications';
 import type { PerfilOperativo } from '../../domain/operations/workspace';
 
@@ -90,6 +92,12 @@ export interface OperationsRepositoryPort {
 
   /** Bitácora de asistencia filtrada. Descendente por fecha y hora. */
   historialDeAsistencia(filtro: FiltroDeAsistencia): Promise<readonly RegistroDeAsistencia[]>;
+
+  /** V4: una página de la bitácora con el total que cumple el filtro. */
+  historialPaginado(filtro: FiltroDeAsistencia, pagina: number, porPagina: number): Promise<Pagina<RegistroDeAsistencia>>;
+
+  /** V4: entradas de 30 días agregadas por día, hora, método y sede (lo cuenta la base). */
+  patronesDeAsistencia(): Promise<readonly PatronDeAsistencia[]>;
 
   /** Membresías que vencen o vencieron en la ventana de 30 días. */
   vencimientos(): Promise<readonly VencimientoProximo[]>;

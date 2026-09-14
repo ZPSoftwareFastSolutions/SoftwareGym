@@ -22,6 +22,7 @@ import {
   turnosDelGimnasio,
 } from '@core/domain/operations/trainers';
 import { sumarDias } from '@core/domain/operations/classes';
+import { tituloDeRutina } from '@core/domain/operations/training';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { branchesRepository, classesRepository, trainersRepository, trainingRepository } from '@infra/config/composition-root';
 import { FilaDeSesion } from '@/presentation/patterns/AgendaDeClases';
@@ -201,10 +202,7 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
                 titulo: 'Rutina',
                 celda: (r) => (
                   <span className="flex flex-col">
-                    <span>
-                      {r.dayLabel ? `${r.dayLabel} · ` : ''}
-                      {r.name}
-                    </span>
+                    <span>{tituloDeRutina(r)}</span>
                     <span className="text-[0.76rem] text-muted">{r.ejercicios} ejercicios</span>
                   </span>
                 ),

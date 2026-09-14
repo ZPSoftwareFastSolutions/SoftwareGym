@@ -26,6 +26,7 @@ import type {
 } from '@core/application/ports/receipts-repository.port';
 import type { ExercisesRepositoryPort } from '@core/application/ports/exercises-repository.port';
 import type { ReportsRepositoryPort } from '@core/application/ports/reports-repository.port';
+import type { StaffRepositoryPort } from '@core/application/ports/staff-repository.port';
 import type { TrainersRepositoryPort } from '@core/application/ports/trainers-repository.port';
 import type { TrainingRepositoryPort } from '@core/application/ports/training-repository.port';
 import type { TenantRepositoryPort } from '@core/application/ports/tenant-repository.port';
@@ -115,6 +116,13 @@ export async function reservationsRepository(): Promise<ReservationsRepositoryPo
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseReservationsRepository } = await import('../operations/supabase-reservations.repository');
   return new SupabaseReservationsRepository(await createSupabaseServerClient());
+}
+
+/** Personal, roles y actividad administrativa del gimnasio (V4), con la sesión de quien pregunta. */
+export async function staffRepository(): Promise<StaffRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseStaffRepository } = await import('../operations/supabase-staff.repository');
+  return new SupabaseStaffRepository(await createSupabaseServerClient());
 }
 
 /**

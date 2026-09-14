@@ -12,7 +12,8 @@ import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { fechaCorta } from '@/lib/formato';
 import { nombreDeGrupoMuscular } from '@core/domain/operations/exercises';
-import { describirSerie, NOMBRE_DE_NIVEL, NOMBRE_DE_OBJETIVO, type EjercicioDeRutina } from '@core/domain/operations/training';
+import { etiquetaDeOpcionDeSocio } from '@core/domain/operations/members';
+import { describirSerie, NOMBRE_DE_NIVEL, NOMBRE_DE_OBJETIVO, tituloDeRutina, type EjercicioDeRutina } from '@core/domain/operations/training';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { exercisesRepository, membersRepository, trainersRepository, trainingRepository } from '@infra/config/composition-root';
 import { AccionConEstado } from '@/presentation/patterns/AccionConEstado';
@@ -68,8 +69,8 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
   let socios: readonly OpcionDeSocioParaRutina[] = [];
   if (puedeAsignar) {
     if (tienePermiso(perfil, PERMISO.verSocios)) {
-      const fichas = await (await membersRepository()).listar({}, hoy);
-      socios = fichas.filter((f) => !f.archivedAt).map((f) => ({ id: f.id, etiqueta: `${f.code ?? '—'} · ${f.fullName}` }));
+      const opciones = await (await membersRepository()).opciones();
+      socios = opciones.map((o) => ({ id: o.id, etiqueta: etiquetaDeOpcionDeSocio(o) }));
     } else {
       const mios = await (await trainersRepository()).misSocios();
       socios = mios.map((s) => ({ id: s.customerId, etiqueta: `${s.customerCode ?? '—'} · ${s.fullName}` }));
@@ -88,10 +89,7 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="t-h3">
-              {rutina.dayLabel ? `${rutina.dayLabel} · ` : ''}
-              {rutina.name}
-            </h2>
+            <h2 className="t-h3">{tituloDeRutina(rutina)}</h2>
             {!rutina.isActive && <Badge tone="structural">Archivada</Badge>}
             {rutina.grupos.map((g) => (
               <Badge key={g} tone="neutral">
@@ -152,7 +150,7 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
         </div>
 
         <DataTable<EjercicioDeRutina>
-          titulo={`Ejercicios de ${rutina.name}`}
+          titulo={`Ejercicios de ${tituloDeRutina(rutina)}`}
           className="mt-5"
           columnas={[
             { clave: 'orden', titulo: '#', numerica: true, celda: (e) => `${e.position}` },
@@ -222,7 +220,7 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
           </div>
           {puedeAsignar && socios.length > 0 && ejercicios.length > 0 && (
             <Modal
-              titulo={`Asignar «${rutina.name}»`}
+              titulo={`Asignar «${tituloDeRutina(rutina)}»`}
               anchoMaximo="lg"
               montarSoloAbierto
               disparador={
@@ -237,7 +235,7 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
         </div>
 
         <DataTable
-          titulo={`Socios con ${rutina.name}`}
+          titulo={`Socios con ${tituloDeRutina(rutina)}`}
           className="mt-5"
           columnas={[
             {
@@ -291,7 +289,7 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
                 etiqueta="Archivar rutina"
                 icono="archive"
                 variante="peligro"
-                confirmar={`¿Archivar «${rutina.name}»? No se podrá asignar; lo ya asignado sigue igual.`}
+                confirmar={`¿Archivar «${tituloDeRutina(rutina)}»? No se podrá asignar; lo ya asignado sigue igual.`}
               />
             ) : (
               <AccionConEstado accion={activarRutina} campos={campos} etiqueta="Activar rutina" icono="refresh" variante="primario" />

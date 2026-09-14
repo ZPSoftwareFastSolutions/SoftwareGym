@@ -353,6 +353,12 @@ export const REPORTES: readonly DefinicionDeReporte[] = [
   },
 ];
 
+/**
+ * Filas que un reporte pide como mucho. Los totales y el gráfico se calculan
+ * sobre ellas; al llegar al tope, la pantalla lo avisa en vez de callarlo (V4).
+ */
+export const TOPE_DE_FILAS_DE_REPORTE = 2000;
+
 export function reportePorClave(clave: string): DefinicionDeReporte | undefined {
   return REPORTES.find((reporte) => reporte.clave === clave);
 }

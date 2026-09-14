@@ -23,6 +23,9 @@ import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
+import { Button } from '@/presentation/ui/Button';
+import { Modal } from '@/presentation/ui/Modal';
+import { DesignarAdministradorForm } from '@/presentation/patterns/PersonalForms';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
 
@@ -128,6 +131,27 @@ export default async function PanelDePlataformaPage({ params }: TenantPageParams
               titulo: 'Zona horaria',
               secundaria: true,
               celda: (fila) => fila.timezone,
+            },
+            {
+              // V4: el primer administrador de cada gimnasio lo designa la
+              // plataforma sobre una cuenta ya registrada en ESE gimnasio.
+              clave: 'administracion',
+              titulo: 'Administración',
+              celda: (fila) => (
+                <Modal
+                  titulo={`Administrador de ${fila.name}`}
+                  descripcion="Da control administrativo total de ese gimnasio (y de ningún otro) a una cuenta registrada en su sitio."
+                  anchoMaximo="md"
+                  montarSoloAbierto
+                  disparador={
+                    <Button variant="secondary" size="sm" icon="key" iconPosition="start">
+                      Designar
+                    </Button>
+                  }
+                >
+                  <DesignarAdministradorForm slug={slug} tenantId={fila.tenantId} gimnasio={fila.name} />
+                </Modal>
+              ),
             },
           ]}
           filas={gimnasios}

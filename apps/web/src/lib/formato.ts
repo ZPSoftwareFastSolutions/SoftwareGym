@@ -65,6 +65,31 @@ export function horaEnZona(zona: string): string {
   }
 }
 
+/**
+ * Un instante con zona (`timestamptz` de la base) como fecha y hora DEL
+ * GIMNASIO: `13 sep · 18:04`. Sin la zona, el servidor de Vercel (UTC) daría
+ * las 22:04 de un evento de las 18:04 en La Paz.
+ */
+export function momentoEnZona(instante: string, zona: string): string {
+  const fecha = new Date(instante);
+  if (Number.isNaN(fecha.getTime())) return instante;
+  try {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zona,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(fecha);
+    const valor = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? '';
+    return `${fechaCorta(`${valor('year')}-${valor('month')}-${valor('day')}`)} · ${valor('hour')}:${valor('minute')}`;
+  } catch {
+    return `${fechaCorta(instante.slice(0, 10))} · ${instante.slice(11, 16)}`;
+  }
+}
+
 /** Fecha de hoy en una zona horaria IANA, como `YYYY-MM-DD`. */
 export function hoyEnZona(zona: string): string {
   try {

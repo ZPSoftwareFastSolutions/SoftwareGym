@@ -321,13 +321,61 @@ export interface DatosDeRutina {
   readonly estimatedMinutes: number | null;
 }
 
+// ------------------------------------------------------------------ título de una rutina
+
+/** Lo que alguien escribe entre la etiqueta y el nombre: «Día A · Empuje», «Día 1 - Pierna», «Día B: Tirón». */
+const SEPARADOR_DE_DIA = /^[\s·•*|:.,\-–—]+/u;
+
+function comparable(valor: string): string {
+  return valor.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
+}
+
+/**
+ * El nombre sin la etiqueta del día delante.
+ *
+ * V4 · CAUSA DE «Día A · Día A · Empuje». La rutina tiene DOS campos —etiqueta
+ * («Día A») y nombre («Empuje»)— y las pantallas los unen. Las plantillas de
+ * demostración, y cualquiera que escriba el nombre completo, guardaban la
+ * etiqueta también en el nombre, así que al unirlos salía dos veces. La etiqueta
+ * vive en su campo: el nombre se guarda sin ella (aquí y en la base, que repite
+ * la regla) y el título se arma en UN solo sitio, `tituloDeRutina`.
+ *
+ * «Día 1» no se come a «Día 10»: tras la etiqueta tiene que venir un separador.
+ * Si quitarla dejara el nombre vacío o de una letra, se conserva tal cual.
+ */
+export function nombreSinEtiquetaDelDia(nombre: string, etiqueta: string | null): string {
+  let actual = nombre.trim().replace(/\s+/g, ' ');
+  const limpiaEtiqueta = etiqueta?.trim().replace(/\s+/g, ' ') ?? '';
+  if (limpiaEtiqueta === '') return actual;
+
+  // Se repite mientras el nombre siga empezando por la etiqueta: «Día 1 · Día 1 · Tirón»
+  // (un nombre que ya se había guardado duplicado y se volvió a unir) queda en «Tirón».
+  for (let vuelta = 0; vuelta < 5; vuelta += 1) {
+    if (!comparable(actual).startsWith(comparable(limpiaEtiqueta))) break;
+    const resto = actual.slice(limpiaEtiqueta.length);
+    if (!SEPARADOR_DE_DIA.test(resto)) break;
+    const sinEtiqueta = resto.replace(SEPARADOR_DE_DIA, '').trim();
+    if (sinEtiqueta.length < 2) break;
+    actual = sinEtiqueta;
+  }
+  return actual;
+}
+
+/** «Día A · Empuje»: la etiqueta una sola vez, aunque el nombre guardado la repita. */
+export function tituloDeRutina(rutina: { readonly name: string; readonly dayLabel: string | null }): string {
+  const nombre = nombreSinEtiquetaDelDia(rutina.name, rutina.dayLabel);
+  const etiqueta = rutina.dayLabel?.trim() ?? '';
+  if (etiqueta === '' || comparable(nombre) === comparable(etiqueta)) return nombre;
+  return `${etiqueta} · ${nombre}`;
+}
+
 export function validarRutina(formulario: FormularioDeRutina): Validacion<DatosDeRutina> {
   const errores: Record<string, string> = {};
-  const name = formulario.name.trim().replace(/\s+/g, ' ');
-  if (name.length < 2 || name.length > 80) errores.name = 'El nombre debe tener entre 2 y 80 caracteres.';
-
   const dayLabel = limpio(formulario.dayLabel);
   if (dayLabel && dayLabel.length > 40) errores.dayLabel = 'Hasta 40 caracteres.';
+
+  const name = nombreSinEtiquetaDelDia(formulario.name, dayLabel);
+  if (name.length < 2 || name.length > 80) errores.name = 'El nombre debe tener entre 2 y 80 caracteres.';
 
   const position = formulario.position.trim() === '' ? 1 : entero(formulario.position);
   if (position === null || position < 1 || position > 30) errores.position = 'Entre 1 y 30.';

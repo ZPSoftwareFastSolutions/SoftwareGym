@@ -24,22 +24,31 @@ import type {
 } from '@core/application/ports/members-repository.port';
 import { exito, fallo, type ResultadoDeOperacion } from '@core/application/ports/resultado';
 import {
-  cumpleEsteMes,
-  diasDesde,
+  CONTEO_DE_SOCIOS_VACIO,
   esEstadoDeMembresia,
   esMetodoDePago,
   mensajeDeErrorDeSocio,
+  type ConteoDeSocios,
   type EstadoDeSocio,
   type FichaDeSocio,
   type FiltroDeSocios,
   type MembresiaDeHistorial,
+  type OpcionDeSocio,
   type PagoDeHistorial,
   type PlanVendible,
+  type SocioDeLista,
 } from '@core/domain/operations/members';
 import { numero } from '@core/domain/operations/dashboard';
+import { acotarPorPagina, rangoDePagina, type Pagina } from '@core/domain/shared/paginacion';
 
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TOPE = 500;
+/**
+ * Un desplegable con más de esto ya no se usa eligiendo: se busca. Hasta ahí,
+ * tres columnas por socio pesan lo que antes pesaban veinte fichas completas.
+ */
+const TOPE_DE_OPCIONES = 1000;
+const COLUMNAS_DE_LISTA =
+  'id, code, first_name, full_name, phone, birth_date, deleted_at, created_at, membership_id, plan_id, plan_name, end_date, membership_status, days_remaining, last_visit';
 
 function texto(valor: unknown): string | null {
   return typeof valor === 'string' && valor.trim() !== '' ? valor : null;
@@ -92,16 +101,47 @@ export function mapearFicha(fila: Record<string, unknown>): FichaDeSocio {
   };
 }
 
+function mapearSocioDeLista(fila: Record<string, unknown>): SocioDeLista {
+  const estado = fila.membership_status;
+  return {
+    id: String(fila.id),
+    code: texto(fila.code),
+    firstName: texto(fila.first_name) ?? '',
+    fullName: texto(fila.full_name) ?? 'Socio',
+    phone: texto(fila.phone),
+    birthDate: texto(fila.birth_date),
+    archivedAt: texto(fila.deleted_at),
+    createdAt: String(fila.created_at ?? ''),
+    membershipId: texto(fila.membership_id),
+    planId: texto(fila.plan_id),
+    planName: texto(fila.plan_name),
+    endDate: texto(fila.end_date),
+    membershipStatus: esEstadoDeMembresia(estado) ? estado : null,
+    daysRemaining: fila.days_remaining === null || fila.days_remaining === undefined ? null : numero(fila.days_remaining),
+    lastVisit: texto(fila.last_visit),
+  };
+}
+
 export class SupabaseMembersRepository implements MembersRepositoryPort {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async listar(filtro: FiltroDeSocios, hoy: string): Promise<readonly FichaDeSocio[]> {
+  /**
+   * V4 · La base filtra, ordena, cuenta y corta la página (`range` + `count`).
+   * «Sin venir N días» y «cumple este mes» dejaron de filtrarse aquí sobre 500
+   * fichas: `v_customer_list` los calcula con la fecha del gimnasio, así que la
+   * paginación y el total son de verdad.
+   */
+  async listar(filtro: FiltroDeSocios, pagina: number, porPagina: number): Promise<Pagina<SocioDeLista>> {
+    const tamano = acotarPorPagina(porPagina);
+    const { desde, hasta } = rangoDePagina(pagina, tamano);
+
     let consulta = this.supabase
-      .from('v_customer_detail')
-      .select('*')
+      .from('v_customer_list')
+      .select(COLUMNAS_DE_LISTA, { count: 'exact' })
       .order('last_name', { ascending: true })
       .order('first_name', { ascending: true })
-      .limit(Math.min(filtro.limite ?? TOPE, TOPE));
+      .order('id', { ascending: true })
+      .range(desde, hasta);
 
     if (filtro.soloArchivados) consulta = consulta.not('deleted_at', 'is', null);
     else if (!filtro.incluirArchivados) consulta = consulta.is('deleted_at', null);
@@ -110,6 +150,13 @@ export class SupabaseMembersRepository implements MembersRepositoryPort {
     else if (filtro.estado) consulta = consulta.eq('membership_status', filtro.estado);
 
     if (filtro.planId && PATRON_UUID.test(filtro.planId)) consulta = consulta.eq('plan_id', filtro.planId);
+
+    if (filtro.cumpleMes) consulta = consulta.eq('birthday_this_month', true);
+    if (filtro.inactivosDias && filtro.inactivosDias > 0) {
+      consulta = consulta
+        .in('membership_status', ['active', 'expiring_soon'])
+        .gte('days_since_visit', Math.trunc(filtro.inactivosDias));
+    }
 
     const busqueda = busquedaSegura(filtro.q);
     if (busqueda) {
@@ -120,22 +167,62 @@ export class SupabaseMembersRepository implements MembersRepositoryPort {
       );
     }
 
-    const { data } = await consulta;
-    let fichas = (data ?? []).map((fila) => mapearFicha(fila as Record<string, unknown>));
-
-    // Filtros que dependen de «hoy» se aplican aquí y no en la consulta: la
-    // base no sabe qué día es para el gimnasio salvo que se lo diga, y
-    // pasárselo como parámetro a PostgREST no permite comparar meses.
-    if (filtro.cumpleMes) fichas = fichas.filter((ficha) => cumpleEsteMes(ficha.birthDate, hoy));
-    if (filtro.inactivosDias && filtro.inactivosDias > 0) {
-      const minimo = filtro.inactivosDias;
-      fichas = fichas.filter((ficha) => {
-        if (ficha.membershipStatus !== 'active' && ficha.membershipStatus !== 'expiring_soon') return false;
-        const dias = diasDesde(ficha.lastVisit, hoy);
-        return dias === null || dias >= minimo;
-      });
+    const { data, count, error } = await consulta;
+    // Pedir una página más allá del final (un enlace viejo) responde 416: es una
+    // lista vacía con su total, no un fallo.
+    if (error && error.code !== 'PGRST103') {
+      console.error('[socios] listar', error.code, error.message);
     }
-    return fichas;
+    return {
+      filas: (data ?? []).map((fila) => mapearSocioDeLista(fila as Record<string, unknown>)),
+      total: count ?? 0,
+      pagina,
+      porPagina: tamano,
+    };
+  }
+
+  async conteos(): Promise<ConteoDeSocios> {
+    const { data, error } = await this.supabase.from('v_customer_counts').select('*').maybeSingle();
+    if (error) console.error('[socios] conteos', error.code, error.message);
+    if (!data) return CONTEO_DE_SOCIOS_VACIO;
+    const fila = data as Record<string, unknown>;
+    return {
+      todos: numero(fila.todos),
+      activos: numero(fila.activos),
+      porVencer: numero(fila.por_vencer),
+      vencidos: numero(fila.vencidos),
+      sinMembresia: numero(fila.sin_membresia),
+      sinVenir7d: numero(fila.sin_venir_7d),
+      cumplenMes: numero(fila.cumplen_mes),
+      archivados: numero(fila.archivados),
+    };
+  }
+
+  async conMembresiaVigente(): Promise<readonly SocioDeLista[]> {
+    const { data } = await this.supabase
+      .from('v_customer_list')
+      .select(COLUMNAS_DE_LISTA)
+      .is('deleted_at', null)
+      .in('membership_status', ['active', 'expiring_soon'])
+      .order('last_name', { ascending: true })
+      .order('first_name', { ascending: true })
+      .limit(TOPE_DE_OPCIONES);
+    return (data ?? []).map((fila) => mapearSocioDeLista(fila as Record<string, unknown>));
+  }
+
+  async opciones(): Promise<readonly OpcionDeSocio[]> {
+    const { data } = await this.supabase
+      .from('customers')
+      .select('id, code, first_name, last_name')
+      .is('deleted_at', null)
+      .order('last_name', { ascending: true })
+      .order('first_name', { ascending: true })
+      .limit(TOPE_DE_OPCIONES);
+    return (data ?? []).map((fila) => ({
+      id: String(fila.id),
+      code: texto(fila.code),
+      fullName: `${texto(fila.first_name) ?? ''} ${texto(fila.last_name) ?? ''}`.trim() || 'Socio',
+    }));
   }
 
   async ficha(customerId: string): Promise<FichaDeSocio | null> {

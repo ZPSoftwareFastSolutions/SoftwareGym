@@ -23,7 +23,9 @@ import {
   NOMBRE_DE_ESTADO_DE_COMPROBANTE,
   NOMBRE_DE_ORIGEN,
 } from '@core/domain/operations/receipts';
+import { paginaDeLaUrl } from '@core/domain/shared/paginacion';
 import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
+import { Paginacion } from '@/presentation/patterns/Paginacion';
 import { BotonFicha, FichaDeSocioProvider } from '@/presentation/patterns/FichaDeSocio';
 import {
   DescargarComprobantesZip,
@@ -41,6 +43,9 @@ import { leerFiltros, type ParametrosDeUrl } from '../reportes/_filtros';
 
 export const metadata: Metadata = { title: 'Comprobantes', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
+
+/** Cada tarjeta carga su imagen: doce por página es lo que cabe en tres filas de escritorio. */
+const COMPROBANTES_POR_PAGINA = 12;
 
 interface ComprobantesPageProps extends TenantPageParams {
   readonly searchParams: Promise<ParametrosDeUrl>;
@@ -61,26 +66,35 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
 
   const recibos = await receiptsRepository();
   const socios = await membersRepository();
-  const [lista, pendientesTodos, hoyAprobados, planes, sinMembresia] = await Promise.all([
-    recibos.listar({
-      desde: filtro.desde,
-      hasta: filtro.hasta,
-      estado: esEstadoDeComprobante(filtro.estado) ? filtro.estado : undefined,
-      origen: esOrigenDeComprobante(filtro.origen) ? filtro.origen : undefined,
-      planId: filtro.planId,
-      q: filtro.q,
-    }),
-    recibos.listar({ estado: 'pendiente', limite: 500 }),
-    recibos.listar({ estado: 'aprobado', desde: hoy, hasta: hoy, limite: 500 }),
+  const filtroDeBandeja = {
+    desde: filtro.desde,
+    hasta: filtro.hasta,
+    estado: esEstadoDeComprobante(filtro.estado) ? filtro.estado : undefined,
+    origen: esOrigenDeComprobante(filtro.origen) ? filtro.origen : undefined,
+    planId: filtro.planId,
+    q: filtro.q,
+  } as const;
+  const parametros = await searchParams;
+  const pagina = paginaDeLaUrl(parametros.pagina);
+
+  // V4: la bandeja pagina y los contadores solo leen importes. Antes se traían
+  // hasta 500 comprobantes filtrados, otros 500 pendientes y 500 de hoy —cada uno
+  // con su tarjeta e imagen— y todas las fichas de socios para un desplegable.
+  const [lista, filtrados, pendientesTodos, hoyAprobados, aprobadosDelPeriodo, planes, sinMembresia, opciones] = await Promise.all([
+    recibos.pagina(filtroDeBandeja, pagina, COMPROBANTES_POR_PAGINA),
+    recibos.totales(filtroDeBandeja),
+    recibos.totales({ estado: 'pendiente' }),
+    recibos.totales({ estado: 'aprobado', desde: hoy, hasta: hoy }),
+    recibos.totales({ ...filtroDeBandeja, estado: 'aprobado' }),
     socios.planesVendibles(),
-    features.enableMemberManagement ? socios.listar({ estado: 'sin-membresia' }, hoy) : Promise.resolve([]),
+    features.enableMemberManagement && puedeCobrar ? socios.listar({ estado: 'sin-membresia' }, 1, 12).then((p) => p.filas) : Promise.resolve([]),
+    puedeCobrar ? socios.opciones() : Promise.resolve([]),
   ]);
+  const opcionesDeSocio = opciones.map((s) => ({ id: s.id, etiqueta: `${s.fullName}${s.code ? ` · ${s.code}` : ''}` }));
 
-  const opcionesDeSocio = puedeCobrar
-    ? (await socios.listar({}, hoy)).map((s) => ({ id: s.id, etiqueta: `${s.fullName}${s.code ? ` · ${s.code}` : ''}` }))
-    : [];
-
-  const totalPeriodo = lista.filter((c) => c.status === 'aprobado').reduce((suma, c) => suma + c.amount, 0);
+  // «Por aprobado en el periodo» respeta el estado elegido: con «rechazados» a la
+  // vista, lo aprobado del periodo es cero, igual que antes.
+  const totalPeriodo = !filtroDeBandeja.estado || filtroDeBandeja.estado === 'aprobado' ? aprobadosDelPeriodo.importe : 0;
   const nombreZip = `${slug}-comprobantes_${(rango.desde && rango.hasta ? `${rango.desde}_a_${rango.hasta}` : hoy).replace(/[^0-9a-z_-]/gi, '')}.zip`;
 
   return (
@@ -90,19 +104,19 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
           <StatCard
             href={`${base}?estado=pendiente&preset=todo`}
             etiqueta="Por revisar"
-            valor={String(pendientesTodos.length)}
+            valor={String(pendientesTodos.cantidad)}
             icono="receipt"
-            tono={pendientesTodos.length > 0 ? 'alerta' : 'neutro'}
-            comparacion={pendientesTodos.length > 0 ? `${importe(pendientesTodos.reduce((s, c) => s + c.amount, 0))} esperando` : 'Nada pendiente'}
+            tono={pendientesTodos.cantidad > 0 ? 'alerta' : 'neutro'}
+            comparacion={pendientesTodos.cantidad > 0 ? `${importe(pendientesTodos.importe)} esperando` : 'Nada pendiente'}
             accion="Revisar ahora"
           />
           <StatCard
             href={`${base}?estado=aprobado&preset=hoy`}
             etiqueta="Aprobados hoy"
-            valor={String(hoyAprobados.length)}
+            valor={String(hoyAprobados.cantidad)}
             icono="check"
             tono="accion"
-            comparacion={importe(hoyAprobados.reduce((s, c) => s + c.amount, 0))}
+            comparacion={importe(hoyAprobados.importe)}
             accion="Ver los de hoy"
           />
           <StatCard
@@ -146,8 +160,7 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
                     <BotonFicha customerId={socio.id}>{socio.fullName}</BotonFicha>
                     <p className="text-[0.78rem] text-muted">
                       {socio.code} · alta {fechaCorta(socio.createdAt.slice(0, 10))}
-                      {socio.pendingReceipts > 0 ? ` · ${socio.pendingReceipts} pendiente` : ''}
-                    </p>
+                   </p>
                   </div>
                   <div className="relative z-10">
                     <Modal
@@ -171,26 +184,26 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
           </section>
         )}
 
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-bandeja">
+        <section className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-bandeja">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 id="titulo-bandeja" className="t-h3">Bandeja de comprobantes</h2>
               <p className="mt-1.5 text-[0.86rem] text-muted">
-                {lista.length} comprobantes · {describirRango(rango)}. Descarga los filtrados en un ZIP con su resumen para el dueño del QR.
+                {filtrados.cantidad} comprobantes · {describirRango(rango)}. Descarga los filtrados en un ZIP con su resumen para el dueño del QR.
               </p>
             </div>
-            <DescargarComprobantesZip slug={slug} comprobantes={lista} nombreArchivo={nombreZip} />
+            <DescargarComprobantesZip slug={slug} filtro={filtroDeBandeja} cantidad={Math.min(filtrados.cantidad, 500)} total={filtrados.importe} nombreArchivo={nombreZip} />
           </div>
 
           <div className="mt-6 border-t border-line pt-6">
             <ReportFilters definicion={definicion} filtro={filtro} rango={rango} preset={preset} planes={planes} rutaBase={base} />
           </div>
 
-          {lista.length === 0 ? (
+          {lista.filas.length === 0 ? (
             <EmptyState icono="receipt" titulo="Ningún comprobante con estos filtros" descripcion="Prueba con otro periodo o quita el filtro de estado." className="mt-4" />
           ) : (
             <ul className="mt-7 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-              {lista.map((c) => (
+              {lista.filas.map((c) => (
                 <li
                   key={c.id}
                   className={cn(
@@ -247,6 +260,17 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
               ))}
             </ul>
           )}
+
+          <Paginacion
+            className="mt-6"
+            ruta={base}
+            parametros={parametros}
+            pagina={pagina}
+            porPagina={lista.porPagina}
+            total={lista.total}
+            filasEnPagina={lista.filas.length}
+            ancla="titulo-bandeja"
+          />
         </section>
       </div>
     </FichaDeSocioProvider>

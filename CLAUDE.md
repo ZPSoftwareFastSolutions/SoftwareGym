@@ -4,8 +4,8 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-12 · cierre de **V3.4 reservas de clases, lista de espera y faltas**.
-> - **Rama de trabajo vigente:** `feat/v3.4-reservas` (sale de `feat/v3.3-clases-sesiones`) → de ella sale V4.
+> - **Última actualización:** 2026-09-14 · **V4 administración del gimnasio, jerarquía de roles, rendimiento con volumen, rutinas y navegación** (código listo; **migraciones escritas en `supabase/migrations/` y pendientes de aplicar**, ver §13b).
+> - **Rama de trabajo vigente:** `feat/v4-seradmingym` (sale de `feat/v3.4-reservas`). Decisiones: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
 > - **Historia completa** (cada fase, cada defecto con su prueba, cada decisión
@@ -28,7 +28,7 @@
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
 | **En producción** | https://gym-platform-alpha.vercel.app (ver §14: último despliegue y desde qué commit) |
 | **Clientes demo** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) |
-| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · **V3.4 ✅ reservas + lista de espera + faltas** |
+| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · **V4 🟡 administración del gimnasio + rendimiento (código y pruebas listos; migraciones por aplicar)** |
 | **Siguiente** | **V4**: suscripciones, licencias, facturación e integraciones (avisos por WhatsApp/correo) (§13) |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
@@ -1273,6 +1273,9 @@ ningún chunk servido.
 | Registro por defecto de un tipo compuesto rechazado | `row(…)::tabla` con enteros contra columnas `smallint` | En PL/pgSQL, declarar la variable del tipo y asignar campo a campo |
 | Un contador de «ocupados» que cuenta dos veces a quien reservó y vino | Sumar reservas y asistencias por separado | La asistencia de quien reservó cierra su reserva; ocupados = asistentes + reservas sin asistencia |
 | Un bloqueo que depende de que alguien «cierre la lista» | Faltas guardadas por un proceso que puede no correr | Derivar la falta del hecho (sesión terminada sin asistencia) y escribirla solo como registro |
+| Con 50 000 entradas, contar la tabla tardaba > 20 s y el dashboard superaba el timeout (V4) | Políticas `app.tenant_allows(tenant_id, 'x')`: función con columna de la fila → dos subconsultas POR FILA | `col = (select app.current_tenant_id()) and (select app.has_permission('x'))`; contexto siempre en `(select …)`; medir con volumen en transacción revertida |
+| «Día A · Día A · Empuje» en rutinas (V4) | La etiqueta del día se guardaba también en el nombre (semillas y ayuda del formulario) y la pantalla los unía | Un dato, un campo: la base normaliza al guardar y el título se arma en un solo sitio del dominio |
+| Gerencia podía nombrar gerentes (y se habría nombrado admin) (V4) | La política de `user_roles` miraba el ALCANCE del rol, no su NIVEL | `roles.level` y `app.puede_otorgar_nivel` en la política y en la RPC |
 | `npm ci` fallaba en `postinstall` en Windows | `ComSpec` no definido en el entorno de la sesión | Definir `ComSpec` antes de `npm` |
 | Capturas del panel de navegador vacías o recortadas con la ventana oculta | El panel no pinta si la app está minimizada | Edge headless por CDP (script sin dependencias); los iframes solo salen si están en la vista |
 
@@ -1545,11 +1548,42 @@ de la clase y el horario o la sesión la ajustan; cancela gerencia, con motivo y
 sin asistentes; la asistencia a clase NO es entrada al gimnasio; el socio ve sus
 clases en su panel y la vitrina muestra las publicadas.
 
+## 13b. V4 · administración del gimnasio y rendimiento (rama `feat/v4-seradmingym`)
+
+Ver [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md). Resumen de lo que cambia:
+
+- **Rol `admin` («Administración»)**: todos los permisos de gimnasio + `roles.manage`; nunca plataforma. Espacio
+  `panel/administracion` (resumen como el de gerencia: negocio, personal, módulos, cambios administrativos). La
+  plataforma sigue siendo `super_admin` y ahora designa al primer administrador de cada gimnasio desde su panel.
+- **Jerarquía `roles.level`** (admin 40 · gerencia 30 · recepción 20 · entrenador 10 · socio 0): con `roles.manage`
+  hasta el propio nivel, con `users.manage` solo por debajo; nadie se toca a sí mismo ni a un superior; nunca sin
+  último administrador. **Cambio de comportamiento:** Gerencia ya no nombra gerentes. Pantalla `panel/personal`
+  («Personal y roles», `users.read`), RPC `otorgar_rol`/`retirar_rol`/`cambiar_estado_de_cuenta`.
+- **Rendimiento**: políticas con `(select app.…())` (evaluadas una vez por consulta; **regla nueva para toda
+  política**), `v_customer_list`/`v_customer_counts`, `v_attendance_patterns`, paginación en la base
+  (`core/domain/shared/paginacion.ts`, `Paginacion`, `range` + `count`) en socios, comprobantes, asistencia y personal;
+  reportes pintan 50 filas por página (totales y CSV con todas); desplegables con `opciones()`.
+- **Rutinas**: título único `tituloDeRutina`; la base guarda el nombre sin la etiqueta del día.
+- **Navegación** agrupada (`lib/navegacion.ts`, `panel/_navegacion.ts`, `DashboardNav`): sin desplazamiento horizontal.
+- **Carga**: `panel/loading.tsx`, `ui/Cargando.tsx`, `FiltroConCarga`, ZIP de comprobantes bajo demanda.
+
+**Estado de verificación (2026-09-14):** typecheck limpio · **174 pruebas** (21 nuevas) · build de 66 páginas ·
+`npm audit` 0 · greps de arquitectura, cliente y voseo limpios. **Pendiente, en este orden:**
+1. Aplicar las 5 migraciones de `supabase/migrations/2026091401*.sql` (la sesión no tuvo permiso para DDL en
+   producción). Antes: bloque 0 del runbook (huella); después: bloques 0 a 8 de
+   [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
+2. Designar un administrador de Mítico desde `/mitico/panel/plataforma` (cuenta ya registrada).
+3. Recién entonces desplegar: **el código de V4 lee vistas y RPC que solo existen tras las migraciones**; desplegarlo
+   antes rompe socios, asistencia, comprobantes y personal.
+4. Revisión humana con sesión: navegación en escritorio y 375 px, Personal y roles con administración y gerencia,
+   paginación y filtros, rutinas sin «Día A · Día A».
+
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
+| V4 administración | 2026-09-14 | rama `feat/v4-seradmingym` | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (con 50 000 entradas: > 20 s → medir tras aplicar), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; estados de carga. ADR 0010; 174 pruebas. **Migraciones escritas, sin aplicar** |
 | V1 | 2026-09-08/09 | `27d334e`, `38b83fd` | Sitio público multi-tenant, temas, flags, Next 16 |
 | V1 bonus | 2026-09-09 | `f3ea967`, `2880c8d` | Datos reales de Mítico: 13 paquetes en 4 grupos, 4 programas, 12 productos |
 | V2 base | 2026-09-09 | `3702e81`, `048c830`, `3944db3` | Esquema multi-tenant con RLS; deuda de auditoría; sitemap |

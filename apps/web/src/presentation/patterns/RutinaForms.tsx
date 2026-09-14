@@ -28,6 +28,7 @@ import {
 import {
   NOMBRE_DE_NIVEL,
   NOMBRE_DE_OBJETIVO,
+  tituloDeRutina,
   type EjercicioDeRutina,
   type Nivel,
   type Objetivo,
@@ -158,7 +159,9 @@ export function RutinaForm({
       {rutina && <input type="hidden" name="routineId" value={rutina.id} />}
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
-        <Campo id="rutina-nombre" etiqueta="Nombre de la rutina" error={errores.name} obligatorio ayuda="Ej.: «Día A · Empuje».">
+        {/* La ayuda antes sugería «Día A · Empuje» como nombre: con la etiqueta
+            en su propio campo, eso guardaba el día dos veces. */}
+        <Campo id="rutina-nombre" etiqueta="Nombre de la rutina" error={errores.name} obligatorio ayuda="Sin el día: «Empuje», «Pierna».">
           <input name="name" defaultValue={valores.name} required minLength={2} maxLength={80} autoComplete="off" className={CLASE_DE_CONTROL} />
         </Campo>
         <Campo id="rutina-dia" etiqueta="Etiqueta del día" error={errores.dayLabel} ayuda="«Día A», «Lunes»…">
@@ -305,7 +308,7 @@ export function AsignarRutinaForm({
 }: {
   readonly slug: string;
   readonly socios: readonly OpcionDeSocioParaRutina[];
-  readonly rutinas: readonly Pick<Rutina, 'id' | 'name' | 'programName' | 'ejercicios'>[];
+  readonly rutinas: readonly Pick<Rutina, 'id' | 'name' | 'dayLabel' | 'programName' | 'ejercicios'>[];
   readonly routineId?: string;
 }) {
   const [estado, accion] = useActionState<EstadoDeFormulario, FormData>(asignarRutinaASocio, {});
@@ -346,7 +349,7 @@ export function AsignarRutinaForm({
             {rutinas.map((r) => (
               <option key={r.id} value={r.id} disabled={r.ejercicios === 0}>
                 {r.programName ? `${r.programName} · ` : ''}
-                {r.name} ({r.ejercicios} ejercicios)
+                {tituloDeRutina(r)} ({r.ejercicios} ejercicios)
               </option>
             ))}
           </select>

@@ -15,6 +15,7 @@ import { esMetodoDePago, importeDeTexto } from '@core/domain/operations/members'
 import { esModoDeMonto, esModoDeQr, evaluarImporte } from '@core/domain/operations/cobro-qr';
 import { fechaIsoValida } from '@core/domain/operations/periodo';
 import { PERMISO } from '@core/domain/operations/workspace';
+import { esEstadoDeComprobante, esOrigenDeComprobante, type Comprobante } from '@core/domain/operations/receipts';
 import {
   membersRepository,
   paymentSettingsRepository,
@@ -103,6 +104,39 @@ export async function subirComprobante(_previo: EstadoDeFormulario, form: FormDa
 
   revalidatePath(`/${slug}/panel`, 'layout');
   return { exito };
+}
+
+/** Tope del ZIP: el mismo que tenía la bandeja cuando se descargaba todo al entrar. */
+const TOPE_DEL_ZIP = 500;
+
+/**
+ * V4 · Los comprobantes filtrados, SOLO cuando alguien pide el ZIP.
+ *
+ * La bandeja ahora pagina; antes traía hasta 500 comprobantes al entrar solo
+ * para tener lista la descarga. El filtro llega del formulario pero se vuelve a
+ * validar aquí, y RLS decide qué comprobantes ve la sesión.
+ */
+export async function comprobantesParaZip(
+  form: FormData,
+): Promise<{ readonly ok: true; readonly comprobantes: readonly Comprobante[] } | { readonly ok: false; readonly mensaje: string }> {
+  const acceso = await contextoDeAccion(form, ['enablePayments'], PERMISO.verPagos);
+  if (!acceso.ok) return acceso;
+
+  const fecha = (campo: string) => fechaIsoValida(texto(form, campo, 10));
+  const estado = texto(form, 'estado', 20);
+  const origen = texto(form, 'origen', 20);
+  const planId = texto(form, 'plan', 40);
+
+  const comprobantes = await (await receiptsRepository()).listar({
+    desde: fecha('desde'),
+    hasta: fecha('hasta'),
+    estado: esEstadoDeComprobante(estado) ? estado : undefined,
+    origen: esOrigenDeComprobante(origen) ? origen : undefined,
+    planId: planId || undefined,
+    q: texto(form, 'q', 60) || undefined,
+    limite: TOPE_DEL_ZIP,
+  });
+  return { ok: true, comprobantes };
 }
 
 export async function revisarComprobante(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {

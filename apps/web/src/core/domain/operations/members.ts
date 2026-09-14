@@ -117,11 +117,67 @@ export interface FiltroDeSocios {
   readonly planId?: string;
   readonly incluirArchivados?: boolean;
   readonly soloArchivados?: boolean;
-  /** Socios cuyo cumpleaños cae en el mes de hoy. */
+  /** Socios cuyo cumpleaños cae en el mes de hoy (del gimnasio: lo calcula la base). */
   readonly cumpleMes?: boolean;
-  /** Socios activos que no entran desde hace al menos N días. */
+  /** Socios con membresía vigente que no entran desde hace al menos N días. */
   readonly inactivosDias?: number;
-  readonly limite?: number;
+}
+
+/**
+ * V4 · Una fila de la lista de socios: lo que se ve, no la ficha entera. La ficha
+ * trae visitas, pagos, comprobantes y cuenta con una subconsulta cada una; para
+ * una lista de cientos, eso era lo que la congelaba.
+ */
+export interface SocioDeLista {
+  readonly id: string;
+  readonly code: string | null;
+  readonly firstName: string;
+  readonly fullName: string;
+  readonly phone: string | null;
+  readonly birthDate: string | null;
+  readonly archivedAt: string | null;
+  readonly createdAt: string;
+  readonly membershipId: string | null;
+  readonly planId: string | null;
+  readonly planName: string | null;
+  readonly endDate: string | null;
+  readonly membershipStatus: EstadoDeMembresia | null;
+  readonly daysRemaining: number | null;
+  readonly lastVisit: string | null;
+}
+
+/** Los accesos rápidos de la lista, contados por la base en una sola fila. */
+export interface ConteoDeSocios {
+  readonly todos: number;
+  readonly activos: number;
+  readonly porVencer: number;
+  readonly vencidos: number;
+  readonly sinMembresia: number;
+  readonly sinVenir7d: number;
+  readonly cumplenMes: number;
+  readonly archivados: number;
+}
+
+export const CONTEO_DE_SOCIOS_VACIO: ConteoDeSocios = {
+  todos: 0,
+  activos: 0,
+  porVencer: 0,
+  vencidos: 0,
+  sinMembresia: 0,
+  sinVenir7d: 0,
+  cumplenMes: 0,
+  archivados: 0,
+};
+
+/** Para desplegables: «MF-001 · Juan Pérez», sin nada más. */
+export interface OpcionDeSocio {
+  readonly id: string;
+  readonly code: string | null;
+  readonly fullName: string;
+}
+
+export function etiquetaDeOpcionDeSocio(opcion: OpcionDeSocio): string {
+  return `${opcion.code ?? '—'} · ${opcion.fullName}`;
 }
 
 export interface DatosDeSocio {

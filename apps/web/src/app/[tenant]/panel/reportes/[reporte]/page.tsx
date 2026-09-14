@@ -23,9 +23,16 @@ import {
   reportePorClave,
   resumirReporte,
   serieDeReporte,
+  TOPE_DE_FILAS_DE_REPORTE,
   type ColumnaDeReporte,
   type FilaDeReporte,
 } from '@core/domain/operations/reports';
+import { consultaDePagina, paginaDeFilas, paginaDeLaUrl } from '@core/domain/shared/paginacion';
+import { Paginacion } from '@/presentation/patterns/Paginacion';
+import { Icon } from '@/presentation/icons/Icon';
+
+/** Filas de la tabla por página; los totales y el gráfico cuentan todas. */
+const FILAS_DE_REPORTE_POR_PAGINA = 50;
 import { describirRango } from '@core/domain/operations/periodo';
 import { branchesRepository, membersRepository, reportsRepository } from '@infra/config/composition-root';
 import { BarChart } from '@/presentation/ui/BarChart';
@@ -94,6 +101,16 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
     definicion.filtros.includes('plan') ? socios.planesVendibles() : Promise.resolve([]),
     conSucursales ? (await branchesRepository()).listar() : Promise.resolve([]),
   ]);
+
+  // V4 · Totales, gráfico y CSV necesitan el periodo entero, así que las filas
+  // se siguen pidiendo completas (con su tope). Lo que congelaba la pantalla era
+  // DIBUJAR hasta 2 000 filas y mandarlas al navegador: la tabla pinta una página
+  // y solo «Ver todas las filas para imprimir» las pinta todas.
+  const parametros = await searchParams;
+  const verCompleto = parametros.completa === '1';
+  const { filas: filasVisibles, pagina: paginaVisible } = verCompleto
+    ? { filas, pagina: 1 }
+    : paginaDeFilas(filas, paginaDeLaUrl(parametros.pagina), FILAS_DE_REPORTE_POR_PAGINA);
 
   const resumen = resumirReporte(definicion, filas);
   const serie = serieDeReporte(definicion, filas).map((punto) => ({
@@ -209,7 +226,21 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
         </section>
       )}
 
-      <section className="surface-card p-6 sm:p-7">
+      <section id="tabla" className="surface-card scroll-mt-28 p-6 sm:p-7">
+        {filas.length >= TOPE_DE_FILAS_DE_REPORTE && (
+          <p className="mb-4 flex items-start gap-2 rounded-[var(--t-radius-md)] border border-structural/40 bg-structural/10 p-3 text-[0.84rem] text-ink" data-print="hide">
+            <Icon name="alert" size={16} className="mt-0.5 shrink-0 text-structural" />
+            El reporte llegó al tope de {TOPE_DE_FILAS_DE_REPORTE.toLocaleString('es-BO')} registros: acota el periodo o los filtros para ver el resto.
+          </p>
+        )}
+        {!verCompleto && filas.length > FILAS_DE_REPORTE_POR_PAGINA && (
+          <p className="mb-4 text-[0.84rem] text-muted" data-print="hide">
+            Los totales y el gráfico cuentan los {filas.length.toLocaleString('es-BO')} registros; la tabla los muestra de a {FILAS_DE_REPORTE_POR_PAGINA}.{' '}
+            <a href={`${rutaBase}${consultaDePagina({ ...parametros, completa: '1' }, 1)}#tabla`} className="text-action underline underline-offset-4">
+              Ver todas las filas para imprimir
+            </a>
+          </p>
+        )}
         <DataTable
           titulo={`Reporte de ${definicion.titulo.toLowerCase()}`}
           tituloOculto={false}
@@ -219,7 +250,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
             numerica: columna.numerica,
             celda: (fila: FilaDeReporte) => formatear(columna, fila[columna.clave], moneda),
           }))}
-          filas={filas}
+          filas={filasVisibles}
           claveDeFila={(_fila, indice) => `fila-${indice}`}
           filaDeTotales={Object.keys(totales).length > 0 ? totales : undefined}
           vacio={
@@ -235,6 +266,18 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
             />
           }
         />
+        {!verCompleto && (
+          <Paginacion
+            className="mt-5"
+            ruta={rutaBase}
+            parametros={parametros}
+            pagina={paginaVisible}
+            porPagina={FILAS_DE_REPORTE_POR_PAGINA}
+            total={filas.length}
+            filasEnPagina={filasVisibles.length}
+            ancla="tabla"
+          />
+        )}
       </section>
     </div>
   );

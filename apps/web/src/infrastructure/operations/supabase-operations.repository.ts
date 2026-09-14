@@ -30,9 +30,11 @@ import type {
 import { numero } from '@core/domain/operations/dashboard';
 import type {
   MetodoDeAsistencia,
+  PatronDeAsistencia,
   RegistroDeAsistencia,
   ResultadoDeCheckIn,
 } from '@core/domain/operations/attendance';
+import { acotarPorPagina, rangoDePagina, type Pagina } from '@core/domain/shared/paginacion';
 import { FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import type { AvisoInterno, MembresiaParaAvisar } from '@core/domain/operations/notifications';
 import type { ClaveDeReporte, FilaDeReporte } from '@core/domain/operations/reports';
@@ -71,6 +73,35 @@ const METODO_DE_PAGO_LEGIBLE: Readonly<Record<string, string>> = {
 /** Tope duro de filas. Una consulta sin límite es una página que se cuelga el día que hay datos de verdad. */
 const TOPE_DE_FILAS = 500;
 
+const COLUMNAS_DE_BITACORA =
+  'id, customer_id, customer_name, customer_code, checked_in_local, attendance_date, method, branch_id, branch_name, membership_id';
+
+/** Lo que `filtroDeAsistencia` necesita de una consulta de PostgREST. */
+interface ConsultaDeBitacora<Q> {
+  gte(columna: string, valor: string): Q;
+  lte(columna: string, valor: string): Q;
+  eq(columna: string, valor: string): Q;
+  is(columna: string, valor: null): Q;
+  or(filtros: string): Q;
+}
+
+/** Los mismos filtros para la lista corta y la paginada: el total y las filas no pueden contradecirse. */
+function filtroDeAsistencia<Q extends ConsultaDeBitacora<Q>>(consulta: Q, filtro: FiltroDeAsistencia): Q {
+  let q = consulta;
+  if (filtro.desde) q = q.gte('attendance_date', filtro.desde);
+  if (filtro.hasta) q = q.lte('attendance_date', filtro.hasta);
+  if (filtro.customerId && PATRON_UUID.test(filtro.customerId)) q = q.eq('customer_id', filtro.customerId);
+  if (filtro.sucursal === FILTRO_SIN_SUCURSAL) q = q.is('branch_id', null);
+  else if (filtro.sucursal && PATRON_UUID.test(filtro.sucursal)) q = q.eq('branch_id', filtro.sucursal);
+
+  // Se escapan las comas y los paréntesis antes de meterlos en un `or`:
+  // PostgREST separa las condiciones por coma, y un socio buscado como
+  // «Pérez, Juan» partiría la expresión en dos filtros sin sentido.
+  const seguro = (filtro.busqueda ?? '').replace(/[,()*]/g, ' ').trim();
+  if (seguro) q = q.or(`customer_name.ilike.%${seguro}%,customer_code.ilike.%${seguro}%`);
+  return q;
+}
+
 /** Formato del identificador de check-in, el mismo que impone la base. */
 const PATRON_TOKEN = /^[0-9A-F]{24}$/;
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -87,6 +118,21 @@ function texto(valor: unknown): string | null {
 
 function metodo(valor: unknown): MetodoDeAsistencia {
   return valor === 'qr' || valor === 'kiosk' ? valor : 'manual';
+}
+
+function mapearRegistro(fila: Record<string, unknown>): RegistroDeAsistencia {
+  return {
+    id: String(fila.id),
+    customerId: String(fila.customer_id),
+    customerName: texto(fila.customer_name) ?? 'Socio',
+    customerCode: texto(fila.customer_code),
+    checkedInAt: String(fila.checked_in_local),
+    attendanceDate: texto(fila.attendance_date) ?? '',
+    method: metodo(fila.method),
+    branchId: texto(fila.branch_id),
+    branchName: texto(fila.branch_name),
+    membershipId: texto(fila.membership_id),
+  };
 }
 
 export class SupabaseOperationsRepository implements OperationsRepositoryPort {
@@ -204,45 +250,51 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
   async historialDeAsistencia(
     filtro: FiltroDeAsistencia,
   ): Promise<readonly RegistroDeAsistencia[]> {
-    let consulta = this.supabase
-      .from('v_attendance_log')
-      .select(
-        'id, customer_id, customer_name, customer_code, checked_in_local, attendance_date, method, branch_id, branch_name, membership_id',
-      )
-      .order('checked_in_at', { ascending: false })
-      .limit(Math.min(filtro.limite ?? 50, TOPE_DE_FILAS));
-
-    if (filtro.desde) consulta = consulta.gte('attendance_date', filtro.desde);
-    if (filtro.hasta) consulta = consulta.lte('attendance_date', filtro.hasta);
-    if (filtro.customerId && PATRON_UUID.test(filtro.customerId)) consulta = consulta.eq('customer_id', filtro.customerId);
-    if (filtro.sucursal === FILTRO_SIN_SUCURSAL) consulta = consulta.is('branch_id', null);
-    else if (filtro.sucursal && PATRON_UUID.test(filtro.sucursal)) consulta = consulta.eq('branch_id', filtro.sucursal);
-
-    const busqueda = filtro.busqueda?.trim();
-    if (busqueda) {
-      // Se escapan las comas y los paréntesis antes de meterlos en un `or`:
-      // PostgREST separa las condiciones por coma, y un socio buscado como
-      // «Pérez, Juan» partiría la expresión en dos filtros sin sentido.
-      const seguro = busqueda.replace(/[,()*]/g, ' ').trim();
-      if (seguro) {
-        consulta = consulta.or(`customer_name.ilike.%${seguro}%,customer_code.ilike.%${seguro}%`);
-      }
-    }
-
+    const consulta = filtroDeAsistencia(
+      this.supabase
+        .from('v_attendance_log')
+        .select(COLUMNAS_DE_BITACORA)
+        .order('checked_in_at', { ascending: false })
+        .limit(Math.min(filtro.limite ?? 50, TOPE_DE_FILAS)),
+      filtro,
+    );
     const { data } = await consulta;
+    return (data ?? []).map((fila) => mapearRegistro(fila as Record<string, unknown>));
+  }
 
-    return (data ?? []).map((fila) => ({
-      id: String(fila.id),
-      customerId: String(fila.customer_id),
-      customerName: texto(fila.customer_name) ?? 'Socio',
-      customerCode: texto(fila.customer_code),
-      checkedInAt: String(fila.checked_in_local),
-      attendanceDate: texto(fila.attendance_date) ?? '',
-      method: metodo(fila.method),
-      branchId: texto(fila.branch_id),
-      branchName: texto(fila.branch_name),
-      membershipId: texto(fila.membership_id),
-    }));
+  async historialPaginado(filtro: FiltroDeAsistencia, pagina: number, porPagina: number): Promise<Pagina<RegistroDeAsistencia>> {
+    const tamano = acotarPorPagina(porPagina);
+    const { desde, hasta } = rangoDePagina(pagina, tamano);
+    const consulta = filtroDeAsistencia(
+      this.supabase
+        .from('v_attendance_log')
+        .select(COLUMNAS_DE_BITACORA, { count: 'exact' })
+        .order('checked_in_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(desde, hasta),
+      filtro,
+    );
+    const { data, count, error } = await consulta;
+    if (error && error.code !== 'PGRST103') console.error('[asistencia] historial', error.code, error.message);
+    return { filas: (data ?? []).map((fila) => mapearRegistro(fila as Record<string, unknown>)), total: count ?? 0, pagina, porPagina: tamano };
+  }
+
+  async patronesDeAsistencia(): Promise<readonly PatronDeAsistencia[]> {
+    const { data, error } = await this.supabase
+      .from('v_attendance_patterns')
+      .select('dia_iso, hora, method, branch_id, branch_name, veces')
+      .limit(TOPE_DE_FILAS * 4);
+    if (error) console.error('[asistencia] patrones', error.code, error.message);
+    return (data ?? [])
+      .map((fila) => ({
+        diaIso: numero(fila.dia_iso),
+        hora: numero(fila.hora),
+        metodo: metodo(fila.method),
+        branchId: texto(fila.branch_id),
+        branchName: texto(fila.branch_name),
+        veces: numero(fila.veces),
+      }))
+      .filter((p) => p.diaIso >= 1 && p.diaIso <= 7 && p.hora >= 0 && p.hora <= 23 && p.veces > 0);
   }
 
   async vencimientos(): Promise<readonly VencimientoProximo[]> {

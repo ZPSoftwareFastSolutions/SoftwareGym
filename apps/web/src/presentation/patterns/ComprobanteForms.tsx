@@ -7,12 +7,13 @@
  * descarga de varios en un ZIP.
  */
 
-import { useActionState, useEffect, useMemo, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { importe } from '@/lib/formato';
 import type { EstadoDeFormulario } from '@/app/[tenant]/panel/_acciones';
 import {
+  comprobantesParaZip,
   revisarComprobante,
   subirComprobante,
   subirMiComprobante,
@@ -21,10 +22,11 @@ import type { PlanVendible } from '@core/domain/operations/members';
 import { importeDeTexto, NOMBRE_DE_METODO_DE_PAGO, METODOS_DE_PAGO } from '@core/domain/operations/members';
 import { evaluarImporte } from '@core/domain/operations/cobro-qr';
 import type { DatosPublicosDeCobro } from './ContenidoDePagoQr';
-import { nombreEnZip, type Comprobante } from '@core/domain/operations/receipts';
+import { nombreEnZip } from '@core/domain/operations/receipts';
 import { aCsv } from '@core/domain/operations/reports';
 import { crearZip } from '@/lib/zip';
 import { Campo, CLASE_DE_CONTROL } from '../ui/Campo';
+import { Spinner } from '../ui/Cargando';
 import { Icon } from '../icons/Icon';
 import { SelectorDeImagen } from './SelectorDeImagen';
 
@@ -351,9 +353,22 @@ export function RevisarComprobante({ slug, receiptId, declarado, esperado, moned
   );
 }
 
+export interface FiltroDelZip {
+  readonly desde?: string;
+  readonly hasta?: string;
+  readonly estado?: string;
+  readonly origen?: string;
+  readonly planId?: string;
+  readonly q?: string;
+}
+
 interface DescargarZipProps {
   readonly slug: string;
-  readonly comprobantes: readonly Comprobante[];
+  /** El filtro que muestra la bandeja; la lista se pide al pulsar, no al entrar (V4). */
+  readonly filtro: FiltroDelZip;
+  /** Cuántos cumplen el filtro y cuánto suman, para rotular el botón. */
+  readonly cantidad: number;
+  readonly total: number;
   readonly nombreArchivo: string;
 }
 
@@ -365,13 +380,29 @@ interface DescargarZipProps {
  * además un `resumen.csv` con socio, fecha, importe y estado de cada archivo,
  * que es lo que necesita el dueño de la cuenta para conciliar con su extracto.
  */
-export function DescargarComprobantesZip({ slug, comprobantes, nombreArchivo }: DescargarZipProps) {
+export function DescargarComprobantesZip({ slug, filtro, cantidad, total, nombreArchivo }: DescargarZipProps) {
   const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(null);
+  const [preparando, setPreparando] = useState(false);
   const [aviso, setAviso] = useState('');
-  const total = useMemo(() => comprobantes.reduce((suma, c) => suma + c.amount, 0), [comprobantes]);
 
   const descargar = async () => {
     setAviso('');
+    setPreparando(true);
+    const datos = new FormData();
+    datos.set('tenantSlug', slug);
+    if (filtro.desde) datos.set('desde', filtro.desde);
+    if (filtro.hasta) datos.set('hasta', filtro.hasta);
+    if (filtro.estado) datos.set('estado', filtro.estado);
+    if (filtro.origen) datos.set('origen', filtro.origen);
+    if (filtro.planId) datos.set('plan', filtro.planId);
+    if (filtro.q) datos.set('q', filtro.q);
+    const respuesta = await comprobantesParaZip(datos).catch(() => null);
+    setPreparando(false);
+    if (!respuesta || !respuesta.ok) {
+      setAviso(respuesta && !respuesta.ok ? respuesta.mensaje : 'No se pudo preparar la descarga. Vuelve a intentarlo.');
+      return;
+    }
+    const { comprobantes } = respuesta;
     setProgreso({ hechos: 0, total: comprobantes.length });
     const entradas: { nombre: string; datos: Uint8Array; fecha: Date }[] = [];
     const filas: Record<string, string | number | null>[] = [];
@@ -435,13 +466,16 @@ export function DescargarComprobantesZip({ slug, comprobantes, nombreArchivo }: 
       <button
         type="button"
         onClick={descargar}
-        disabled={comprobantes.length === 0 || progreso !== null}
+        disabled={cantidad === 0 || progreso !== null || preparando}
+        aria-busy={progreso !== null || preparando}
         className="inline-flex h-12 items-center justify-center gap-2 rounded-[var(--t-radius-md)] bg-action px-5 font-semibold text-on-action transition-colors hover:bg-action-strong disabled:pointer-events-none disabled:opacity-50"
       >
-        <Icon name={progreso ? 'refresh' : 'download'} size={17} className={cn(progreso && 'animate-spin')} />
-        {progreso
-          ? `Descargando ${progreso.hechos} de ${progreso.total}…`
-          : `Descargar ${comprobantes.length} en ZIP · ${importe(total)}`}
+        {progreso || preparando ? <Spinner tamano={17} /> : <Icon name="download" size={17} />}
+        {preparando
+          ? 'Preparando la lista…'
+          : progreso
+            ? `Descargando ${progreso.hechos} de ${progreso.total}…`
+            : `Descargar ${cantidad} en ZIP · ${importe(total)}`}
       </button>
       <p aria-live="polite" className="text-[0.8rem] text-muted">{aviso}</p>
     </div>

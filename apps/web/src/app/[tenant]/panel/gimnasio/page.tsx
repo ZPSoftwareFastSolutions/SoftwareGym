@@ -26,7 +26,7 @@ import { tenantHref } from '@/lib/tenant-links';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { variacion, type PuntoDeSerie } from '@core/domain/operations/dashboard';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
-import { cumpleEsteMes, diasDesde } from '@core/domain/operations/members';
+import { CONTEO_DE_SOCIOS_VACIO } from '@core/domain/operations/members';
 import { ETIQUETA_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import { estadoDeQr, NOMBRE_DE_MODO_DE_QR } from '@core/domain/operations/cobro-qr';
 import { branchesRepository, membersRepository, paymentSettingsRepository, receiptsRepository } from '@infra/config/composition-root';
@@ -87,13 +87,17 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const conComprobantes = features.enablePayments === true && puede(PERMISO.verPagos);
 
   const sucursales = multisede ? await branchesRepository() : null;
-  const [kpis, serieGimnasio, ingresos, vencimientos, ultimos, fichas, pendientes, ajustes, porSede, serieDeSedes] = await Promise.all([
+  const repoDeSocios = gestionSocios ? await membersRepository() : null;
+  // V4: los contadores de socios salen de la base en una fila; antes se traían
+  // TODAS las fichas (cada una con siete subconsultas) solo para contarlas aquí.
+  const [kpis, serieGimnasio, ingresos, vencimientos, ultimos, conteo, cumpleaneros, pendientes, ajustes, porSede, serieDeSedes] = await Promise.all([
     repo.indicadores(slug),
     repo.asistenciaDiaria(30),
     puedeVerReportes ? repo.ingresosMensuales() : Promise.resolve([]),
     repo.vencimientos(),
     repo.historialDeAsistencia({ limite: 8, ...(sedeVista ? { sucursal: sedeVista.id } : {}) }),
-    gestionSocios ? (await membersRepository()).listar({}, '') : Promise.resolve([]),
+    repoDeSocios ? repoDeSocios.conteos() : Promise.resolve(CONTEO_DE_SOCIOS_VACIO),
+    repoDeSocios ? repoDeSocios.listar({ cumpleMes: true }, 1, 2).then((p) => p.filas) : Promise.resolve([]),
     conComprobantes ? (await receiptsRepository()).contarPendientes() : Promise.resolve(0),
     features.enablePayments && puede(PERMISO.configurar) ? resumenDeCobroQr(slug) : Promise.resolve(null),
     sucursales ? sucursales.indicadores() : Promise.resolve([]),
@@ -151,9 +155,8 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
 
   const totalMembresias = kpis.membresiasActivas + kpis.membresiasPorVencer + kpis.membresiasVencidas;
   const porVencerPronto = vencimientos.filter((v) => v.effectiveStatus !== 'expired' && v.daysRemaining <= 10);
-  const inactivos = fichas.filter((f) => (f.membershipStatus === 'active' || f.membershipStatus === 'expiring_soon') && (diasDesde(f.lastVisit, hoy) ?? 999) >= 7).length;
-  const cumpleaneros = fichas.filter((f) => cumpleEsteMes(f.birthDate, hoy));
-  const sinMembresia = fichas.filter((f) => f.membershipId === null).length;
+  const inactivos = conteo.sinVenir7d;
+  const sinMembresia = conteo.sinMembresia;
   const qrVigentes = ajustes ? ajustes.qrs.filter((qr) => estadoDeQr(qr, null, hoy) === 'vigente').length : 0;
   const qrVencidos = ajustes ? ajustes.qrs.length - qrVigentes : 0;
 
@@ -338,7 +341,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
             <StatCard
               href={`${socios}?vista=cumple`}
               etiqueta="Cumplen este mes"
-              valor={`${cumpleaneros.length}`}
+              valor={`${conteo.cumplenMes}`}
               icono="cake"
               comparacion={cumpleaneros.slice(0, 2).map((f) => f.firstName).join(', ') || 'nadie este mes'}
               accion="Ver cumpleaños"
