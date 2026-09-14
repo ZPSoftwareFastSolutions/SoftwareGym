@@ -1,6 +1,6 @@
 # ADR 0010 · Administración del gimnasio, jerarquía de roles y rendimiento con volumen (V4)
 
-- **Estado:** aceptada · 2026-09-14 (migraciones escritas; se aplican con autorización del dueño de la base)
+- **Estado:** aceptada y en producción · 2026-09-14
 - **Contexto de versión:** V4 (rama `feat/v4-seradmingym`, sale de `feat/v3.4-reservas`)
 - **Relacionadas:** ADR 0004 (identidad y aislamiento), ADR 0007 (rutinas)
 
@@ -88,9 +88,25 @@ pantallas estrechas. Ninguna opción se quita. La lista de entradas vive en
 
 ## Decisión 6 · Estados de carga como mitigación, después de optimizar
 
-`panel/loading.tsx` (esqueleto al cambiar de sección), `Paginacion` con giro en el
-enlace pendiente (`useLinkStatus`), filtros con `next/form` y botón que se deshabilita,
-ZIP de comprobantes que pide la lista al pulsar.
+El enlace pulsado gira mientras llega su página (`IconoDeEnlace` con `useLinkStatus` en
+pestañas, tarjetas y botones-enlace), `Paginacion` igual, filtros con `next/form` y botón
+que se deshabilita, ZIP de comprobantes que pide la lista al pulsar.
+
+**Descartado: `panel/loading.tsx`.** Se probó un esqueleto por sección y se retiró al
+verificar producción: un límite de carga hace que Next responda 200 antes de que la
+página llame a `redirect`/`notFound`, y el panel sin sesión dejó de dar 307 y la
+capacidad apagada dejó de dar 404 (se resolvían en el navegador). La regla del producto
+es 404 real, así que el aviso vive en el enlace.
+
+## Verificación (2026-09-14)
+
+Migraciones aplicadas con autorización. Huella de filas visibles por rol idéntica tras
+reescribir las políticas. Con 2 000 socios y 50 000 entradas: contar asistencias > 20 s →
+18 ms, KPIs timeout → 54 ms, bitácora 57 s → 270 ms. La batería encontró dos defectos que
+se corrigieron con migraciones nuevas: vistas que llamaban a `app.hoy_del_gimnasio` por
+fila (36 s → 128 ms) y `cambiar_estado_de_cuenta` nombrando `updated_at` sin grant.
+Producción (`web-rust-xi-23.vercel.app`): públicas 200, panel 307, CSV 401, capacidad
+apagada 404, sin `service_role` en los chunks.
 
 ## Consecuencias
 

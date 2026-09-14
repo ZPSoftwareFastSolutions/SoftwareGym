@@ -141,10 +141,10 @@ Pruebas por rol, promoción de la espera, bloqueo y justificación, cancelación
 ## V4 · Administración del gimnasio y rendimiento (2026-09-14)
 
 > **Primeras migraciones versionadas como archivo** en esta carpeta (`*.sql`). Se
-> escribieron en la sesión V4 y **quedan pendientes de aplicar**: la herramienta de
-> permisos de la sesión bloqueó aplicar DDL sobre la base de producción. Aplicarlas
-> en orden (por MCP `apply_migration` con el mismo nombre o desde el SQL editor) y
-> correr antes y después la huella del bloque 0 del runbook de V4.
+> escribieron primero como archivo (la sesión no tenía permiso para DDL en
+> producción) y se **aplicaron el 2026-09-14 con autorización del usuario**, por MCP
+> `apply_migration` con el mismo nombre, en este orden. La huella del bloque 0 dio
+> idéntica tras reescribir las políticas, y la batería encontró las dos últimas.
 
 | Archivo | Qué introduce |
 |---|---|
@@ -153,6 +153,8 @@ Pruebas por rol, promoción de la espera, bloqueo y justificación, cancelación
 | `20260914010150_v4_patrones_de_asistencia_agregados_en_la_base.sql` | `v_attendance_patterns`: entradas de 30 días por día ISO, hora local, método y sede |
 | `20260914010200_v4_rol_administrador_del_gimnasio_y_jerarquia.sql` | `roles.level`; permiso `roles.manage`; rol `admin` (todo lo de gimnasio, nada de plataforma); `app.nivel_de_la_sesion`, `app.nivel_de_cuenta`, `app.puede_otorgar_nivel`, `app.puede_administrar_cuenta`; políticas de `user_roles` (insertar/borrar por nivel) y de UPDATE de `app_users`; disparadores de autoría, último administrador y auditoría; RPC `otorgar_rol`, `retirar_rol`, `cambiar_estado_de_cuenta`, `designar_administrador_de_gimnasio`; vista `v_staff` |
 | `20260914010300_v4_rutinas_sin_el_dia_repetido_en_el_nombre.sql` | **Corrige** «Día A · Día A · Empuje»: `app.nombre_sin_etiqueta_del_dia`, disparadores en `routines` y `customer_routines` y limpieza de los nombres existentes |
+| `20260914010400_v4_fecha_del_gimnasio_sin_funcion_por_fila.sql` | **Corrige** (lo encontró la batería al medir): `v_customer_list` y `v_attendance_patterns` llamaban a `app.hoy_del_gimnasio` por fila; ahora unen `tenants` una vez. Conteos 1,2 s → 39 ms; patrones 36 s → 128 ms |
+| `20260914010500_v4_cambiar_estado_de_cuenta_no_escribe_updated_at.sql` | **Corrige** (lo encontró la batería): la RPC nombraba `updated_at`, columna sin grant; suspender y reactivar fallaban siempre con «permission denied» |
 
 Pruebas (huella antes/después, rendimiento con volumen, jerarquía, aislamiento, último administrador, rutinas):
 [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](../../docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).

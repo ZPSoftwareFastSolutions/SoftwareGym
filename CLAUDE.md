@@ -4,7 +4,7 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-14 · **V4 administración del gimnasio, jerarquía de roles, rendimiento con volumen, rutinas y navegación** (código listo; **migraciones escritas en `supabase/migrations/` y pendientes de aplicar**, ver §13b).
+> - **Última actualización:** 2026-09-14 · **V4 administración del gimnasio, jerarquía de roles, rendimiento con volumen, rutinas y navegación** (**migraciones aplicadas, batería RLS pasada y en producción** desde `f54ce26`, ver §13b).
 > - **Rama de trabajo vigente:** `feat/v4-seradmingym` (sale de `feat/v3.4-reservas`). Decisiones: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
@@ -26,14 +26,14 @@
 | **Qué es** | Software **enlatado** multi-tenant para gimnasios: un solo código, un archivo de configuración por cliente. |
 | **Stack** | Next.js 16.3.4 (App Router) · React 19.1 · TypeScript 5.9 estricto · Tailwind v4 · Supabase (Auth + PostgreSQL 17 con RLS + Storage) · Vercel |
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
-| **En producción** | https://gym-platform-alpha.vercel.app (proyecto `gym-platform`, V3.2) y el proyecto `web` al que está enlazado hoy `apps/web` (ver §7 y §14). **V4 solo está en vista previa:** https://web-98gk5f3oe-zp-software-fast-solutions.vercel.app |
+| **En producción** | **V4 en https://web-rust-xi-23.vercel.app** (proyecto Vercel `web`, al que está enlazado `apps/web`; despliegue `web-gu4lr6b3e…`, commit `f54ce26`). El proyecto antiguo `gym-platform` (https://gym-platform-alpha.vercel.app) quedó en V3.2 (ver §7 y §14) |
 | **Clientes demo** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) |
-| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · **V4 🟡 administración del gimnasio + rendimiento (código y pruebas listos; migraciones por aplicar)** |
+| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · **V4 ✅ administración del gimnasio + jerarquía de roles + rendimiento con volumen + navegación agrupada** |
 | **Roles** | Plataforma (`super_admin`) · **Administración (`admin`, V4)** · Gerencia · Recepción · Entrenador · Socio. Jerarquía en la base: `roles.level` 100/40/30/20/10/0 (§4.6) |
-| **Siguiente** | 1) **Aplicar las 5 migraciones de V4** y correr su batería (§13b) · 2) promover V4 a producción · 3) V4.x: suscripciones, licencias, facturación e integraciones (§13) |
+| **Siguiente** | 1) Designar el administrador de Mítico y revisar V4 con sesión (§13b) · 2) V4.x: suscripciones, licencias, facturación e integraciones (§13) |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
-de datos), §12 (deuda viva) y **§13b (estado de V4: migraciones sin aplicar)**.
+de datos), §12 (deuda viva) y §13b (qué cambió en V4 y qué queda pendiente).
 
 **Cinco reglas que no se rompen nunca:**
 
@@ -81,7 +81,7 @@ V3.1 ✅  Entrenadores (perfil, cuenta opcional, sedes, ausencias, socios según
 V3.2 ✅  Programas → rutinas → ejercicios, asignación por copia, progreso y métricas de entrenamiento
 V3.3 ✅  Clases grupales por plan, horario semanal, sesiones generadas por sede, capacidad, asistencia a clase y vitrina
 V3.4 ✅  Reservas con reglas por gimnasio, lista de espera automática, faltas y bloqueo, avisos al socio, reportes
-V4   🟡  Administración del gimnasio (rol admin + jerarquía), rendimiento con volumen, paginación, navegación agrupada
+V4   ✅  Administración del gimnasio (rol admin + jerarquía), rendimiento con volumen, paginación, navegación agrupada
 V4.x ⏭  Suscripciones, licencias, facturación, integraciones
 ```
 
@@ -229,7 +229,7 @@ propio en `presentation/icons/Icon.tsx`), de animación, `tailwind-merge`, de ZI
                Supabase  (proyecto dnclwawnjnzqqxgsuhpn · us-west-2)
                ├─ Auth ─────── cuentas; disparadores asignan tenant, rol y vínculo a la ficha
                ├─ PostgreSQL ─ 40 tablas con RLS, 39 vistas security_invoker, 27 RPC invocador
-               │               (tras aplicar V4: 43 vistas y 31 RPC; políticas evaluadas una vez por consulta)
+               │               (desde V4: 43 vistas y 31 RPC; políticas evaluadas una vez por consulta)
                └─ Storage ──── comprobantes (privado) · qr-pagos (público) · ejercicios (privado, URL firmada)
 ```
 
@@ -259,7 +259,6 @@ src/
       pago/datos, pago/qr        Datos e imagen públicos del QR de cobro
       panel/
         layout.tsx               Cabecera y navegación del panel (pide las entradas a _navegacion.ts)
-        loading.tsx              V4: esqueleto de sección mientras el servidor arma la página
         page.tsx                 Reparte a plataforma | administracion | gimnasio | entrenador | socio según permisos
         _datos.ts                exigirPerfil / exigirPermiso (guardas por página, React cache)
         _acciones.ts             contextoDeAccion (guardas de Server Actions), imagenDeFormulario
@@ -321,7 +320,7 @@ src/
   presentation/
     ui/                          Átomos/moléculas: Button, Badge, Modal (Dialogo), StatCard, DataTable,
                                  Campo, BarChart, DonutChart, HeatMap, QrCode, EmptyState, Logo, Reveal,
-                                 Cargando (V4: Spinner, Cargando, Esqueleto, EsqueletoDeTabla, EsqueletoDePagina)…
+                                 Cargando (V4: Spinner), IconoDeEnlace (V4: IconoDeEnlace/GiroDeEnlace con useLinkStatus)…
     patterns/                    Organismos: SiteHeader/Footer, AccessForm/Modal, CheckInPanel, QrScanner,
                                  FichaDeSocio, SocioForms, ComprobanteForms, AjustesDeCobroForm,
                                  PaymentQrModal, ContenidoDePagoQr, RachaCalendario, ReportFilters,
@@ -568,7 +567,7 @@ Enums: `payment_method` (`cash, qr, transfer, card, other`), `attendance_method`
 (`manual, qr, kiosk`), `receipt_status`, `receipt_source`, estados de
 membresía/socio/tenant.
 
-### 4.3 Vistas (39 aplicadas + 4 de V4 por aplicar, todas `security_invoker`)
+### 4.3 Vistas (43, todas `security_invoker`)
 
 `v_my_profile` (perfil + roles + permisos de quien entra) · `v_customer_overview`
 · `v_customer_detail` · `v_memberships` (estado efectivo) ·
@@ -594,10 +593,12 @@ del gimnasio) · `v_class_attendance_log` · `v_class_stats` (ocupación 30 d po
 mira (`mi_reserva_*`, `mi_posicion`) · `v_class_reservations` (con `estado_efectivo`: la falta derivada) ·
 `v_reservation_stats`, `v_reservation_overview`, `v_reservation_no_shows`, `v_class_attendance_report` y
 `v_class_reservation_report` (todas de gerencia) ·
-**V4 (migraciones por aplicar):** `v_customer_list` (lista de socios paginable, sin las siete subconsultas de la
+**V4:** `v_customer_list` (lista de socios paginable, sin las siete subconsultas de la
 ficha; `days_since_visit` —36 500 si nunca vino— y `birthday_this_month` con la fecha del gimnasio) ·
 `v_customer_counts` (accesos rápidos de socios en una fila) · `v_attendance_patterns` (entradas de 30 días por día ISO,
-hora local, método y sede) · `v_staff` (cuentas del gimnasio con roles, nivel e `is_staff`). `v_customer_detail` se
+hora local, método y sede) · `v_staff` (cuentas del gimnasio con roles, nivel e `is_staff`). **Regla:** la fecha del
+gimnasio en una vista se calcula uniendo `tenants` una vez (`(now() at time zone t.timezone)::date`), nunca con
+`app.hoy_del_gimnasio(tenant_id)` por fila (36 s → 128 ms en `v_attendance_patterns`). `v_customer_detail` se
 reescribe con `tenant_id` en cada subconsulta (mismas columnas; es la ficha de UN socio).
 
 > Los reportes leen de vistas y **no** de embebidos de PostgREST: con claves
@@ -743,16 +744,17 @@ justificar, reservar por encima de topes y bloqueo).
 
 ### 4.7 Migraciones
 
-**49 aplicadas** (`v2_0001` … `v3_4_v_classes_con_lugares_sin_reserva`), listadas
+**56 aplicadas** (`v2_0001` … `v4_cambiar_estado_de_cuenta_no_escribe_updated_at`), listadas
 con su propósito en [`supabase/migrations/README.md`](supabase/migrations/README.md).
-**Viven solo en el servidor**: materializarlas requiere `npx supabase link` +
+Las 49 hasta V3.4 **viven solo en el servidor**: materializarlas requiere `npx supabase link` +
 `npx supabase db pull`, que pide la contraseña de la base (no disponible en la
 sesión). Deuda #1 de §12.
 
-**V4: 5 migraciones versionadas como archivo y SIN APLICAR** en `supabase/migrations/`
-(`20260914010000_v4_rls_con_contexto_evaluado_una_vez_por_consulta`, `…010100_v4_lista_y_conteos_de_socios_en_la_base`,
-`…010150_v4_patrones_de_asistencia_agregados_en_la_base`, `…010200_v4_rol_administrador_del_gimnasio_y_jerarquia`,
-`…010300_v4_rutinas_sin_el_dia_repetido_en_el_nombre`). Se aplican EN ESE ORDEN; tras aplicarlas serán 54.
+**V4: 7 migraciones, aplicadas el 2026-09-14 y versionadas también como archivo** en `supabase/migrations/`:
+`v4_rls_con_contexto_evaluado_una_vez_por_consulta`, `v4_lista_y_conteos_de_socios_en_la_base`,
+`v4_patrones_de_asistencia_agregados_en_la_base`, `v4_rol_administrador_del_gimnasio_y_jerarquia`,
+`v4_rutinas_sin_el_dia_repetido_en_el_nombre` y dos que encontró la batería al aplicarlas:
+`v4_fecha_del_gimnasio_sin_funcion_por_fila` y `v4_cambiar_estado_de_cuenta_no_escribe_updated_at`.
 
 **Toda migración nueva desde V4:** archivo `supabase/migrations/AAAAMMDDHHMMSS_v4_…sql` (snake_case español) +
 `apply_migration` por MCP con el mismo nombre (con autorización del usuario: la base es de producción) + su fila en el
@@ -795,7 +797,9 @@ README de migraciones.
 | `…/panel/clases/sesion/[id]` | dinámica | `enableClasses` + `classes.read` (registrar: `classes.attend`) | Ocupación, asistentes (hora, método, quién registró), buscador por nombre/código/QR con «Registrar» o el motivo por el que no puede, editar y cancelar (gerencia). **V3.4:** lista de reservas con «Vino», «Cancelar», «Justificar», «Cerrar lista» y «Reservar para un socio» |
 | `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV. V4: totales, gráfico y CSV con todas las filas (tope 2 000, avisado); la tabla pinta 50 por página y `?completa=1` («Ver todas las filas para imprimir») las pinta todas |
 
-Todas las rutas del panel muestran `panel/loading.tsx` (esqueleto) mientras cargan (V4).
+Carga (V4): el enlace pulsado (pestaña, tarjeta o botón-enlace) gira mientras llega la página. **No hay
+`loading.tsx` en el panel a propósito**: un límite de carga hace que Next responda 200 antes de que la página decida,
+y la redirección sin sesión (307) y la capacidad apagada (404) dejaban de ser respuestas reales.
 
 Build: 66 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
 `/[tenant]`, `/[tenant]/sucursales`, `/[tenant]/clases` y `/[tenant]/contacto` son SSG con ISR de 300 s
@@ -1061,9 +1065,10 @@ los mismos filtros, BOM UTF-8, comillas en todo campo y neutraliza fórmulas
 - **Navegación del panel (V4):** `DashboardNav` agrupada (§3.3). Regla: **ninguna fila del panel se desplaza en
   horizontal** —usar rejillas que envuelven (accesos rápidos de socios) o menús—; las tablas anchas sí se desplazan
   dentro de su propia caja.
-- **Carga (V4):** `ui/Cargando.tsx` — `Spinner` (respeta `prefers-reduced-motion`), `Cargando` (con `role=status`),
-  `Esqueleto`, `EsqueletoDeTabla`, `EsqueletoDePagina`; `panel/loading.tsx` por sección. Botones que esperan se
-  deshabilitan con `aria-busy`. La carga es mitigación: primero se optimiza la consulta.
+- **Carga (V4):** `ui/Cargando.tsx` (`Spinner`, respeta `prefers-reduced-motion`) y `ui/IconoDeEnlace.tsx`
+  (`IconoDeEnlace`/`GiroDeEnlace` con `useLinkStatus`: el icono del enlace pulsado gira; ya lo usan `DashboardNav`,
+  `StatCard` con `href` y `LinkButton`). Botones que esperan se deshabilitan con `aria-busy`. **Nada de `loading.tsx`
+  en rutas con guardas** (rompe 307/404). La carga es mitigación: primero se optimiza la consulta.
 - **Listas (V4):** `Paginacion` (tramo «26–50 de 312», primera/última/vecinas, objetivos de 44 px) y
   `FiltroConCarga` (`next/form` GET + botón con estado). Iconos nuevos: `chevronDown/Left/Right`, `key`.
 
@@ -1073,7 +1078,7 @@ los mismos filtros, BOM UTF-8, comillas en todo campo y neutraliza fórmulas
 
 | Servicio | Detalle |
 |---|---|
-| **Vercel** | Equipo `zp-software-fast-solutions` (`team_isXk9iHT5amXqAUJlB27m9uf`). **Dos proyectos:** `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`, Root Directory `apps/web`, alias público `gym-platform-alpha.vercel.app`, último despliegue V3.2) y **`web`** (`prj_xaWtcja3zUtZBrGT7exVgatwVlwJ`), al que está enlazado hoy `apps/web/.vercel` (lo enlazó el usuario; su producción: `web-2cjifj7dc-…vercel.app`, V3.4). V4 está como **vista previa** en `web`: `web-98gk5f3oe-zp-software-fast-solutions.vercel.app` |
+| **Vercel** | Equipo `zp-software-fast-solutions` (`team_isXk9iHT5amXqAUJlB27m9uf`). **Dos proyectos:** `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`, Root Directory `apps/web`, alias público `gym-platform-alpha.vercel.app`, último despliegue V3.2) y **`web`** (`prj_xaWtcja3zUtZBrGT7exVgatwVlwJ`), al que está enlazado hoy `apps/web/.vercel` (lo enlazó el usuario). **Producción vigente: `web`, dominio `web-rust-xi-23.vercel.app`, V4** (despliegue `web-gu4lr6b3e…`, commit `f54ce26`, 2026-09-14). Production Branch `main`; se despliega por CLI desde `apps/web` |
 | **GitHub** | `ZPSoftwareFastSolutions/SoftwareGym` (**público**) · rama por defecto `main` |
 | **Supabase** | Proyecto `dnclwawnjnzqqxgsuhpn` · MCP conectado (SQL, migraciones, advisors) |
 
@@ -1183,7 +1188,7 @@ Con `credential.username` fijado en `.git/config`, `git push` funciona sin pregu
 Otros 9 socios: `nombre.apellido@demo.miticofitness.com` / `Demo.Mitico.2026`.
 
 **Administración (V4):** no hay cuenta de demostración con rol `admin` (el asistente no crea cuentas ni
-contraseñas). Tras aplicar las migraciones, se designa desde `/mitico/panel/plataforma` con el correo de una cuenta
+contraseñas). Se designa desde `/mitico/panel/plataforma` (con la cuenta de plataforma) con el correo de una cuenta
 existente de Mítico (p. ej. la de gerencia, que entonces verá «Administración»).
 
 > ⛔ **Contraseñas predecibles en un repositorio público.** Solo para enseñar el
@@ -1355,14 +1360,29 @@ Dos trampas que ya dieron falsos positivos:
    cachean. Medir cada rol en su propia sentencia (en PL/pgSQL cada sentencia
    ya es independiente; con `UNION ALL` no).
 
-Batería V4 (**escrita, pendiente de ejecutar**: requiere aplicar antes las migraciones de V4):
+Batería V4 (2026-09-14, **todo como se esperaba tras dos correcciones** que encontró ella misma):
 [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
-Bloques: 0) huella md5 de filas visibles por rol antes/después de reescribir las políticas (valores de antes
-guardados en el archivo); 1) rendimiento con 2 000 socios y 50 000 entradas (antes: > 20 s, 34 s, 57 s y timeout);
-2) el rol `admin` tiene lo de gerencia + `roles.manage` y nada de plataforma; 3) un administrador de Mítico opera
-todo, otorga y quita, no se toca a sí mismo y no ve ni escribe en Aurora; 4) gerencia no nombra gerentes ni
-administradores, no se autoinserta `admin` ni suspende a un superior; 5) recepción, socio, entrenador y anónimo;
-6) la plataforma designa administrador y sigue sin leer socios; 7) último administrador; 8) rutinas sin el día repetido.
+- **0 · Huella** de filas visibles por rol: idéntica en los 6 roles antes y después de reescribir las 126 políticas.
+  Tras todas las migraciones, las únicas diferencias son las esperadas: +1 rol, +1 permiso, +34 permisos de rol.
+- **1 · Rendimiento** (2 000 socios, 50 000 entradas, gerencia): contar asistencias > 20 s → **18 ms**; KPIs timeout →
+  **54 ms**; bitácora 25 filas 57 s → **270 ms**; lista 25 socios **56 ms** (antes 34 s las 500 fichas); conteos
+  **39 ms**; patrones **128 ms**; búsqueda 26 ms; comprobantes 12 filas 10 ms; personal 6 ms. Las dos últimas cifras
+  salieron de corregir `v_customer_counts` (1,2 s) y `v_attendance_patterns` (36 s): llamaban a
+  `app.hoy_del_gimnasio` por fila (migración `v4_fecha_del_gimnasio_sin_funcion_por_fila`).
+- **2 · Rol `admin`:** 34 permisos (gerencia 33 + `roles.manage`), sin `tenants.manage` ni `trainers.self`; niveles 100/40/30/20/10/0.
+- **3 · Administración de Mítico:** ve 10 socios y 38 pagos, 0 socios/sedes/cuentas ajenas; otorga y quita Gerencia a
+  recepción; se quita su rol o se suspende → `cuenta_propia`; con una cuenta REAL de Aurora (movida dentro de la
+  transacción): no la ve, otorgar → `cuenta_no_encontrada`, suspender → `sin_permiso`, INSERT de rol → 42501, UPDATE → 0;
+  suspende y reactiva a recepción (auditado). **Esto encontró que suspender fallaba siempre** («permission denied»: la RPC
+  nombraba `updated_at`, sin grant) → migración `v4_cambiar_estado_de_cuenta_no_escribe_updated_at`.
+- **4 · Gerencia con un administrador arriba:** otorga Recepción; Gerencia y Administración → `sin_permiso`; se autoinserta
+  `admin` → 42501; quita o suspende al administrador → `sin_permiso`; UPDATE directo → 0; sigue editando la cuenta de un socio (1).
+- **5 · Otros roles:** recepción no otorga y ve conteos y lista de su gimnasio; socio y entrenador ven solo su fila de
+  `v_staff`; el socio no otorga; anónimo 42501 en `v_staff`, `v_customer_list`, `v_attendance_patterns` y las RPC.
+- **6 · Plataforma:** designa administrador (ok), repetir → `ya_tiene_el_rol`, correo inexistente → `cuenta_no_encontrada`;
+  sigue viendo 0 socios, 0 lista, 0 pagos; gerencia no designa.
+- **7 · Último administrador:** quitarle el rol o suspenderlo → `ultimo_administrador`.
+- **8 · Rutinas:** 0 plantillas y 0 asignadas con la etiqueta en el nombre; `Día 10` intacto; doble repetición limpia.
 
 **Medir con volumen, sin dejar rastro (V4).** Insertar datos de carga dentro de un `do $$ … raise exception $$`,
 cambiar a la sesión simulada y medir con `clock_timestamp()`: la excepción final revierte todo. Así se encontró
@@ -1427,6 +1447,9 @@ ningún chunk servido.
 | Un bloqueo que depende de que alguien «cierre la lista» | Faltas guardadas por un proceso que puede no correr | Derivar la falta del hecho (sesión terminada sin asistencia) y escribirla solo como registro |
 | Con 50 000 entradas, contar la tabla tardaba > 20 s y el dashboard superaba el timeout (V4) | Políticas `app.tenant_allows(tenant_id, 'x')`: función con columna de la fila → dos subconsultas POR FILA | `col = (select app.current_tenant_id()) and (select app.has_permission('x'))`; contexto siempre en `(select …)`; medir con volumen en transacción revertida |
 | «Día A · Día A · Empuje» en rutinas (V4) | La etiqueta del día se guardaba también en el nombre (semillas y ayuda del formulario) y la pantalla los unía | Un dato, un campo: la base normaliza al guardar y el título se arma en un solo sitio del dominio |
+| El panel sin sesión respondía 200 (redirección en el navegador) y la capacidad apagada, 200 con pantalla de 404 (V4) | Un `loading.tsx` sobre páginas con guardas: Next envía el estado antes de que la página llame a `redirect`/`notFound` | Sin límites de carga sobre rutas con guardas; el aviso de carga va en el enlace (`useLinkStatus`). Medir los códigos con `curl` sobre el dominio tras desplegar |
+| Una vista nueva tardaba 36 s con 50 000 filas (V4) | `app.hoy_del_gimnasio(tenant_id)` por fila: la función consulta `tenants` en cada llamada | La fecha del gimnasio sale de unir `tenants` una vez; medir cada vista nueva con volumen antes de dar la migración por buena |
+| «Suspender cuenta» fallaba siempre (V4) | La RPC nombraba `updated_at`, sin grant de columna para `authenticated` (lo pone un disparador) | Repetida de V3.2: una RPC invocador solo nombra columnas que el cliente puede escribir; la batería lo encuentra, leer no |
 | Gerencia podía nombrar gerentes (y se habría nombrado admin) (V4) | La política de `user_roles` miraba el ALCANCE del rol, no su NIVEL | `roles.level` y `app.puede_otorgar_nivel` en la política y en la RPC |
 | `npm ci` fallaba en `postinstall` en Windows | `ComSpec` no definido en el entorno de la sesión | Definir `ComSpec` antes de `npm` |
 | Capturas del panel de navegador vacías o recortadas con la ventana oculta | El panel no pinta si la app está minimizada | Edge headless por CDP (script sin dependencias); los iframes solo salen si están en la vista |
@@ -1501,9 +1524,9 @@ ningún chunk servido.
    dnclwawnjnzqqxgsuhpn` + `npx supabase db pull` (lo hace una persona con la
    contraseña de la base). Mientras tanto, el inventario vive en
    `supabase/migrations/README.md`.
-0. **V4 · Aplicar las 5 migraciones de `supabase/migrations/2026091401*.sql`** y correr la batería V4 antes de
-   promover V4 a producción (§13b). Sin ellas, la vista previa de V4 falla en socios, asistencia, comprobantes,
-   personal, administración y dashboard.
+0. **V4 · Designar el administrador de Mítico** desde `/mitico/panel/plataforma` (cuenta de plataforma + correo de
+   una cuenta existente de Mítico) y **revisión humana con sesión** de Administración, Personal y roles, navegación
+   agrupada en 375 px, paginación y filtros, rutinas y ZIP de comprobantes (§13b).
 2. **Tests parciales, sin CI.** V3.0 añadió `npm test` y hoy son **174 pruebas** (V4 suma jerarquía de roles, título de rutina, paginación, navegación agrupada y patrones de asistencia; V3.4 suma ventana,
    cancelación tardía, cupo y espera, bloqueo, reglas y avisos personales)
    (sedes, racha con varias sedes, catálogo y CSV de reportes, selección de QR e
@@ -1744,7 +1767,8 @@ Ver [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimie
   reportes pintan 50 filas por página (totales y CSV con todas); desplegables con `opciones()`.
 - **Rutinas**: título único `tituloDeRutina`; la base guarda el nombre sin la etiqueta del día.
 - **Navegación** agrupada (`lib/navegacion.ts`, `panel/_navegacion.ts`, `DashboardNav`): sin desplazamiento horizontal.
-- **Carga**: `panel/loading.tsx`, `ui/Cargando.tsx`, `FiltroConCarga`, ZIP de comprobantes bajo demanda.
+- **Carga**: `ui/IconoDeEnlace.tsx` (el enlace pulsado gira), `ui/Cargando.tsx`, `Paginacion`, `FiltroConCarga`, ZIP
+  de comprobantes bajo demanda. Se probó `panel/loading.tsx` y se retiró: rompía los 307/404 reales.
 
 **Diagnóstico que dio origen a V4** (medido, no supuesto):
 - Autorización: coherente entre pantalla y base; el hueco era de NIVEL (política de `user_roles`), no de rol mostrado.
@@ -1753,30 +1777,32 @@ Ver [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimie
   cortadas en silencio (500/800/2 000), estadísticas de asistencia de las últimas 500 filas.
 - Scroll horizontal: 13 pestañas de gerencia en una fila con `overflow-x-auto` y accesos rápidos de socios igual.
 
-**Estado de verificación (2026-09-14):** typecheck limpio · **174 pruebas** (21 nuevas) · build de 66 páginas ·
-`npm audit` 0 · greps de arquitectura, cliente y voseo limpios. Commit `1860fda` (código) en `feat/v4-seradmingym`.
-**Desplegado solo como vista previa** en el proyecto Vercel `web`, por CLI desde `apps/web`: última
-`https://web-ttg54r2xy-zp-software-fast-solutions.vercel.app` (commit `d426d5f`, Ready). Producción sin tocar (V3.4,
-`web-2cjifj7dc…`). Dos intentos de `--prod` de V4 el 2026-09-14 fallaron por el Root Directory de prueba: por suerte,
-porque sin migraciones habrían roto producción.
+**Estado (2026-09-14): V4 cerrada y en producción.**
+- Código: typecheck limpio · **174 pruebas** (21 nuevas) · build de 66 páginas · `npm audit` 0 · greps limpios.
+- Base: **7 migraciones aplicadas** con autorización del usuario (5 escritas antes + 2 que encontró la batería);
+  batería V4 completa como se esperaba (§9.2); advisors de seguridad: solo el aviso aceptado de contraseñas filtradas.
+- Producción: proyecto Vercel `web`, dominio **https://web-rust-xi-23.vercel.app**, despliegue `web-gu4lr6b3e…` desde
+  `f54ce26` por CLI en `apps/web`. Verificado sobre el dominio: públicas 200; `/mitico/panel`, `/panel/socios`,
+  `/panel/administracion` y `/panel/personal` **307** sin sesión; `/mitico/panel/reportes/pagos/csv` **401**;
+  `/aurora-fit/clases` y `/aurora-fit/panel/socios` **404**; `/no-existe` 404; `camera=(self)`; 0 apariciones de
+  `service_role` en 11 chunks.
+- Tropiezos del despliegue, documentados en §7: el Root Directory del proyecto `web` (un solo valor no sirve a la CLI
+  desde `apps/web` y al push de Git) y el `loading.tsx` que convertía los 307/404 en 200 (retirado en `f54ce26`).
 
-**Pendiente, en este orden:**
-1. Aplicar las 5 migraciones de `supabase/migrations/2026091401*.sql` (la sesión no tuvo permiso para DDL en
-   producción: pedir autorización o que el usuario las aplique). Antes: bloque 0 del runbook (huella); después:
-   bloques 0 a 8 de [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
-   Si una prueba falla, corregir con una migración nueva (no editar las ya aplicadas).
-2. Designar un administrador de Mítico desde `/mitico/panel/plataforma` (cuenta ya registrada).
-3. Recién entonces `npx vercel deploy --prod --yes`: **el código de V4 lee vistas y RPC que solo existen tras las
-   migraciones**; en producción antes de migrar rompe socios, asistencia, comprobantes, personal, administración y dashboard.
-4. Revisión humana con sesión: navegación en escritorio y 375 px, Personal y roles con administración y gerencia,
-   paginación y filtros, rutinas sin «Día A · Día A», ZIP de comprobantes.
+**Pendiente:**
+1. Designar un administrador de Mítico desde `/mitico/panel/plataforma` (cuenta de plataforma + correo de una cuenta
+   existente de Mítico, p. ej. la de gerencia).
+2. Revisión humana con sesión: navegación en escritorio y 375 px, Administración y Personal y roles con administración
+   y gerencia (otorgar, quitar, suspender, reactivar), paginación y filtros de socios, comprobantes y asistencia,
+   rutinas sin «Día A · Día A», ZIP de comprobantes, indicador de carga en pestañas y tarjetas.
+3. Deuda acotada de V4 en §12 (10k).
 
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
-| V4 administración | 2026-09-14 | `1860fda` + docs (rama `feat/v4-seradmingym`) · vista previa Vercel `web-98gk5f3oe-…` | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (con 50 000 entradas: > 20 s → medir tras aplicar), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; estados de carga. ADR 0010; 174 pruebas. **Migraciones escritas, sin aplicar** |
+| V4 administración | 2026-09-14 | `1860fda`, `f54ce26` (rama `feat/v4-seradmingym`) · **producción** Vercel `web` (`web-rust-xi-23.vercel.app`, despliegue `web-gu4lr6b3e…`) | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (contar 50 000 entradas: > 20 s → 18 ms; KPIs: timeout → 54 ms), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; indicador de carga en el enlace pulsado. 7 migraciones (2 de ellas encontradas por la batería: vistas con función por fila y `cambiar_estado_de_cuenta` sin grant de `updated_at`); ADR 0010; batería RLS V4; 174 pruebas. Verificada sobre el dominio: públicas 200, panel 307, CSV 401, capacidad apagada 404, sin `service_role` |
 | V1 | 2026-09-08/09 | `27d334e`, `38b83fd` | Sitio público multi-tenant, temas, flags, Next 16 |
 | V1 bonus | 2026-09-09 | `f3ea967`, `2880c8d` | Datos reales de Mítico: 13 paquetes en 4 grupos, 4 programas, 12 productos |
 | V2 base | 2026-09-09 | `3702e81`, `048c830`, `3944db3` | Esquema multi-tenant con RLS; deuda de auditoría; sitemap |
