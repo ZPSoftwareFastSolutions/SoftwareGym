@@ -26,13 +26,14 @@
 | **Qué es** | Software **enlatado** multi-tenant para gimnasios: un solo código, un archivo de configuración por cliente. |
 | **Stack** | Next.js 16.3.4 (App Router) · React 19.1 · TypeScript 5.9 estricto · Tailwind v4 · Supabase (Auth + PostgreSQL 17 con RLS + Storage) · Vercel |
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
-| **En producción** | https://gym-platform-alpha.vercel.app (ver §14: último despliegue y desde qué commit) |
+| **En producción** | https://gym-platform-alpha.vercel.app (proyecto `gym-platform`, V3.2) y el proyecto `web` al que está enlazado hoy `apps/web` (ver §7 y §14). **V4 solo está en vista previa:** https://web-98gk5f3oe-zp-software-fast-solutions.vercel.app |
 | **Clientes demo** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) |
 | **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · **V4 🟡 administración del gimnasio + rendimiento (código y pruebas listos; migraciones por aplicar)** |
-| **Siguiente** | **V4**: suscripciones, licencias, facturación e integraciones (avisos por WhatsApp/correo) (§13) |
+| **Roles** | Plataforma (`super_admin`) · **Administración (`admin`, V4)** · Gerencia · Recepción · Entrenador · Socio. Jerarquía en la base: `roles.level` 100/40/30/20/10/0 (§4.6) |
+| **Siguiente** | 1) **Aplicar las 5 migraciones de V4** y correr su batería (§13b) · 2) promover V4 a producción · 3) V4.x: suscripciones, licencias, facturación e integraciones (§13) |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
-de datos) y §12 (deuda viva).
+de datos), §12 (deuda viva) y **§13b (estado de V4: migraciones sin aplicar)**.
 
 **Cinco reglas que no se rompen nunca:**
 
@@ -40,8 +41,10 @@ de datos) y §12 (deuda viva).
    Si hay que tocar un componente, una ruta o una consulta para un cliente, el
    diseño está mal.
 2. **El aislamiento vive en la base (RLS), no en el código.** Esconder un botón
-   no es seguridad. Toda tabla nueva nace con RLS y políticas por
-   `app.tenant_allows(tenant_id, 'permiso')`.
+   no es seguridad. Toda tabla nueva nace con RLS y políticas por gimnasio y
+   permiso, **escritas para evaluarse una vez por consulta** (V4):
+   `tenant_id = (select app.current_tenant_id()) and (select app.has_permission('permiso'))`.
+   Nunca `app.tenant_allows(tenant_id, …)` en una política: evalúa por fila.
 3. **Capacidad apagada = ruta 404**, no enlace oculto (`loadTenantPage(params, [flags])`).
 4. **`service_role` jamás** al repositorio, al navegador ni a `NEXT_PUBLIC_*`.
 5. **Verificar probando, no leyendo:** typecheck + build + audit + pruebas de
@@ -78,7 +81,8 @@ V3.1 ✅  Entrenadores (perfil, cuenta opcional, sedes, ausencias, socios según
 V3.2 ✅  Programas → rutinas → ejercicios, asignación por copia, progreso y métricas de entrenamiento
 V3.3 ✅  Clases grupales por plan, horario semanal, sesiones generadas por sede, capacidad, asistencia a clase y vitrina
 V3.4 ✅  Reservas con reglas por gimnasio, lista de espera automática, faltas y bloqueo, avisos al socio, reportes
-V4   ⏭  Suscripciones, licencias, facturación, integraciones
+V4   🟡  Administración del gimnasio (rol admin + jerarquía), rendimiento con volumen, paginación, navegación agrupada
+V4.x ⏭  Suscripciones, licencias, facturación, integraciones
 ```
 
 Son **fases del mismo producto**: el código evoluciona, no se copia. La API
@@ -225,6 +229,7 @@ propio en `presentation/icons/Icon.tsx`), de animación, `tailwind-merge`, de ZI
                Supabase  (proyecto dnclwawnjnzqqxgsuhpn · us-west-2)
                ├─ Auth ─────── cuentas; disparadores asignan tenant, rol y vínculo a la ficha
                ├─ PostgreSQL ─ 40 tablas con RLS, 39 vistas security_invoker, 27 RPC invocador
+               │               (tras aplicar V4: 43 vistas y 31 RPC; políticas evaluadas una vez por consulta)
                └─ Storage ──── comprobantes (privado) · qr-pagos (público) · ejercicios (privado, URL firmada)
 ```
 
@@ -253,13 +258,17 @@ src/
       acceso/                    Login y registro (page estática + actions.ts)
       pago/datos, pago/qr        Datos e imagen públicos del QR de cobro
       panel/
-        layout.tsx               Cabecera y navegación del panel (entradas filtradas por flag + permiso)
-        page.tsx                 Reparte a plataforma | gimnasio | socio según permisos
+        layout.tsx               Cabecera y navegación del panel (pide las entradas a _navegacion.ts)
+        loading.tsx              V4: esqueleto de sección mientras el servidor arma la página
+        page.tsx                 Reparte a plataforma | administracion | gimnasio | entrenador | socio según permisos
         _datos.ts                exigirPerfil / exigirPermiso (guardas por página, React cache)
         _acciones.ts             contextoDeAccion (guardas de Server Actions), imagenDeFormulario
+        _navegacion.ts           V4: entradasDelPanel (flag + permiso + grupo); la usan la navegación y el resumen de Administración
         _sucursal.ts             Sede de trabajo: cookie por dispositivo gp-sucursal, resuelta contra v_mis_sucursales
         actions.ts               registrarCheckIn (con sede), cambiarSucursalDeTrabajo, marcarAvisoLeido
-        socio/ gimnasio/ plataforma/          Los tres espacios de trabajo
+        socio/ gimnasio/ plataforma/ (+ actions.ts: designar administrador)  Espacios de trabajo
+        administracion/          V4: resumen de Administración (negocio, personal, módulos, cambios administrativos)
+        personal/ actions.ts     V4: Personal y roles (cuentas paginadas, otorgar/quitar rol, suspender/reactivar)
         asistencia/              Check-in (cámara/teclado), estadísticas, historial
         socios/ [id]/ nuevo/ actions.ts       Gestión de socios (V2.2)
         comprobantes/ [id]/imagen/ actions.ts Bandeja de comprobantes y descarga ZIP
@@ -277,39 +286,42 @@ src/
     domain/
       tenant/                    tenant-config.ts (CONTRATO CENTRAL), branding.ts, feature-flags.ts
       catalog/catalog.ts         Servicios, planes, programas, productos, galería, equipo…
-      shared/                    Tipos base y marcas nominales
+      shared/                    Tipos base, marcas nominales y paginacion.ts (V4: página de la URL, rango, números visibles, consulta con filtros)
       operations/                Reglas del sistema privado, sin I/O:
-        workspace.ts             PERMISO, espacioDeTrabajo(), PerfilOperativo
-        attendance.ts            Métodos, resultado de check-in, estadísticas
+        workspace.ts             PERMISO, espacioDeTrabajo(), PerfilOperativo; V4: NIVEL_DE_ROL, ROLES_OTORGABLES, puedeOtorgarRol, puedeAdministrarCuenta
+        staff.ts                 V4: cuentas del gimnasio, resumen de personal, describirEvento (auditoría), mensajes de error de roles
+        attendance.ts            Métodos, resultado de check-in, estadísticas; V4: resumirPatrones (calor, hora y día pico desde conteos de la base)
         dashboard.ts             Indicadores, series, variación
         notifications.ts         Avisos derivados (vencimiento) + manuales
-        members.ts               Ficha, alta, validaciones, filtros, edad/cumpleaños
+        members.ts               Ficha, alta, validaciones, filtros, edad/cumpleaños; V4: SocioDeLista, ConteoDeSocios, OpcionDeSocio
         receipts.ts              Comprobantes, firma binaria de imágenes, nombres en ZIP
         streak.ts                calcularRacha (los días cerrados no la cortan; la sede no existe para ella)
         branches.ts              Sucursal, validarSucursal, resolverSucursalOperativa, repartoPorSucursal, mapas
         trainers.ts              Entrenador, ausencias (turnos, solapes, disponibilidad), regla del plan (V3.1)
         exercises.ts             Catálogo, grupos musculares, política de medios, bytes mágicos, cuota, enlaces (V3.1)
-        training.ts              Rutinas y LECTURA del entrenamiento: etiqueta del día por grupo/familia, conclusiones (V3.2)
+        training.ts              Rutinas y LECTURA del entrenamiento: etiqueta del día por grupo/familia, conclusiones (V3.2); V4: tituloDeRutina, nombreSinEtiquetaDelDia
         classes.ts               Clases: acceso por plan, fechas de un horario, cruces, estado de sesión, ocupación, conclusiones (V3.3)
         reservations.ts          Reservas: ventana, cancelación tardía, cupo y espera, bloqueo por faltas, reglas, conclusiones (V3.4)
         periodo.ts               Presets hoy/ayer/7d/30d/mes/mes-anterior/año
-        reports.ts               Catálogo de 9 reportes, resumen, serie, CSV seguro
+        reports.ts               Catálogo de 11 reportes, resumen, serie, CSV seguro, TOPE_DE_FILAS_DE_REPORTE (2 000)
     application/
       ports/                     tenant-repository, operations-repository, members-repository,
                                  receipts-repository (+ PaymentSettingsPort), reports-repository,
                                  branches-repository (+ PublicBranchesPort), trainers-repository,
                                  exercises-repository, training-repository,
-                                 classes-repository (+ PublicClassesPort), reservations-repository, resultado
+                                 classes-repository (+ PublicClassesPort), reservations-repository,
+                                 staff-repository (V4), resultado
       tenant/get-tenant.usecase.ts, theming/build-theme.ts, auth/login.usecase.ts
   infrastructure/
     config/composition-root.ts   ÚNICO sitio que construye adaptadores
     tenants/                     tenant.registry.ts, static-tenant.repository.ts, tenant.validator.ts
     auth/                        supabase.config.ts, supabase.server.ts, supabase.public.ts (anónimo, sin cookies),
                                  cookie-options.ts, session-hint.ts
-    operations/                  supabase-{operations,members,receipts,reports,branches,trainers,exercises,training,classes,reservations}.repository.ts, qr.ts
+    operations/                  supabase-{operations,members,receipts,reports,branches,trainers,exercises,training,classes,reservations,staff}.repository.ts, qr.ts
   presentation/
     ui/                          Átomos/moléculas: Button, Badge, Modal (Dialogo), StatCard, DataTable,
-                                 Campo, BarChart, DonutChart, HeatMap, QrCode, EmptyState, Logo, Reveal…
+                                 Campo, BarChart, DonutChart, HeatMap, QrCode, EmptyState, Logo, Reveal,
+                                 Cargando (V4: Spinner, Cargando, Esqueleto, EsqueletoDeTabla, EsqueletoDePagina)…
     patterns/                    Organismos: SiteHeader/Footer, AccessForm/Modal, CheckInPanel, QrScanner,
                                  FichaDeSocio, SocioForms, ComprobanteForms, AjustesDeCobroForm,
                                  PaymentQrModal, ContenidoDePagoQr, RachaCalendario, ReportFilters,
@@ -319,15 +331,18 @@ src/
                                  RutinaForms (programa, rutina, ejercicio, asignación y marca de hecho),
                                  ClaseForms (clase, planes, horario, sesión, generar, cancelar, tomar asistencia),
                                  AgendaDeClases (FilaDeSesion, AgendaSemanal, BarraDeOcupacion),
-                                 ReservaForms (BotonDeReserva, CancelarReserva, AjustesDeReservaForm, ReservarParaSocio, MarcarQueVino)…
+                                 ReservaForms (BotonDeReserva, CancelarReserva, AjustesDeReservaForm, ReservarParaSocio, MarcarQueVino),
+                                 V4: DashboardNav (agrupada), Paginacion, FiltroConCarga (FormularioDeFiltro, BotonDeFiltrar),
+                                 PersonalForms (OtorgarRolForm, DesignarAdministradorForm)…
     sections/                    Secciones del sitio público (Hero, Plans, TrainingPlans, Products, Branches…)
     layouts/PageHero.tsx, icons/Icon.tsx
-  lib/                           cn, formato (fechas/importes/hoyEnZona), page-guards, tenant-links,
-                                 site-url, cobro, zip
+  lib/                           cn, formato (fechas/importes/hoyEnZona/momentoEnZona), page-guards, tenant-links,
+                                 site-url, cobro, zip, navegacion (V4: grupos del panel, entrada activa)
   styles/globals.css             Sistema de diseño: tokens, utilidades, impresión
 ```
 
-~20 000 líneas en `src`. Pruebas de dominio en `apps/web/tests` (`npm test`). `supabase/migrations/README.md` lista las migraciones;
+~22 000 líneas en `src`. Pruebas de dominio en `apps/web/tests` (`npm test`). `supabase/migrations/README.md` lista las migraciones
+y, desde V4, la carpeta guarda también los `.sql` nuevos;
 `docs/` guarda ADR, guías y runbooks (algunos describen solo V1: ver §12).
 
 ### 3.3 Capas y piezas clave
@@ -336,7 +351,7 @@ src/
 estática). Los repositorios de datos (`operationsRepository`,
 `membersRepository`, `receiptsRepository`, `reportsRepository`,
 `paymentSettingsRepository`, `branchesRepository`, `trainersRepository`,
-`exercisesRepository`, `trainingRepository`, `classesRepository`, `reservationsRepository`) **se crean por petición** con el cliente de
+`exercisesRepository`, `trainingRepository`, `classesRepository`, `reservationsRepository`, `staffRepository`) **se crean por petición** con el cliente de
 Supabase que lleva la cookie de quien pregunta: cachearlos serviría los datos
 del primer usuario a todos. Se importan de forma dinámica.
 
@@ -355,8 +370,29 @@ errores de Supabase a la interfaz. Los UPDATE usan `.select('id')` para
 distinguir «RLS lo bloqueó» (0 filas) de «se guardó».
 
 **Espacios de trabajo.** `espacioDeTrabajo(perfil)` decide por **permisos**, no
-por nombre de rol: `tenants.manage` → plataforma; `dashboard.read` → gimnasio;
-`trainers.self` → entrenador; resto → socio. Un rol nuevo llega solo a su sitio.
+por nombre de rol: `tenants.manage` → plataforma; `roles.manage` + `dashboard.read`
+→ administracion (V4); `dashboard.read` → gimnasio; `trainers.self` → entrenador;
+resto → socio. Un rol nuevo llega solo a su sitio.
+
+**Autorización revisada en V4** (sin sistema paralelo): la pantalla decide con los
+permisos de `v_my_profile`; la base, con los mismos permisos (`app.has_permission`)
+y el gimnasio de la sesión. No había inconsistencia entre el rol mostrado y el
+reconocido. La plataforma no pertenece a ningún gimnasio: `contextoDeAccion` exige
+que la sesión sea del gimnasio de la ruta, así que sus acciones propias
+(`plataforma/actions.ts`) comprueban `tenants.manage` y la RPC lo repite.
+
+**Navegación (V4).** `panel/_navegacion.ts` arma las entradas (flag + permiso +
+grupo `inicio`/`dia`/`socios`/`entrenamiento`/`gestion`). `DashboardNav` las
+muestra en una fila que envuelve si son ≤ 6; si son más, un menú por grupo en
+escritorio y un botón «Secciones» en pantallas estrechas. **Nunca desplazamiento
+horizontal**; ninguna entrada se oculta.
+
+**Listas largas (V4).** La base filtra, ordena, cuenta y corta: `range(desde, hasta)`
++ `count: 'exact'` con `core/domain/shared/paginacion.ts` (25 por página, tope 100,
+página de la URL validada) y el componente `Paginacion` (enlaces con los filtros,
+giro con `useLinkStatus`). Nada de traer 500 filas para ocultarlas en el navegador.
+Los contadores se piden a vistas agregadas (`v_customer_counts`,
+`v_attendance_patterns`), y los desplegables a `opciones()` (id, código, nombre).
 
 **Sede de trabajo (V3.0).** Quien atiende opera EN una sede. Se guarda en la
 cookie `gp-sucursal` (HttpOnly, por dispositivo, path `/<slug>`) y se resuelve
@@ -444,10 +480,13 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
    `public` + 10 en `storage`.
 3. **El tenant sale de la identidad:** `app.current_tenant_id()`,
    `app.current_customer_id()`, `app.current_app_user_id()`. Autorización:
-   `app.tenant_allows(tenant_id, 'modulo.accion')` y `app.has_permission`.
+   `app.has_permission` y, fuera de las políticas, `app.tenant_allows(tenant_id, 'modulo.accion')`.
+   **En una política (V4)**: `tenant_id = (select app.current_tenant_id()) and (select app.has_permission('x'))`
+   y todo el contexto envuelto en `(select …)`. Una función de contexto con una columna de la fila como
+   argumento se evalúa POR FILA (dos subconsultas cada vez): con 50 000 entradas, más de 20 s para contar.
 4. **Esquema `app` fuera de la API.** Las funciones `SECURITY DEFINER` viven ahí
    (PostgREST publica todo `public` como `/rpc`). **En `public` no hay ninguna
-   función DEFINER**: las 27 RPC son `SECURITY INVOKER` y corren bajo RLS.
+   función DEFINER**: las 27 RPC (31 tras V4) son `SECURITY INVOKER` y corren bajo RLS.
 5. **Claves foráneas compuestas** `(tenant_id, customer_id) → customers(tenant_id, id)`
    (y análogas con planes, membresías, pagos, **sucursales** y **usuarios**): el
    motor impide que una fila de un gimnasio apunte a un socio o a una sede de otro.
@@ -477,6 +516,13 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
     asistencia EN ESA sesión (`app.puede_tomar_asistencia`). Nombre del instructor
     y ocupación, por funciones DEFINER de un dato (`app.nombre_de_entrenador`,
     `app.asistentes_de_sesion`).
+15. **Otorgar un rol mira también su NIVEL (V4):** `roles.level` y
+    `app.puede_otorgar_nivel` en las políticas de `user_roles` y en las RPC. Con
+    `roles.manage` hasta el propio nivel; con `users.manage` solo por debajo. Nadie
+    toca sus roles ni su cuenta, ni la de un superior (`app.puede_administrar_cuenta`,
+    también en el UPDATE de `app_users`), y el gimnasio no se queda sin su último
+    administrador activo (disparador). El administrador es un rol de gimnasio: lo
+    ata a SU gimnasio la misma condición de `tenant_id` que al resto.
 
 ### 4.2 Tablas (40)
 
@@ -485,7 +531,7 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 | Plataforma | `tenants` | slug, nombre, `timezone`, `currency`, `status`, `is_demo` |
 | Sedes (V3.0) | `branches` | `code` único por tenant, nombre, dirección, teléfono, correo, `opening_hours` (texto), lat/long, `google_maps_url` (solo Google), `is_primary` (una por tenant, solo por RPC), `is_active` (sin DELETE). `tenant_slug` por disparador para la vitrina anónima |
 | | `user_branches` | N:M usuario↔sede con `is_active` (retirar = desactivar). FK compuestas a `branches` y `app_users` |
-| Identidad | `app_users`, `roles`, `permissions`, `role_permissions`, `user_roles` | `app_users.auth_user_id` → `auth.users`; `customer_id` vincula cuenta ↔ ficha |
+| Identidad | `app_users`, `roles`, `permissions`, `role_permissions`, `user_roles` | `app_users.auth_user_id` → `auth.users`; `customer_id` vincula cuenta ↔ ficha; `status` `invited`/`active`/`suspended` (suspendida = sin contexto de gimnasio). **V4:** `roles.level` (0-100) y rol `admin`; `user_roles.granted_by`/`granted_at` los pone la base; otorgar y quitar se auditan (`role.granted`, `role.revoked`, `account.status_changed`) |
 | Gimnasio | `customers` | Código correlativo (`MF-001`), se **archivan** (`deleted_at`), no se borran |
 | | `membership_plans` | `code` único por tenant, `duration_days`, `price` |
 | | `memberships` | Precio **congelado**; «por vencer» es **derivado** (vista), no se guarda |
@@ -522,7 +568,7 @@ Enums: `payment_method` (`cash, qr, transfer, card, other`), `attendance_method`
 (`manual, qr, kiosk`), `receipt_status`, `receipt_source`, estados de
 membresía/socio/tenant.
 
-### 4.3 Vistas (39, todas `security_invoker`)
+### 4.3 Vistas (39 aplicadas + 4 de V4 por aplicar, todas `security_invoker`)
 
 `v_my_profile` (perfil + roles + permisos de quien entra) · `v_customer_overview`
 · `v_customer_detail` · `v_memberships` (estado efectivo) ·
@@ -547,7 +593,12 @@ del gimnasio) · `v_class_attendance_log` · `v_class_stats` (ocupación 30 d po
 **V3.4:** `v_class_sessions` recreada con `reservadas`, `en_espera`, `ocupados`, `walkin_spots` y la reserva de quien
 mira (`mi_reserva_*`, `mi_posicion`) · `v_class_reservations` (con `estado_efectivo`: la falta derivada) ·
 `v_reservation_stats`, `v_reservation_overview`, `v_reservation_no_shows`, `v_class_attendance_report` y
-`v_class_reservation_report` (todas de gerencia).
+`v_class_reservation_report` (todas de gerencia) ·
+**V4 (migraciones por aplicar):** `v_customer_list` (lista de socios paginable, sin las siete subconsultas de la
+ficha; `days_since_visit` —36 500 si nunca vino— y `birthday_this_month` con la fecha del gimnasio) ·
+`v_customer_counts` (accesos rápidos de socios en una fila) · `v_attendance_patterns` (entradas de 30 días por día ISO,
+hora local, método y sede) · `v_staff` (cuentas del gimnasio con roles, nivel e `is_staff`). `v_customer_detail` se
+reescribe con `tenant_id` en cada subconsulta (mismas columnas; es la ficha de UN socio).
 
 > Los reportes leen de vistas y **no** de embebidos de PostgREST: con claves
 > foráneas compuestas hay dos relaciones posibles y el embebido falla.
@@ -580,8 +631,14 @@ mira (`mi_reserva_*`, `mi_posicion`) · `v_class_reservations` (con `estado_efec
 | `guardar_ajustes_de_reservas(…)` · `reservas_de_sesion(session)` · `mi_estado_de_reservas()` | Reglas del gimnasio (gerencia), lista de la sesión con nombres (columnas fijas) y bloqueo/activas/reglas del socio | `sin_permiso` |
 | `rotar_token_check_in(customer)` | Nuevo token QR (el disparador pone el valor aleatorio) | — |
 | `establecer_sucursal_primaria(branch)` | Cambia la sede principal (delega en `app.fijar_sucursal_primaria`, que repite el permiso) | `sin_permiso`, `sucursal_inactiva` |
+| **V4** `otorgar_rol(usuario, rol)` | Da `admin`/`manager`/`receptionist` a una cuenta activa del gimnasio de la sesión, si el nivel lo permite | `sin_permiso`, `rol_no_otorgable`, `cuenta_no_encontrada`, `cuenta_inactiva`, `ya_tiene_el_rol` |
+| **V4** `retirar_rol(usuario, rol)` | Quita ese rol (0 filas por RLS = `sin_permiso`, sin distinguir ajeno/superior/sin rol) | `sin_permiso`, `rol_no_otorgable`, `cuenta_propia`, `ultimo_administrador` |
+| **V4** `cambiar_estado_de_cuenta(usuario, activa)` | Suspende (`suspended`) o reactiva una cuenta que la sesión puede administrar | `sin_permiso`, `cuenta_propia`, `ultimo_administrador` |
+| **V4** `designar_administrador_de_gimnasio(tenant, correo)` | Solo plataforma: da `admin` a una cuenta activa ya registrada en ESE gimnasio. No crea cuentas | `sin_permiso`, `cuenta_no_encontrada`, `ya_tiene_el_rol` |
 
-**Esquema `app` (77):** reservas V3.4 (`ajustes_de_reservas`, `ocupacion_de_sesion` —el cupo compartido—,
+**Esquema `app` (77 aplicadas + 10 de V4):** administración V4 (`nivel_de_la_sesion`, `nivel_de_cuenta`,
+`puede_otorgar_nivel`, `puede_administrar_cuenta`, `preparar_rol_otorgado`, `conservar_un_administrador`, `auditar_rol`,
+`auditar_estado_de_cuenta`), rutinas V4 (`nombre_sin_etiqueta_del_dia`, `rutina_sin_dia_en_el_nombre`), reservas V3.4 (`ajustes_de_reservas`, `ocupacion_de_sesion` —el cupo compartido—,
 `reservas_bloqueadas_hasta` —faltas guardadas y derivadas—, `posicion_en_espera`, `promover_lista_de_espera`,
 `avisar_al_socio`, `describir_sesion`, `preparar_reserva`, `cambiar_estado_de_reserva`,
 `despues_de_cambiar_reserva`, `reserva_sigue_a_la_asistencia`, `reservas_siguen_a_la_sesion`,
@@ -626,35 +683,44 @@ binaria, `no-store`, CSP de sandbox) y `/[tenant]/pago/qr` (público, 410 si el
 QR venció). La CSP (`img-src 'self'`) bloquearía imágenes de otro dominio en
 silencio. `storage.protect_delete` impide borrar objetos por SQL.
 
-### 4.6 Roles y permisos (35 permisos)
+### 4.6 Roles y permisos (35 permisos; 36 con `roles.manage` de V4)
 
-| Permiso | Super admin | Gerente | Recepción | Entrenador | Socio |
-|---|:-:|:-:|:-:|:-:|:-:|
-| `tenants.manage` | ✅ | | | | |
-| `users.read`, `users.manage` | ✅ | ✅ | | | |
-| `audit.read` | ✅ | ✅ | | | |
-| `dashboard.read` | | ✅ | ✅ | | |
-| `customers.read`, `customers.create` | | ✅ | ✅ | | |
-| `customers.update`, `customers.archive` | | ✅ | | | |
-| `memberships.read`, `memberships.create` | | ✅ | ✅ | | |
-| `memberships.update` | | ✅ | | | |
-| `payments.read`, `payments.create` | | ✅ | ✅ | | |
-| `attendance.read`, `attendance.create` | | ✅ | ✅ | | |
-| `plans.read` | | ✅ | ✅ | ✅¹ | ✅ |
-| `routines.read` (programas, rutinas y rutinas asignadas) | | ✅ | ✅ | ✅ | |
-| `routines.manage`, `routines.assign` (crear y asignar; el entrenador, solo a SUS socios) | | ✅ | | ✅ | |
-| `training.log` (marcar ejercicios de un socio; el socio marca los suyos sin permiso) | | ✅ | | ✅ | |
-| `training.read` (métricas del gimnasio) | | ✅ | | | |
-| `exercises.read` (catálogo: el socio necesita leer los ejercicios de su rutina) | | ✅ | | ✅ | ✅ |
-| `plans.manage`, `settings.manage`, `reports.read` | | ✅ | | | |
-| `branches.manage` (administrar sedes y asignar personal) | | ✅ | | | |
-| `branches.all` (operar en todas las sedes sin asignación; vista global) | | ✅ | | | |
-| `trainers.read`, `trainers.manage` (equipo, cuenta, sedes, ausencias, asignaciones) | | ✅ | | | |
-| `trainers.self` (su perfil y sus socios asignados) | | | | ✅ | |
-| `exercises.manage` (catálogo y medios) | | ✅ | | | |
-| `classes.read` (calendario de clases con ocupación; el socio lo lee sin permiso, por ser del gimnasio) | | ✅ | ✅ | ✅ | |
-| `classes.manage` (clases, planes que las incluyen, horarios, generar y cancelar sesiones, métricas) | | ✅ | | | |
-| `classes.attend` (registrar y quitar asistencia: recepción en SUS sedes, el entrenador en SUS sesiones; desde V3.4 también reservar por un socio y cerrar la lista ahí) | | ✅ | ✅ | ✅ | |
+**Roles y nivel (`roles.level`, V4):** `super_admin` 100 (plataforma) · **`admin` 40** (Administración del
+gimnasio) · `manager` 30 · `receptionist` 20 · `trainer` 10 · `customer` 0.
+
+| Permiso | Super admin | **Admin (V4)** | Gerente | Recepción | Entrenador | Socio |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `tenants.manage` | ✅ | | | | | |
+| **`roles.manage`** (otorgar y quitar roles hasta el propio nivel) | | ✅ | | | | |
+| `users.read`, `users.manage` | ✅ | ✅ | ✅ | | | |
+| `audit.read` | ✅ | ✅ | ✅ | | | |
+| `dashboard.read` | | ✅ | ✅ | ✅ | | |
+| `customers.read`, `customers.create` | | ✅ | ✅ | ✅ | | |
+| `customers.update`, `customers.archive` | | ✅ | ✅ | | | |
+| `memberships.read`, `memberships.create` | | ✅ | ✅ | ✅ | | |
+| `memberships.update` | | ✅ | ✅ | | | |
+| `payments.read`, `payments.create` | | ✅ | ✅ | ✅ | | |
+| `attendance.read`, `attendance.create` | | ✅ | ✅ | ✅ | | |
+| `plans.read` | | ✅ | ✅ | ✅ | ✅¹ | ✅ |
+| `routines.read` (programas, rutinas y rutinas asignadas) | | ✅ | ✅ | ✅ | ✅ | |
+| `routines.manage`, `routines.assign` (crear y asignar; el entrenador, solo a SUS socios) | | ✅ | ✅ | | ✅ | |
+| `training.log` (marcar ejercicios de un socio; el socio marca los suyos sin permiso) | | ✅ | ✅ | | ✅ | |
+| `training.read` (métricas del gimnasio) | | ✅ | ✅ | | | |
+| `exercises.read` (catálogo: el socio necesita leer los ejercicios de su rutina) | | ✅ | ✅ | | ✅ | ✅ |
+| `plans.manage`, `settings.manage`, `reports.read` | | ✅ | ✅ | | | |
+| `branches.manage` (administrar sedes y asignar personal) | | ✅ | ✅ | | | |
+| `branches.all` (operar en todas las sedes sin asignación; vista global) | | ✅ | ✅ | | | |
+| `trainers.read`, `trainers.manage` (equipo, cuenta, sedes, ausencias, asignaciones) | | ✅ | ✅ | | | |
+| `trainers.self` (su perfil y sus socios asignados) | | | | | ✅ | |
+| `exercises.manage` (catálogo y medios) | | ✅ | ✅ | | | |
+| `classes.read` (calendario de clases con ocupación; el socio lo lee sin permiso, por ser del gimnasio) | | ✅ | ✅ | ✅ | ✅ | |
+| `classes.manage` (clases, planes que las incluyen, horarios, generar y cancelar sesiones, métricas) | | ✅ | ✅ | | | |
+| `classes.attend` (registrar y quitar asistencia: recepción en SUS sedes, el entrenador en SUS sesiones; desde V3.4 también reservar por un socio y cerrar la lista ahí) | | ✅ | ✅ | ✅ | ✅ | |
+
+**Quién otorga qué (V4):** Administración otorga y quita `admin`, `manager` y `receptionist` a cuentas de nivel ≤ 40
+(no a sí misma). Gerencia solo `receptionist` y a cuentas por debajo de su nivel (**ya no nombra gerentes**).
+`trainer` se otorga al vincular el perfil en Entrenadores; `customer` nace con el registro. La plataforma designa el
+primer administrador de cada gimnasio.
 
 V3.4 no agrega permisos: el socio reserva y cancela lo suyo SIN permiso (política «self»), el
 personal usa `classes.attend` en la sesión donde opera y gerencia `classes.manage` (reglas,
@@ -681,8 +747,16 @@ justificar, reservar por encima de topes y bloqueo).
 con su propósito en [`supabase/migrations/README.md`](supabase/migrations/README.md).
 **Viven solo en el servidor**: materializarlas requiere `npx supabase link` +
 `npx supabase db pull`, que pide la contraseña de la base (no disponible en la
-sesión). Deuda #1 de §12. Toda migración nueva: `apply_migration` por MCP con
-nombre `v3_x_…` en snake_case español, y añadir su fila al README de migraciones.
+sesión). Deuda #1 de §12.
+
+**V4: 5 migraciones versionadas como archivo y SIN APLICAR** en `supabase/migrations/`
+(`20260914010000_v4_rls_con_contexto_evaluado_una_vez_por_consulta`, `…010100_v4_lista_y_conteos_de_socios_en_la_base`,
+`…010150_v4_patrones_de_asistencia_agregados_en_la_base`, `…010200_v4_rol_administrador_del_gimnasio_y_jerarquia`,
+`…010300_v4_rutinas_sin_el_dia_repetido_en_el_nombre`). Se aplican EN ESE ORDEN; tras aplicarlas serán 54.
+
+**Toda migración nueva desde V4:** archivo `supabase/migrations/AAAAMMDDHHMMSS_v4_…sql` (snake_case español) +
+`apply_migration` por MCP con el mismo nombre (con autorización del usuario: la base es de producción) + su fila en el
+README de migraciones.
 
 ---
 
@@ -701,11 +775,13 @@ nombre `v3_x_…` en snake_case español, y añadir su fila al README de migraci
 | `/[tenant]/pago/datos` · `/pago/qr` | handler | `enablePayments` | JSON e imagen del QR de cobro que toca (`?plan=<código>`; imagen por `?qr=<id>` del mismo gimnasio). Cliente **anónimo**, elección de `resolverCobroQr` (caché 60 s / 300 s; 410 vencido) |
 | `/[tenant]/panel` | dinámica | sesión | Reparte al espacio que corresponde |
 | `…/panel/socio` | dinámica | sesión | Panel del socio |
-| `…/panel/gimnasio` | dinámica | `dashboard.read` | Dashboard de gerencia y recepción |
-| `…/panel/plataforma` | dinámica | `tenants.manage` | Resumen de gimnasios (sin datos personales) |
-| `…/panel/asistencia` | dinámica | `enableAttendance` + `attendance.read` | Check-in, estadísticas, historial |
-| `…/panel/socios`, `/nuevo`, `/[id]` | dinámica | `enableMemberManagement` + `customers.*` | Lista, alta, ficha completa |
-| `…/panel/comprobantes`, `/[id]/imagen` | dinámica | `enablePayments` + `payments.read` | Bandeja, revisión, ZIP |
+| `…/panel/administracion` | dinámica | `roles.manage` (**V4**) | Resumen de Administración: socios activos, ingresos, entradas y comprobantes; personal por rol y cuentas suspendidas; todos los módulos contratados agrupados; últimos cambios administrativos (`audit_log`, hora del gimnasio); accesos a «Operación del día» y «Personal y roles» |
+| `…/panel/personal` | dinámica | `users.read` (**V4**; la plataforma se redirige a su panel) | Personal y roles: resumen, vistas Personal/Todas/Suspendidas, búsqueda, cuentas paginadas con roles y estado; «Dar rol», «Quitar …», «Suspender/Reactivar» solo donde la jerarquía lo permite |
+| `…/panel/gimnasio` | dinámica | `dashboard.read` | Dashboard de gerencia y recepción («Operación del día» para Administración). V4: contadores de socios desde `v_customer_counts` |
+| `…/panel/plataforma` | dinámica | `tenants.manage` | Resumen de gimnasios (sin datos personales). V4: «Designar» administrador por gimnasio (correo de una cuenta ya registrada) |
+| `…/panel/asistencia` | dinámica | `enableAttendance` + `attendance.read` | Check-in, estadísticas (V4: agregadas en la base, 30 días reales), historial paginado (25) con filtros |
+| `…/panel/socios`, `/nuevo`, `/[id]` | dinámica | `enableMemberManagement` + `customers.*` | Lista paginada (25) con búsqueda, plan y accesos rápidos contados por la base (en rejilla, sin scroll horizontal), alta, ficha completa |
+| `…/panel/comprobantes`, `/[id]/imagen` | dinámica | `enablePayments` + `payments.read` | Bandeja paginada (12 tarjetas), totales por importe, revisión, ZIP que pide la lista filtrada al pulsar (tope 500) |
 | `…/panel/cobros` | dinámica | `enablePayments` + `settings.manage` | Datos y modalidad, QR general y QR de cada plan activo (libre/exacto, vencimiento, «se cobra con»), eliminar |
 | `…/panel/sucursales`, `/[id]` | dinámica | `enableMultiBranch` + `branches.manage` | Sedes con indicadores, comparativa, alta/edición, activar/desactivar, principal, personal por sede |
 | `…/panel/entrenadores`, `/[id]` | dinámica | `enableTrainers` + `trainers.read` (escribir: `trainers.manage`; regla del plan: `plans.manage`) | Equipo con disponibilidad de hoy; perfil, cuenta, sedes, ausencias (horas/turno/día/periodo), socios asignados según plan, historial; «Entrenador según el plan» |
@@ -717,9 +793,11 @@ nombre `v3_x_…` en snake_case español, y añadir su fila al README de migraci
 | `…/panel/clases` | dinámica | `enableClasses` + `classes.read` (gestión: `classes.manage`) | Agenda de hoy y de la semana (filtro por sede y «solo las que dicto»), catálogo con planes, nueva clase, sesión o evento, generar sesiones; gerencia: conclusiones, ocupación por clase y mapa día × hora |
 | `…/panel/clases/[id]` | dinámica | `enableClasses` + `classes.read` | Planes que incluyen la clase, horario semanal (agregar varios días, retirar), próximas sesiones y últimas dos semanas, datos, archivar |
 | `…/panel/clases/sesion/[id]` | dinámica | `enableClasses` + `classes.read` (registrar: `classes.attend`) | Ocupación, asistentes (hora, método, quién registró), buscador por nombre/código/QR con «Registrar» o el motivo por el que no puede, editar y cancelar (gerencia). **V3.4:** lista de reservas con «Vino», «Cancelar», «Justificar», «Cerrar lista» y «Reservar para un socio» |
-| `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV |
+| `…/panel/reportes`, `/[reporte]`, `/[reporte]/csv` | dinámica | `enableReports` + `reports.read` + permiso del reporte | Reportes con filtros, impresión y CSV. V4: totales, gráfico y CSV con todas las filas (tope 2 000, avisado); la tabla pinta 50 por página y `?completa=1` («Ver todas las filas para imprimir») las pinta todas |
 
-Build: 62 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
+Todas las rutas del panel muestran `panel/loading.tsx` (esqueleto) mientras cargan (V4).
+
+Build: 66 páginas generadas; solo `/panel/*`, `/pago/*` y `/auth/confirmar` son dinámicas.
 `/[tenant]`, `/[tenant]/sucursales`, `/[tenant]/clases` y `/[tenant]/contacto` son SSG con ISR de 300 s
 (las acciones de clases revalidan `/[tenant]/clases` al guardar).
 
@@ -889,6 +967,32 @@ qué músculo. Las vistas agregan; `training.ts` interpreta:
 7. **Reportes:** `asistencia-a-clases` (con «con reserva») y `reservas-de-clases` (resultado de cada reserva), con CSV.
 8. **Catálogo:** 46 ejercicios en Mítico y un segundo programa, «Fuerza principiantes · 2 días».
 
+**Administración del gimnasio (V4).** Ver [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
+1. **Primer administrador:** la persona se registra en el sitio del gimnasio (nace como socio) y confirma su correo;
+   la plataforma, en `/panel/plataforma` → «Designar», escribe ese correo. La RPC exige cuenta activa DE ESE gimnasio.
+2. **Al entrar**, Administración llega a `/panel/administracion` (resumen) y tiene todos los módulos contratados;
+   «Operación del día» es el dashboard de gimnasio de siempre.
+3. **Sumar personal:** la persona se registra en el sitio; en «Personal y roles» → «Todas las cuentas» se la busca y
+   se le da Recepción, Gerencia o Administración. Entrenador se da vinculando su perfil en «Entrenadores».
+4. **Quitar un rol o suspender** una cuenta: solo sobre cuentas por debajo (Gerencia) o hasta el propio nivel
+   (Administración), nunca la propia, y nunca dejando al gimnasio sin administrador activo. Una cuenta suspendida
+   no tiene contexto de gimnasio: la base no le entrega nada. Cada cambio queda en `audit_log` y en el resumen.
+5. **Aislamiento:** el administrador de Mítico no ve ni toca nada de Aurora (misma condición `tenant_id` que el
+   resto; batería V4 bloque 3).
+
+**Listas, carga y navegación (V4).**
+1. **Paginación:** socios, bitácora de asistencia y personal de a 25, comprobantes de a 12, tabla de reportes de a 50.
+   Buscar o filtrar vuelve a la página 1; los enlaces conservan los filtros; una página inexistente muestra la lista
+   vacía con su total.
+2. **Carga:** al cambiar de sección aparece el esqueleto; al paginar gira el número pulsado; al filtrar el botón dice
+   «Buscando…» y se deshabilita; el ZIP dice «Preparando la lista…» y luego «Descargando N de M…».
+3. **Navegación:** con más de 6 secciones, grupos Día a día · Socios · Entrenamiento · Gestión (la pestaña del grupo
+   muestra la sección actual y suma insignias); en móvil, «Secciones». Esc o un toque fuera cierra el menú.
+
+**Rutinas (corrección V4).** El nombre se guarda sin la etiqueta del día (la base la quita al guardar, también en
+las rutinas asignadas) y todas las pantallas usan `tituloDeRutina`: «Día A · Empuje», nunca «Día A · Día A · Empuje».
+La ayuda del formulario ya no sugiere escribir el día en el nombre.
+
 **Gestión de socios** (`socios/actions.ts`): `registrarSocio`,
 `actualizarSocio`, `archivarSocio`, `restaurarSocio`, `rotarQrDeSocio`,
 `desvincularCuentaDeSocio`, `venderMembresia`, `actualizarMembresia`,
@@ -954,6 +1058,14 @@ los mismos filtros, BOM UTF-8, comillas en todo campo y neutraliza fórmulas
   `CLASE_DE_CONTROL`; errores por campo devueltos por la acción
   (`EstadoDeFormulario`); los datos se vuelven a validar en el servidor.
 - **Impresión:** `@media print` en `globals.css` + `data-print="hide"`.
+- **Navegación del panel (V4):** `DashboardNav` agrupada (§3.3). Regla: **ninguna fila del panel se desplaza en
+  horizontal** —usar rejillas que envuelven (accesos rápidos de socios) o menús—; las tablas anchas sí se desplazan
+  dentro de su propia caja.
+- **Carga (V4):** `ui/Cargando.tsx` — `Spinner` (respeta `prefers-reduced-motion`), `Cargando` (con `role=status`),
+  `Esqueleto`, `EsqueletoDeTabla`, `EsqueletoDePagina`; `panel/loading.tsx` por sección. Botones que esperan se
+  deshabilitan con `aria-busy`. La carga es mitigación: primero se optimiza la consulta.
+- **Listas (V4):** `Paginacion` (tramo «26–50 de 312», primera/última/vecinas, objetivos de 44 px) y
+  `FiltroConCarga` (`next/form` GET + botón con estado). Iconos nuevos: `chevronDown/Left/Right`, `key`.
 
 ---
 
@@ -961,7 +1073,7 @@ los mismos filtros, BOM UTF-8, comillas en todo campo y neutraliza fórmulas
 
 | Servicio | Detalle |
 |---|---|
-| **Vercel** | Equipo `zp-software-fast-solutions` (`team_isXk9iHT5amXqAUJlB27m9uf`) · proyecto `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`) · Root Directory `apps/web` · alias público `gym-platform-alpha.vercel.app` |
+| **Vercel** | Equipo `zp-software-fast-solutions` (`team_isXk9iHT5amXqAUJlB27m9uf`). **Dos proyectos:** `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`, Root Directory `apps/web`, alias público `gym-platform-alpha.vercel.app`, último despliegue V3.2) y **`web`** (`prj_xaWtcja3zUtZBrGT7exVgatwVlwJ`), al que está enlazado hoy `apps/web/.vercel` (lo enlazó el usuario; su producción: `web-2cjifj7dc-…vercel.app`, V3.4). V4 está como **vista previa** en `web`: `web-98gk5f3oe-zp-software-fast-solutions.vercel.app` |
 | **GitHub** | `ZPSoftwareFastSolutions/SoftwareGym` (**público**) · rama por defecto `main` |
 | **Supabase** | Proyecto `dnclwawnjnzqqxgsuhpn` · MCP conectado (SQL, migraciones, advisors) |
 
@@ -979,6 +1091,12 @@ código) y la Production Branch no es la rama de trabajo. Arreglo en el panel
 de Vercel: apagar Comments/Toolbar y fijar la Production Branch. El conector
 MCP de Vercel da 403 sobre el equipo; la CLI sí lo alcanza. Las URL con hash
 piden login de Vercel: **se comparte siempre el alias**.
+
+**Vista previa antes que producción (V4).** `npx vercel deploy --yes` (sin `--prod`) publica una URL de vista previa
+que no toca producción. Es lo que se usa cuando el código depende de migraciones aún no aplicadas: la vista previa
+usa la MISMA base, así que sus pantallas nuevas fallan igual hasta migrar, pero producción sigue intacta. `vercel curl`
+sobre una vista previa protegida no sirve para medir códigos de estado (devolvió 200 donde se esperaban 307/404).
+CLI con sesión el 2026-09-14 (`zapasoftwarefastsolutions-1320`).
 
 **Variables de entorno: ninguna es obligatoria.** La URL y la clave publicable
 de Supabase tienen valor por defecto en `infrastructure/auth/supabase.config.ts`
@@ -1014,7 +1132,8 @@ terminal la renueva. Usar `GIT_TERMINAL_PROMPT=0` en la sesión.
 main (8a0208a, solo el commit inicial)
  └ feat/v1-public-site ─ feat/v2-public-site ─ feat/v2.1-operacion ─ feat/v2.2-gestion
    └ feat/v3.0-multisucursal ─ feat/v3.1-entrenadores-ejercicios ─ feat/v3.2-rutinas-programas
-     └ feat/v3.3-clases-sesiones ─ feat/v3.4-reservas  ← VIGENTE
+     └ feat/v3.3-clases-sesiones ─ feat/v3.4-reservas
+       └ feat/v4-seradmingym  ← VIGENTE (V4: administración, rendimiento, navegación)
 ```
 
 **Entorno de esta máquina (sesión V3.3).** No hay Node en el PATH: se usa el
@@ -1027,7 +1146,12 @@ type string»). La CLI de Vercel estaba sin sesión.
 local de `feat/v1-public-site` va 2 commits por delante de su remoto (también
 contenidos en v2.2). **Nada se ha fusionado a `main`**: decidir con el usuario
 si se abre PR de la cadena antes o después de V3. **V3.3 sale de
-`feat/v3.2-rutinas-programas`; V3.4 salió de `feat/v3.3-clases-sesiones`; V4 saldrá de `feat/v3.4-reservas`.**
+`feat/v3.2-rutinas-programas`; V3.4 salió de `feat/v3.3-clases-sesiones`; V4 (`feat/v4-seradmingym`, nombre pedido
+por el usuario) salió de `feat/v3.4-reservas`.**
+
+**Permisos de la sesión del asistente (V4).** El clasificador de acciones bloqueó `apply_migration` (y algunas
+lecturas de definiciones de funciones de Auth) sobre la base de producción. No se esquiva: las migraciones se
+escriben como archivo, se pide autorización explícita y se aplican después.
 
 **Push desde esta máquina (2026-09-12).** Git Credential Manager ya tiene la cuenta
 `ZPSoftwareFastSolutions` (se autorizó en el navegador con `git credential-manager github login
@@ -1047,6 +1171,10 @@ Con `credential.username` fijado en `.git/config`, `git push` funciona sin pregu
 | Socio (Mítico) | `juan.perez@demo.miticofitness.com` | `Demo.Mitico.2026` |
 
 Otros 9 socios: `nombre.apellido@demo.miticofitness.com` / `Demo.Mitico.2026`.
+
+**Administración (V4):** no hay cuenta de demostración con rol `admin` (el asistente no crea cuentas ni
+contraseñas). Tras aplicar las migraciones, se designa desde `/mitico/panel/plataforma` con el correo de una cuenta
+existente de Mítico (p. ej. la de gerencia, que entonces verá «Administración»).
 
 > ⛔ **Contraseñas predecibles en un repositorio público.** Solo para enseñar el
 > producto. Antes de cualquier uso real con datos de socios hay que borrar estas
@@ -1111,7 +1239,8 @@ aviso que V3.2: la ocupación que muestran las métricas es de la semilla.
 cd apps/web
 npm run typecheck    # incluye apps/web/tests
 npm test             # node --test, sin dependencias: dominio puro (sedes, racha, cobro QR,
-                     # entrenadores, ejercicios, rutinas, métricas, clases y reservas) — 153 pruebas
+                     # entrenadores, ejercicios, rutinas, métricas, clases, reservas y, desde V4,
+                     # jerarquía de roles, título de rutina, paginación, navegación y patrones) — 174 pruebas
 npm run build        # valida también la configuración de todos los tenants
 npm audit            # debe dar 0
 ```
@@ -1215,6 +1344,19 @@ Dos trampas que ya dieron falsos positivos:
 2. **Las funciones de contexto son `STABLE`**: dentro de UNA sentencia se
    cachean. Medir cada rol en su propia sentencia (en PL/pgSQL cada sentencia
    ya es independiente; con `UNION ALL` no).
+
+Batería V4 (**escrita, pendiente de ejecutar**: requiere aplicar antes las migraciones de V4):
+[`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
+Bloques: 0) huella md5 de filas visibles por rol antes/después de reescribir las políticas (valores de antes
+guardados en el archivo); 1) rendimiento con 2 000 socios y 50 000 entradas (antes: > 20 s, 34 s, 57 s y timeout);
+2) el rol `admin` tiene lo de gerencia + `roles.manage` y nada de plataforma; 3) un administrador de Mítico opera
+todo, otorga y quita, no se toca a sí mismo y no ve ni escribe en Aurora; 4) gerencia no nombra gerentes ni
+administradores, no se autoinserta `admin` ni suspende a un superior; 5) recepción, socio, entrenador y anónimo;
+6) la plataforma designa administrador y sigue sin leer socios; 7) último administrador; 8) rutinas sin el día repetido.
+
+**Medir con volumen, sin dejar rastro (V4).** Insertar datos de carga dentro de un `do $$ … raise exception $$`,
+cambiar a la sesión simulada y medir con `clock_timestamp()`: la excepción final revierte todo. Así se encontró
+que el cuello de botella eran las políticas y no el frontend.
 
 ### 9.3 Tras desplegar (sobre el alias)
 
@@ -1330,6 +1472,14 @@ ningún chunk servido.
 40. **Un solo cupo**: asistentes + reservas que no llegaron; quien reservó entra a su lugar; la reserva no toma los lugares sin reserva.
 41. **Las faltas se derivan** de la sesión terminada sin asistencia; «Cerrar lista» solo las escribe. Justificar las saca del conteo.
 42. **La lista de espera se mueve sola y avisa**; cancelar una sesión cancela sus reservas sin falta y avisa.
+43. **«Admin/Superadmin» es un rol DE GIMNASIO (`admin`), no la plataforma** (ADR 0010): todo lo de gimnasio + `roles.manage`; `super_admin` sigue sin leer socios (decisión 17).
+44. **La jerarquía de roles es un número en la base (`roles.level`)**: hasta el propio nivel con `roles.manage`, por debajo con `users.manage`; nunca uno mismo ni un superior; nunca sin último administrador.
+45. **El primer administrador lo designa la plataforma sobre una cuenta ya registrada**; nadie crea cuentas ni contraseñas desde el panel.
+46. **Políticas con el contexto en `(select …)`**, evaluado una vez por consulta; nunca una función de contexto con una columna de la fila como argumento.
+47. **Paginar y contar en la base** (`range` + `count`, vistas agregadas); nunca traer cientos de filas para ocultarlas. Excepción declarada: reportes, cuyos totales necesitan el periodo entero (tope 2 000 avisado; la tabla sí pagina).
+48. **Navegación sin desplazamiento horizontal**: hasta 6 entradas a la vista; más, agrupadas en menús. Ninguna opción se quita.
+49. **Un dato, un campo** (rutinas): la etiqueta del día no se repite en el nombre; la base normaliza y el título se arma en un solo sitio.
+50. **Migraciones de V4 en adelante: archivo versionado + autorización del usuario antes de aplicarlas a producción.**
 
 ---
 
@@ -1341,7 +1491,10 @@ ningún chunk servido.
    dnclwawnjnzqqxgsuhpn` + `npx supabase db pull` (lo hace una persona con la
    contraseña de la base). Mientras tanto, el inventario vive en
    `supabase/migrations/README.md`.
-2. **Tests parciales, sin CI.** V3.0 añadió `npm test` y hoy son **153 pruebas** (V3.4 suma ventana,
+0. **V4 · Aplicar las 5 migraciones de `supabase/migrations/2026091401*.sql`** y correr la batería V4 antes de
+   promover V4 a producción (§13b). Sin ellas, la vista previa de V4 falla en socios, asistencia, comprobantes,
+   personal, administración y dashboard.
+2. **Tests parciales, sin CI.** V3.0 añadió `npm test` y hoy son **174 pruebas** (V4 suma jerarquía de roles, título de rutina, paginación, navegación agrupada y patrones de asistencia; V3.4 suma ventana,
    cancelación tardía, cupo y espera, bloqueo, reglas y avisos personales)
    (sedes, racha con varias sedes, catálogo y CSV de reportes, selección de QR e
    importes 180/179/181, entrenadores y ausencias, política de medios, la lectura
@@ -1435,6 +1588,14 @@ ningún chunk servido.
     (decisión, ADR 0007, pero conviene un aviso en pantalla); `v_training_weekday` mira 90 días
     fijos y `v_training_*` usan `app.hoy_del_gimnasio` en cada fila (suficiente con miles de
     registros, no con millones).
+10k. **V4 — pendiente acotado:** el catálogo de ejercicios no pagina (tope 500 y URLs firmadas en lote: bien para
+    cientos, no miles); los reportes siguen pidiendo hasta 2 000 filas para agregar en el servidor web (mudar sus
+    agregados a vistas si un gimnasio los supera; hoy la pantalla avisa al llegar al tope); `/panel/sucursales`,
+    entrenadores y clases no paginan (volúmenes chicos por naturaleza); las políticas de `storage.objects` siguen con
+    llamadas por fila (pocas filas por subida); `v_customer_detail` y `v_customer_list` llaman a
+    `app.hoy_del_gimnasio` por fila (inlinable, barato; revisar con decenas de miles de socios); los desplegables de
+    socios cortan en 1 000 (más allá conviene un buscador); no hay cuenta demo con rol `admin`; revisión humana con
+    sesión de Administración, Personal y roles, navegación agrupada en 375 px, paginación y filtros.
 10j. **V3.4 — pendiente acotado:** avisos solo en el panel (sin WhatsApp, correo ni recordatorio el día anterior: V4);
     sin reservas recurrentes («todos los lunes»); los feriados no cierran reservas; cambiar `walkin_spots` de una clase
     no promueve la espera de sus sesiones futuras (sí subir el cupo de una sesión); `v_reservation_overview` recorre
@@ -1496,10 +1657,12 @@ cargaron cuatro.
 
 ---
 
-## 13. V4 — punto de partida
+## 13. Después de V4 — punto de partida (V4.x)
+
+La primera entrega de V4 fue **administración del gimnasio y rendimiento** (§13b). Lo que sigue del roadmap.
 
 **Alcance (roadmap):** suscripciones, licencias, facturación e integraciones. Lo
-que V3 dejó pedido para V4: avisos por WhatsApp o correo (hoy solo en el panel:
+que V3 dejó pedido: avisos por WhatsApp o correo (hoy solo en el panel:
 `customer_messages` ya es la cola de lo que habría que enviar), recordatorio de
 clase el día anterior, cobro recurrente de membresías y licencia por gimnasio
 (las capacidades `features` hoy viven en el archivo del tenant: §12.11).
@@ -1509,10 +1672,16 @@ personales con `kind`, `session_id` y `read_at`; reglas por gimnasio en la base
 (`tenant_reservation_settings`), el patrón para mudar otras configuraciones
 operativas; reportes con capacidad contratada por reporte.
 
-**Patrón establecido (V3.0 a V3.4 lo aplicaron de punta a punta):**
+**Lo que V4 deja listo:** jerarquía de roles en la base (un rol nuevo = una fila en `roles` con su `level` y sus
+permisos), `v_staff` y auditoría de roles, paginación reutilizable (`paginacion.ts` + `Paginacion`), navegación
+agrupada que acepta módulos nuevos con solo declarar su `grupo`, estados de carga comunes y la carpeta de migraciones
+con archivos versionados.
 
-1. **Rama** `feat/v4-…` desde `feat/v3.4-reservas`.
-2. **Base:** tablas con `tenant_id`, RLS + políticas por `app.tenant_allows`,
+**Patrón establecido (V3.0 a V4 lo aplicaron de punta a punta):**
+
+1. **Rama** `feat/v4-…` desde `feat/v4-seradmingym` (una vez aplicadas sus migraciones).
+2. **Base:** migración como ARCHIVO en `supabase/migrations/` y aplicada con autorización; tablas con `tenant_id`,
+   RLS + políticas con el contexto en `(select …)` (§4.1.3),
    FK compuestas (`(tenant_id, x)`), vistas `security_invoker`, grants por
    columna, autoría por default de sesión, auditoría por disparador, RPC
    invocador para operaciones de varias tablas; DEFINER solo en `app` y
@@ -1524,9 +1693,9 @@ operativas; reportes con capacidad contratada por reporte.
    `apps/web/tests` → **puerto** → **adaptador** Supabase → composition root.
 4. **Rutas** `/[tenant]/panel/<modulo>` con `loadTenantPage([... flag])` +
    `exigirPermiso`; acciones con `contextoDeAccion`; entrada en
-   `panel/layout.tsx` por flag **y** permiso; 404 con la flag apagada.
+   `panel/_navegacion.ts` por flag **y** permiso, con su `grupo`; 404 con la flag apagada.
 5. **UI** con `StatCard`, `DataTable`, `Modal`, `AccionConEstado`, `FichaDeSocio`,
-   `FilaDeSesion`/`AgendaSemanal`.
+   `FilaDeSesion`/`AgendaSemanal`; toda lista que crezca, con `Paginacion` + `range`/`count` y `FiltroConCarga`.
 6. Encender la flag **solo** en Mítico; Aurora sigue en 404.
 7. Verificar (§9), actualizar `supabase/migrations/README.md`, este archivo y, si
    la decisión es de fondo, un ADR.
@@ -1567,23 +1736,35 @@ Ver [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimie
 - **Navegación** agrupada (`lib/navegacion.ts`, `panel/_navegacion.ts`, `DashboardNav`): sin desplazamiento horizontal.
 - **Carga**: `panel/loading.tsx`, `ui/Cargando.tsx`, `FiltroConCarga`, ZIP de comprobantes bajo demanda.
 
+**Diagnóstico que dio origen a V4** (medido, no supuesto):
+- Autorización: coherente entre pantalla y base; el hueco era de NIVEL (política de `user_roles`), no de rol mostrado.
+- Rutinas: la etiqueta del día estaba también en el nombre (semillas de V3.2/V3.4 y ayuda del formulario).
+- Lentitud: políticas por fila (> 20 s para contar 50 000 entradas), fichas completas para contar, listas sin paginar
+  cortadas en silencio (500/800/2 000), estadísticas de asistencia de las últimas 500 filas.
+- Scroll horizontal: 13 pestañas de gerencia en una fila con `overflow-x-auto` y accesos rápidos de socios igual.
+
 **Estado de verificación (2026-09-14):** typecheck limpio · **174 pruebas** (21 nuevas) · build de 66 páginas ·
-`npm audit` 0 · greps de arquitectura, cliente y voseo limpios. **Pendiente, en este orden:**
+`npm audit` 0 · greps de arquitectura, cliente y voseo limpios. Commit `1860fda` (código) en `feat/v4-seradmingym`.
+**Desplegado solo como vista previa** en el proyecto Vercel `web`:
+`https://web-98gk5f3oe-zp-software-fast-solutions.vercel.app` (estado Ready). Producción sin tocar.
+
+**Pendiente, en este orden:**
 1. Aplicar las 5 migraciones de `supabase/migrations/2026091401*.sql` (la sesión no tuvo permiso para DDL en
-   producción). Antes: bloque 0 del runbook (huella); después: bloques 0 a 8 de
-   [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
+   producción: pedir autorización o que el usuario las aplique). Antes: bloque 0 del runbook (huella); después:
+   bloques 0 a 8 de [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
+   Si una prueba falla, corregir con una migración nueva (no editar las ya aplicadas).
 2. Designar un administrador de Mítico desde `/mitico/panel/plataforma` (cuenta ya registrada).
-3. Recién entonces desplegar: **el código de V4 lee vistas y RPC que solo existen tras las migraciones**; desplegarlo
-   antes rompe socios, asistencia, comprobantes y personal.
+3. Recién entonces `npx vercel deploy --prod --yes`: **el código de V4 lee vistas y RPC que solo existen tras las
+   migraciones**; en producción antes de migrar rompe socios, asistencia, comprobantes, personal, administración y dashboard.
 4. Revisión humana con sesión: navegación en escritorio y 375 px, Personal y roles con administración y gerencia,
-   paginación y filtros, rutinas sin «Día A · Día A».
+   paginación y filtros, rutinas sin «Día A · Día A», ZIP de comprobantes.
 
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
-| V4 administración | 2026-09-14 | rama `feat/v4-seradmingym` | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (con 50 000 entradas: > 20 s → medir tras aplicar), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; estados de carga. ADR 0010; 174 pruebas. **Migraciones escritas, sin aplicar** |
+| V4 administración | 2026-09-14 | `1860fda` + docs (rama `feat/v4-seradmingym`) · vista previa Vercel `web-98gk5f3oe-…` | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (con 50 000 entradas: > 20 s → medir tras aplicar), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; estados de carga. ADR 0010; 174 pruebas. **Migraciones escritas, sin aplicar** |
 | V1 | 2026-09-08/09 | `27d334e`, `38b83fd` | Sitio público multi-tenant, temas, flags, Next 16 |
 | V1 bonus | 2026-09-09 | `f3ea967`, `2880c8d` | Datos reales de Mítico: 13 paquetes en 4 grupos, 4 programas, 12 productos |
 | V2 base | 2026-09-09 | `3702e81`, `048c830`, `3944db3` | Esquema multi-tenant con RLS; deuda de auditoría; sitemap |
