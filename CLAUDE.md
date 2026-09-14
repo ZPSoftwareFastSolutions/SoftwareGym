@@ -1092,12 +1092,15 @@ de Vercel: apagar Comments/Toolbar y fijar la Production Branch. El conector
 MCP de Vercel da 403 sobre el equipo; la CLI sí lo alcanza. Las URL con hash
 piden login de Vercel: **se comparte siempre el alias**.
 
-**Despliegue desde Git en el proyecto `web` (corregido 2026-09-14).** El push a `feat/v4-seradmingym` fallaba en
-`npm install` con «Could not read package.json»: el proyecto se creó por CLI desde `apps/web` y quedó con **Root
-Directory = `.`**, pero Git clona el repositorio entero. Se corrigió SOLO ese ajuste a **`apps/web`** (igual que
-`gym-platform`) con `npx vercel api /v9/projects/<id>?teamId=<equipo> -X PATCH -f rootDirectory=apps/web`, sin tocar
-archivos, comandos ni ramas. Production Branch del proyecto `web`: `main` (los pushes a ramas de trabajo son vista
-previa). Si otro proyecto enlazado vuelve a fallar así, revisar primero el Root Directory.
+**Proyecto `web`: un Root Directory no sirve para los dos flujos (2026-09-14).** El proyecto se creó por CLI desde
+`apps/web` y tiene **Root Directory = raíz**. Eso es lo que necesita el **flujo de trabajo de este proyecto**
+(`npx vercel deploy` ejecutado DENTRO de `apps/web`, que sube esa carpeta como raíz). El despliegue automático por
+push de Git, en cambio, clona el repositorio entero y falla en `npm install` («Could not read package.json»).
+Se probó poner Root Directory = `apps/web`: arregla Git pero **rompe la CLI desde `apps/web`** («The specified Root
+Directory "apps/web" does not exist»), así que se devolvió a la raíz. **Regla:** en el proyecto `web` se despliega con
+la CLI desde `apps/web`; los fallos del despliegue automático por push son esperables y no afectan nada (Production
+Branch `main`). Hacer funcionar los dos exigiría otro proyecto de Vercel enlazado a Git o desplegar la CLI desde la
+raíz del repositorio: decisión del usuario, no se cambia sin pedirlo.
 
 **Vista previa antes que producción (V4).** `npx vercel deploy --yes` (sin `--prod`) publica una URL de vista previa
 que no toca producción. Es lo que se usa cuando el código depende de migraciones aún no aplicadas: la vista previa
@@ -1752,8 +1755,10 @@ Ver [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimie
 
 **Estado de verificación (2026-09-14):** typecheck limpio · **174 pruebas** (21 nuevas) · build de 66 páginas ·
 `npm audit` 0 · greps de arquitectura, cliente y voseo limpios. Commit `1860fda` (código) en `feat/v4-seradmingym`.
-**Desplegado solo como vista previa** en el proyecto Vercel `web`:
-`https://web-98gk5f3oe-zp-software-fast-solutions.vercel.app` (estado Ready). Producción sin tocar.
+**Desplegado solo como vista previa** en el proyecto Vercel `web`, por CLI desde `apps/web`: última
+`https://web-ttg54r2xy-zp-software-fast-solutions.vercel.app` (commit `d426d5f`, Ready). Producción sin tocar (V3.4,
+`web-2cjifj7dc…`). Dos intentos de `--prod` de V4 el 2026-09-14 fallaron por el Root Directory de prueba: por suerte,
+porque sin migraciones habrían roto producción.
 
 **Pendiente, en este orden:**
 1. Aplicar las 5 migraciones de `supabase/migrations/2026091401*.sql` (la sesión no tuvo permiso para DDL en
