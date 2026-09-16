@@ -1,57 +1,57 @@
-# GYM PLATFORM
+# MÍTICO GYM — Landing de Mítico Fitness
 
-**Software enlatado vertical para gimnasios.** Una sola base de código que se
-despliega para múltiples clientes cambiando configuración, no código.
+**Sitio web de Mítico Fitness (La Paz, Bolivia).** Una landing informativa,
+estática y sin base de datos, construida sobre GYM PLATFORM, el software
+enlatado vertical para gimnasios de **ZP Software Fast Solutions**.
 
-Desarrollado por **ZP Software Fast Solutions**.
+> **Esta rama (`miticogym-v1`) es SOLO la vitrina.** No hay sistema de socios,
+> ni inicio de sesión, ni roles, ni base de datos. No están apagados: no
+> existen. El motivo y sus consecuencias, en
+> [ADR 0012](docs/architecture/adr/0012-landing-sin-base-de-datos.md).
+>
+> El sistema completo —panel de gestión, socios, asistencia, cobros, clases,
+> reservas y administración— sigue vivo en la rama `feat/goldgym-v1` y en las
+> anteriores. Aquí no se ha perdido nada; se ha dejado fuera.
 
-**Demo en vivo:** https://gym-platform-alpha.vercel.app
+---
 
-| | |
+## Qué publica
+
+Diez páginas, todas prerenderizadas en el build y servidas como archivos:
+
+| Ruta | Qué contiene |
 |---|---|
-| Vitrina de la plataforma | https://gym-platform-alpha.vercel.app |
-| Mítico Fitness | https://gym-platform-alpha.vercel.app/mitico |
-| Aurora Fit | https://gym-platform-alpha.vercel.app/aurora-fit |
+| `/mitico` | Portada: quiénes somos, servicios, sedes, paquetes y clases |
+| `/mitico/nosotros` | El gimnasio y su forma de entrenar |
+| `/mitico/servicios` | Entrenamiento personalizado, clases, nutrición, suplementación |
+| `/mitico/planes` | Tarifario oficial completo y las seis rutinas de superhéroes |
+| `/mitico/sucursales` | Las dos sedes con su mapa, horario y cómo llegar |
+| `/mitico/clases` | Catálogo de clases dirigidas y su agenda semanal por sede |
+| `/mitico/instalaciones` | Las áreas de cada sucursal, en pestañas |
+| `/mitico/galeria` | Fotografías (hoy, composiciones de marca) |
+| `/mitico/horarios` | Horario de atención por sede y agenda de clases |
+| `/mitico/contacto` | Teléfonos, redes, mapas y formulario a WhatsApp |
+
+La raíz `/` redirige a `/mitico`. Cualquier otra ruta responde 404 real.
 
 ---
 
-## Estado
-
-| Versión | Alcance | Estado |
-|---|---|---|
-| **V1** | Sitio público multi-tenant | ✅ Entregado |
-| **V2** | Supabase (Auth, PostgreSQL con RLS, Storage), login y registro | ✅ Entregado |
-| **V2.1** | Dashboards por rol, asistencia con QR, notificaciones, reportes | ✅ Entregado |
-| **V2.2** | Gestión de socios, cobro por QR con comprobantes, racha, reportes híbridos | ✅ Entregado · rama `feat/v2.2-gestion` |
-| V3 | Reservas, entrenadores, rutinas, clases | Siguiente |
-| V4 | Multi-sucursal, suscripciones, facturación | Pendiente |
-
-> **La descripción completa y vigente del sistema** —arquitectura, modelo de
-> datos, seguridad, rutas, flujos, despliegue, deuda y punto de partida de V3—
-> está en [`CLAUDE.md`](CLAUDE.md). Este README resume; si discrepan, manda
-> `CLAUDE.md`. La API .NET prevista para V1.5 no se construyó: Supabase la
-> sustituye (ADR 0004).
-
----
-
-## La prueba de aceptación
+## La prueba de aceptación sigue siendo la misma
 
 > **Dar de alta un gimnasio son dos pasos: crear su archivo de configuración y
 > registrarlo. Si hiciera falta tocar un componente, una ruta, una hoja de
 > estilo o una consulta, el producto habría dejado de ser enlatado.**
 
-Los dos gimnasios incluidos existen para demostrarlo: comparten el 100 % del
-código y no comparten ni un color, ni una tipografía, ni una forma, ni un texto.
+Quitar el panel y la base no la rompe: ningún archivo de `apps/web/src` nombra a
+Mítico. Todo lo que distingue a este gimnasio —marca, textos, paquetes, sedes,
+horarios y clases— vive en un solo archivo:
+[`apps/web/tenants/mitico.tenant.ts`](apps/web/tenants/mitico.tenant.ts).
 
-| | Mítico Fitness | Aurora Fit |
-|---|---|---|
-| Ruta | `/mitico` | `/aurora-fit` |
-| Tema | Oscuro | Claro |
-| Paleta | Verde neón sobre negro carbón | Terracota sobre blanco cálido |
-| Tipografía | Bebas Neue, caja alta | Fraunces serif, caja mixta |
-| Forma | Esquinas suaves, cristal, resplandor | Redondeadas, elevadas, sin resplandor |
-| Planes | 3, mensuales | 4, periodicidad mixta |
-| Capacidades | Equipo y FAQ activos | Equipo, FAQ y mapa apagados |
+```bash
+# Ningún slug de cliente en el código de la aplicación (salida vacía)
+grep -rn "mitico" apps/web/src --include=*.ts --include=*.tsx \
+  | grep -v "tenant.registry" | grep -vE ':\s*(\*|//|/\*)'
+```
 
 ---
 
@@ -63,113 +63,71 @@ npm install
 npm run dev
 ```
 
-| Ruta | Contenido |
-|---|---|
-| `http://localhost:3000/` | Vitrina de la plataforma |
-| `http://localhost:3000/mitico` | Mítico Fitness |
-| `http://localhost:3000/aurora-fit` | Aurora Fit |
+Abre http://localhost:3000 — redirige a `/mitico`. **No hace falta ninguna
+variable de entorno**: no hay servicios externos que configurar.
+
+### Comprobaciones antes de commitear
 
 ```bash
-npm run typecheck   # tipos
-npm run build       # compila y valida toda la configuración de tenants
-npm run start       # servidor de producción
+cd apps/web
+npm run typecheck
+npm test        # dominio puro + validador de configuración (24 pruebas)
+npm run build   # valida además la configuración del gimnasio
+npm audit
 ```
+
+Una configuración inválida **rompe el build**, no la página en producción: sin
+panel ni base de datos, el validador es la única red entre una errata y lo que
+se publica.
 
 ---
 
-## Qué incluye
+## Cómo se cambia el contenido
 
-### Sistema privado (V2 → V2.2)
+Todo está en `apps/web/tenants/mitico.tenant.ts`, y cada cambio se publica
+desplegando. No hay panel donde editarlo: es el intercambio que se compra al no
+tener base de datos (ADR 0012).
 
-- **Acceso de socios** con Supabase Auth: cookie `HttpOnly`, confirmación de
-  correo, cuentas vinculadas a su ficha.
-- **Tres espacios de trabajo** según permisos: plataforma, gimnasio (gerencia y
-  recepción) y socio.
-- **Asistencia** con check-in por cámara o lector, estadísticas y mapa de calor.
-- **Gestión de socios**: alta con plan, cobro y QR; ficha completa; edición,
-  venta y corrección de membresías (recepción crea, gerencia corrige).
-- **Cobro por QR** con comprobantes: el socio sube la captura, el personal la
-  aprueba y se crean membresía y pago; descarga en ZIP.
-- **Reportes** con filtros por periodo, plan, método y rol; CSV e impresión a PDF.
-- **Aislamiento entre gimnasios en la base** (RLS en todas las tablas),
-  verificado con sesiones simuladas por rol.
+| Qué quieres cambiar | Dónde |
+|---|---|
+| Precios y paquetes | `content.planGroups` |
+| Rutinas de entrenamiento personalizado | `content.trainingPlans` |
+| Horario de atención de una sede | `content.branches.sedes[].week` |
+| Clases y sus horarios | `content.classes` |
+| Qué áreas hay en cada sede | `content.facilities[].branchCode` |
+| Qué secciones existen | `features` |
+| Etiquetas y orden del menú | `navigation` |
+| Colores y tipografía | `branding` |
 
-### Sitio público (V1)
-
-**Nueve rutas por gimnasio:** Inicio · Nosotros · Servicios · Planes ·
-Instalaciones · Galería · Horarios · Contacto · Acceso socios.
-
-- Navegación con estado activo, menú móvil accesible y migas de pan.
-- Sistema de temas completo derivado de la configuración del cliente.
-- 22 feature flags: apagar una quita el enlace **y** hace que la ruta responda 404.
-- WhatsApp flotante con mensaje precargado por gimnasio.
-- Enlaces a redes sociales (inertes y anunciados como tales mientras estén vacíos).
-- SEO por tenant, `sitemap.xml` y `robots.txt` generados desde el dominio.
-- Cabeceras de seguridad: CSP, HSTS-ready, `nosniff`, `frame-ancestors`, `Referrer-Policy`.
-- Responsive de 320 px en adelante, con `prefers-reduced-motion` respetado.
-
-**Métricas del build:** 24 páginas estáticas · ~106 kB de JS inicial · sin
-librería de animación ni de iconos · `npm audit` sin vulnerabilidades.
+Los datos oficiales del cliente de los que sale el contenido actual están
+citados en la cabecera de ese archivo, junto con **lo que falta por confirmar**.
 
 ---
 
 ## Estructura
 
 ```text
-apps/web/                Sitio público (Next.js 16 · TypeScript · Tailwind v4)
-  src/core/domain/       Contratos y reglas. Sin framework.
-  src/core/application/  Casos de uso, puertos, derivación del tema
-  src/infrastructure/    Adaptadores, validación, composition root
-  src/presentation/      UI (atomic design)
-  src/app/               Rutas
-  tenants/               Configuración por gimnasio
-src/Backend/             API .NET (V1.5)
-docs/                    Arquitectura, ADR, guías de alta, runbooks
+apps/web/
+  tenants/mitico.tenant.ts        LO ÚNICO propio del cliente
+  src/
+    app/[tenant]/…                Las diez páginas, genéricas
+    core/domain/                  Catálogo, sedes, horarios, clases (puro, sin I/O)
+    core/application/             Casos de uso y el único puerto que queda
+    infrastructure/               Registro de gimnasios y validador de configuración
+    presentation/                 Secciones, patrones y átomos de interfaz
+  tests/                          Pruebas de dominio y del validador
+docs/                             ADR, arquitectura y runbook de despliegue
 ```
-
-Las dependencias apuntan **solo hacia adentro**: Domain no depende de nada,
-Infrastructure implementa los puertos que Application declara, y ningún
-componente construye adaptadores fuera del composition root.
 
 ---
 
 ## Documentación
 
-| Documento | Contenido |
-|---|---|
-| [`docs/architecture/overview.md`](docs/architecture/overview.md) | Arquitectura completa, capas, seguridad, deuda declarada |
-| [`docs/architecture/theming.md`](docs/architecture/theming.md) | Sistema de temas y cadena de tokens |
-| [`docs/architecture/multi-tenancy.md`](docs/architecture/multi-tenancy.md) | Aislamiento, feature flags y vectores de fuga |
-| [`docs/tenants/alta-de-gimnasio.md`](docs/tenants/alta-de-gimnasio.md) | **Procedimiento para incorporar un cliente** |
-| [`docs/runbooks/despliegue.md`](docs/runbooks/despliegue.md) | Despliegue y operación |
-| [`docs/architecture/adr/`](docs/architecture/adr/) | Decisiones con su motivo y sus consecuencias |
+- [`CLAUDE.md`](CLAUDE.md) — descripción completa y vigente de esta rama.
+- [ADR 0012](docs/architecture/adr/0012-landing-sin-base-de-datos.md) — por qué
+  esta rama no tiene base de datos y qué ADR previos deja sin efecto.
+- [ADR 0003](docs/architecture/adr/0003-configuracion-como-dato.md) — la regla
+  que sostiene el producto enlatado.
+- [`docs/runbooks/despliegue.md`](docs/runbooks/despliegue.md) — cómo se publica.
 
----
-
-## Añadir un gimnasio
-
-```bash
-cp apps/web/tenants/mitico.tenant.ts apps/web/tenants/nuevo-gym.tenant.ts
-# editar la configuración y registrarlo en tenant.registry.ts
-npm run build   # el validador comprueba la configuración; falla si algo está mal
-```
-
-Procedimiento completo, checklist de publicación y errores frecuentes en
-[`docs/tenants/alta-de-gimnasio.md`](docs/tenants/alta-de-gimnasio.md).
-
----
-
-## Lo que todavía **no** hace
-
-Declarado de forma explícita para que nadie lo suponga:
-
-- **No hay tests automatizados ni CI.** Es la primera deuda a saldar.
-- **Las migraciones de la base no están en el repositorio**: viven en Supabase
-  y se listan en [`supabase/migrations/README.md`](supabase/migrations/README.md).
-- **La configuración de cada gimnasio sigue en archivos**, no en la base.
-- **El formulario de contacto no envía a un servidor.** Abre WhatsApp con los
-  datos redactados, y así se indica en la propia página.
-- **Las fotografías no son reales.** Se dibujan composiciones generativas con
-  los colores de cada marca hasta que el cliente entregue su material.
-- **Las cuentas de demostración usan contraseñas predecibles.** Hay que
-  eliminarlas antes de cualquier uso con datos reales.
+Si un documento contradice a `CLAUDE.md`, manda `CLAUDE.md`.

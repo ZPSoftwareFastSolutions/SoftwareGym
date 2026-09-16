@@ -2,21 +2,17 @@
   "name": "@gymplatform/web",
   "version": "1.0.0",
   "private": true,
-  "description": "Sitio público multi-tenant de GYM PLATFORM (software enlatado vertical para gimnasios).",
+  "description": "Landing de Mítico Fitness sobre GYM PLATFORM (software enlatado vertical para gimnasios). Sin base de datos: todo el contenido vive en la configuración del gimnasio.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/*.test.ts\""
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/alias.mjs --test \"tests/*.test.ts\""
   },
   "dependencies": {
-    "@supabase/ssr": "0.8.0",
-    "@supabase/supabase-js": "2.86.0",
-    "jsqr": "1.4.0",
     "next": "16.3.4",
-    "qrcode-generator": "1.5.0",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },

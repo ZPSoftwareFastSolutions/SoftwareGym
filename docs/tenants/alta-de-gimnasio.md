@@ -1,5 +1,14 @@
 # Cómo dar de alta un gimnasio
 
+> ⚠️ **RAMA `miticogym-v1` — este documento describe el PRODUCTO COMPLETO, no
+> esta rama.** Aquí no hay base de datos, ni autenticación, ni panel de gestión:
+> solo la landing de Mítico Fitness. Lo que se conserva de este documento es la
+> parte de sitio público; todo lo que mencione Supabase, RLS, sesiones o el panel
+> pertenece a `feat/goldgym-v1`. Ver
+> [ADR 0012](../architecture/adr/0012-landing-sin-base-de-datos.md) y `CLAUDE.md`.
+
+---
+
 Procedimiento operativo para incorporar un cliente nuevo a la plataforma.
 
 **Tiempo estimado:** entre 30 y 90 minutos, según cuánto contenido haya

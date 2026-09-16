@@ -122,6 +122,12 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     }
   }
 
+  for (const plan of allPlans) {
+    if (plan.altPrice && plan.altPrice.price <= 0) {
+      issues.push(`El plan "${plan.id}" declara un altPrice que no es un precio.`);
+    }
+  }
+
   const groupIds = new Set(tenant.content.planGroups.map((g) => g.id));
   if (groupIds.size !== tenant.content.planGroups.length) {
     issues.push('Hay identificadores duplicados en content.planGroups.');
@@ -157,77 +163,121 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('Hay identificadores de producto duplicados en content.products.');
   }
 
-  // Textos de vitrina de sucursales (V3.0). El código tiene que poder existir
-  // en la base (mismo patrón que `branches.code`): uno mal escrito no rompería
-  // nada, simplemente su texto no aparecería nunca, y eso no se nota a simple vista.
+  // --- Sedes -------------------------------------------------------------
+  //
+  // En la landing la sede ES el archivo: si aquí hay una errata, no hay panel
+  // ni base que la corrija después. Por eso se valida entera, no solo su código.
+  const CODIGO_DE_SEDE = /^[A-Z0-9]{2,12}$/;
+  const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+
   const branches = tenant.content.branches;
+  const sedes = branches?.sedes ?? [];
+  const codigosDeSede = new Set(sedes.map((s) => s.code));
+
+  if (tenant.features.showBranches && sedes.length === 0) {
+    issues.push('features.showBranches está activo pero content.branches no declara ninguna sede.');
+  }
+
   if (branches) {
-    const codes = branches.showcase.map((s) => s.code);
-    for (const code of codes) {
-      if (!/^[A-Z0-9]{2,12}$/.test(code)) {
-        issues.push(`content.branches.showcase: el código "${code}" no tiene el formato de branches.code (A-Z, 0-9, 2 a 12).`);
+    if (new Set(sedes.map((s) => s.code)).size !== sedes.length) {
+      issues.push('Hay códigos de sucursal duplicados en content.branches.sedes.');
+    }
+
+    const principales = sedes.filter((s) => s.isPrimary);
+    if (sedes.length > 0 && principales.length !== 1) {
+      issues.push(`Debe haber exactamente una sede con isPrimary: true (hay ${principales.length}).`);
+    }
+
+    for (const sede of sedes) {
+      if (!CODIGO_DE_SEDE.test(sede.code)) {
+        issues.push(`content.branches.sedes: el código "${sede.code}" debe ser A-Z y 0-9, de 2 a 12 caracteres.`);
       }
-    }
-    if (new Set(codes).size !== codes.length) {
-      issues.push('Hay códigos de sucursal duplicados en content.branches.showcase.');
-    }
-    for (const sede of branches.showcase) {
+      if (!sede.name.trim()) issues.push(`content.branches.sedes "${sede.code}": name no puede estar vacío.`);
+      if (!sede.address.trim()) issues.push(`content.branches.sedes "${sede.code}": address no puede estar vacía.`);
       if (sede.highlights.length > 5) {
-        issues.push(`content.branches.showcase "${sede.code}": máximo cinco highlights (tiene ${sede.highlights.length}).`);
+        issues.push(`content.branches.sedes "${sede.code}": máximo cinco highlights (tiene ${sede.highlights.length}).`);
+      }
+      // Siete días o ninguno: una semana a medias deja huecos que la tabla
+      // dibuja como si el gimnasio no abriera, y eso no es lo que dice el dato.
+      if (sede.week.length !== 7) {
+        issues.push(`content.branches.sedes "${sede.code}": week debe tener 7 días, tiene ${sede.week.length}.`);
+      }
+      for (const dia of sede.week) {
+        if (dia.closed) continue;
+        if (!HORA.test(dia.open) || !HORA.test(dia.close)) {
+          issues.push(`content.branches.sedes "${sede.code}", ${dia.day}: las horas deben ser HH:MM en 24 h.`);
+        }
       }
     }
+
     if (branches.benefits.length > 4) {
       issues.push(`content.branches.benefits: máximo cuatro beneficios (tiene ${branches.benefits.length}).`);
     }
   }
 
-  // V4.1 · Reparto de instalaciones por sede. Un código mal escrito no rompe
-  // nada: el área cae al grupo general y nadie se entera de que iba a una sede
-  // concreta. Por eso se comprueba aquí, con el mismo patrón que `branches.code`.
+  // --- Instalaciones repartidas por sede ----------------------------------
+  //
+  // Un código mal escrito no rompe nada: el área cae al grupo general y nadie
+  // se entera de que iba a una sede concreta. Por eso se comprueba aquí.
   for (const facility of tenant.content.facilities) {
-    if (facility.branchCode !== undefined && !/^[A-Z0-9]{2,12}$/.test(facility.branchCode)) {
+    if (facility.branchCode === undefined) continue;
+    if (!CODIGO_DE_SEDE.test(facility.branchCode)) {
       issues.push(
-        `content.facilities "${facility.id}": branchCode "${facility.branchCode}" no tiene el formato de branches.code (A-Z, 0-9, 2 a 12).`,
+        `content.facilities "${facility.id}": branchCode "${facility.branchCode}" debe ser A-Z y 0-9, de 2 a 12 caracteres.`,
       );
+    } else if (!codigosDeSede.has(facility.branchCode)) {
+      issues.push(`content.facilities "${facility.id}": branchCode "${facility.branchCode}" no corresponde a ninguna sede declarada.`);
     }
   }
 
-  // Repartir por sede exige que el gimnasio tenga la capacidad multisede: sin
-  // ella la vitrina no lee las sedes de la base y el reparto sería invisible.
   const reparteInstalaciones = tenant.content.facilities.some((f) => f.branchCode !== undefined);
-  if (reparteInstalaciones && !tenant.features.enableMultiBranch) {
-    issues.push('Hay instalaciones con branchCode pero la capacidad enableMultiBranch está apagada: el reparto por sede no se vería.');
+  if (reparteInstalaciones && !tenant.features.showBranches) {
+    issues.push('Hay instalaciones con branchCode pero features.showBranches está apagada: el reparto por sede no se vería.');
   }
 
-  const navSucursales = tenant.navigation.find((n) => n.segment === 'sucursales');
-  if (navSucursales && navSucursales.requiresFeature !== 'enableMultiBranch') {
-    issues.push('La entrada de navegación "sucursales" debe exigir la capacidad enableMultiBranch.');
+  // --- Clases dirigidas ----------------------------------------------------
+  const clases = tenant.content.classes;
+
+  if (tenant.features.showClasses && clases.length === 0) {
+    issues.push('features.showClasses está activo pero content.classes está vacío.');
   }
 
-  const navClases = tenant.navigation.find((n) => n.segment === 'clases');
-  if (navClases && navClases.requiresFeature !== 'enableClasses') {
-    issues.push('La entrada de navegación "clases" debe exigir la capacidad enableClasses.');
+  const idsDeClase = new Set(clases.map((c) => c.id));
+  if (idsDeClase.size !== clases.length) {
+    issues.push('Hay identificadores duplicados en content.classes.');
   }
 
-  // V3.4: una reserva es de una sesión de clase. Reservas sin clases dejarían
-  // pantallas y reportes de reservas encendidos sobre un módulo que no existe.
-  if (tenant.features.enableReservations && !tenant.features.enableClasses) {
-    issues.push('La capacidad enableReservations exige enableClasses.');
-  }
-
-  // Turnos del personal (V3.1). El código se guarda con cada ausencia (mismo
-  // patrón que la restricción de la base) y las horas deben ser un tramo real.
-  const turnos = tenant.hours.staffShifts;
-  if (turnos) {
-    if (turnos.length === 0 || turnos.length > 6) issues.push('hours.staffShifts: entre 1 y 6 turnos.');
-    const codigos = turnos.map((t) => t.code);
-    if (new Set(codigos).size !== codigos.length) issues.push('hours.staffShifts: códigos de turno repetidos.');
-    for (const t of turnos) {
-      if (!/^[a-z0-9-]{2,20}$/.test(t.code)) issues.push(`hours.staffShifts: el código "${t.code}" debe usar a-z, 0-9 y guiones (2 a 20).`);
-      const hora = /^([01]\d|2[0-3]):[0-5]\d$/;
-      if (!hora.test(t.start) || !hora.test(t.end) || t.end <= t.start) {
-        issues.push(`hours.staffShifts "${t.code}": horas HH:MM y el fin después del inicio.`);
+  for (const clase of clases) {
+    if (clase.horarios.length === 0 && clase.note === undefined) {
+      issues.push(`content.classes "${clase.id}": sin horarios hay que explicar por qué (note).`);
+    }
+    for (const franja of clase.horarios) {
+      if (!HORA.test(franja.startTime) || (franja.endTime !== undefined && !HORA.test(franja.endTime))) {
+        issues.push(`content.classes "${clase.id}": las horas deben ser HH:MM en 24 h.`);
+      } else if (franja.endTime !== undefined && franja.endTime <= franja.startTime) {
+        issues.push(`content.classes "${clase.id}": el fin (${franja.endTime}) debe ser posterior al inicio (${franja.startTime}).`);
       }
+      // Una franja que apunta a una sede inexistente desaparece en silencio de
+      // la agenda: la clase se anuncia y nunca se ve en ninguna pestaña.
+      if (sedes.length > 0 && !codigosDeSede.has(franja.branchCode)) {
+        issues.push(`content.classes "${clase.id}": branchCode "${franja.branchCode}" no corresponde a ninguna sede declarada.`);
+      }
+    }
+  }
+
+  // --- Navegación ligada a capacidades -------------------------------------
+  const exigeCapacidad: readonly (readonly [string, keyof typeof tenant.features])[] = [
+    ['planes', 'showPlans'],
+    ['sucursales', 'showBranches'],
+    ['clases', 'showClasses'],
+    ['instalaciones', 'showFacilities'],
+    ['galeria', 'showGallery'],
+    ['horarios', 'showSchedule'],
+  ];
+  for (const [segmento, bandera] of exigeCapacidad) {
+    const entrada = tenant.navigation.find((n) => n.segment === segmento);
+    if (entrada && entrada.requiresFeature !== bandera) {
+      issues.push(`La entrada de navegación "${segmento}" debe exigir la capacidad ${bandera}.`);
     }
   }
 

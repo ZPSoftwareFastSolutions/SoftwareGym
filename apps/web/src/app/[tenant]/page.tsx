@@ -4,13 +4,16 @@
  * La página compone secciones y NO decide nada por su cuenta: cada bloque se
  * muestra si la feature flag correspondiente lo permite y con los datos que
  * trae la configuración. Es idéntica para todos los gimnasios.
+ *
+ * ES ESTÁTICA DE VERDAD. No hay `revalidate` ni consulta a nada: todo lo que
+ * pinta —sedes, paquetes, clases— vive en el archivo del gimnasio y se resuelve
+ * en el build. La página se sirve desde el CDN como un archivo.
  */
 
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
-import { cobroDeTenant } from '@/lib/cobro';
-import { publicAnnouncementsRepository, publicBranchesRepository } from '@infra/config/composition-root';
-import { AnnouncementsSection } from '@/presentation/sections/AnnouncementsSection';
+import { ordenarSedes } from '@core/domain/catalog/branches';
 import { BranchesSection } from '@/presentation/sections/BranchesSection';
+import { ClassesSection } from '@/presentation/sections/ClassesSection';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
 import { HeroSection } from '@/presentation/sections/HeroSection';
@@ -20,38 +23,21 @@ import { ProductsSection } from '@/presentation/sections/ProductsSection';
 import { ServicesSection } from '@/presentation/sections/ServicesSection';
 import { TestimonialsSection } from '@/presentation/sections/TestimonialsSection';
 
-/**
- * V3.0 · Las sedes vienen de la base (gerencia las edita sin desplegar), así
- * que la portada se regenera en segundo plano cada cinco minutos (ISR). Sigue
- * siendo estática: el cliente anónimo no lee cookies.
- */
-export const revalidate = 300;
-
 export default async function TenantHomePage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params);
-  const cobro = cobroDeTenant(tenant);
   const { content, features, slug, contact } = tenant;
-  const sucursales = features.enableMultiBranch ? await (await publicBranchesRepository()).sucursalesPublicas(slug) : [];
-  const anuncios = features.enableAnnouncements
-    ? await (await publicAnnouncementsRepository()).anunciosPublicos(slug)
-    : [];
+
+  const sedes = features.showBranches ? ordenarSedes(content.branches?.sedes ?? []) : [];
 
   return (
     <>
-      <HeroSection hero={content.hero} slug={slug} sedes={sucursales.map((s) => s.name)} />
-
-      {/* V4.1 · Lo primero bajo la portada, cuando el gimnasio comunica por
-          anuncios: lo que está pasando esta semana envejece, y quien vuelve al
-          sitio vuelve por eso. La sección no se dibuja sin anuncios publicados,
-          así que el gimnasio que no usa la capacidad conserva su inicio. No hay
-          condicional por cliente: lo decide la capacidad contratada. */}
-      <AnnouncementsSection anuncios={anuncios} />
+      <HeroSection hero={content.hero} slug={slug} sedes={sedes.map((s) => s.name)} />
 
       <MarqueeStrip
         items={[
           ...content.services.map((s) => s.name),
           // Con varias sedes, la franja también las nombra: se lee sin buscar.
-          ...(sucursales.length > 1 ? sucursales.map((s) => `Sede ${s.name}`) : []),
+          ...(sedes.length > 1 ? sedes.map((s) => `Sede ${s.name}`) : []),
         ]}
       />
 
@@ -66,7 +52,7 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
       {/* Justo después de «qué ofrecemos», antes de los precios: con varias
           sedes, «dónde» decide tanto como «cuánto». */}
       <BranchesSection
-        sucursales={sucursales}
+        sedes={sedes}
         tenantName={tenant.name}
         slug={slug}
         contact={contact}
@@ -76,7 +62,6 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
 
       {features.showPlans && (
         <PlansSection
-          cobro={cobro}
           // El inicio muestra solo la familia principal: la comparativa
           // completa vive en /planes. Una portada con todo el tarifario
           // obliga a decidir antes de haber terminado de leer quiénes somos.
@@ -84,6 +69,15 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
           note={content.plansNote}
           slug={slug}
           lead="Elige el paquete que se adapta a ti. Sin permanencia mínima."
+        />
+      )}
+
+      {features.showClasses && (
+        <ClassesSection
+          clases={content.classes}
+          sedes={sedes}
+          limit={3}
+          lead="Baile, combate y ritmo, incluidos en los paquetes que los traen. El horario completo está en la página de clases."
         />
       )}
 

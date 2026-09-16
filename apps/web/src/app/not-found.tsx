@@ -7,8 +7,14 @@
  * configuración comercial de otro cliente.
  */
 
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Icon } from '@/presentation/icons/Icon';
+
+export const metadata: Metadata = {
+  title: 'Esta página no existe',
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (

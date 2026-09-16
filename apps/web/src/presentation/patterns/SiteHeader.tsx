@@ -3,8 +3,12 @@
 /**
  * CAPA: Presentation / Patterns (organismo)
  *
- * Cabecera del sitio público: navegación, estado activo, menú móvil y acceso
- * de socios.
+ * Cabecera del sitio: navegación, estado activo y menú móvil.
+ *
+ * NO HAY ACCESO DE SOCIOS, y no porque esté escondido. Este sitio es una
+ * landing: no existe sesión, ni panel, ni ruta a la que ese botón pudiera
+ * llevar. Un enlace de acceso en una cabecera sin nada detrás es una promesa
+ * que la página no puede cumplir.
  *
  * Es cliente porque necesita el scroll y el estado del menú. Recibe la
  * navegación YA FILTRADA por feature flags desde el layout (servidor): la
@@ -18,41 +22,9 @@ import type { BrandLogo } from '@core/domain/tenant/branding';
 import type { NavItem } from '@core/domain/tenant/tenant-config';
 import { cn } from '@/lib/cn';
 import { tenantHref } from '@/lib/tenant-links';
-import { COOKIE_PISTA_SESION } from '@infra/auth/session-hint';
-import { AccessModal } from './AccessModal';
 import { Icon } from '../icons/Icon';
 import { LinkButton } from '../ui/Button';
 import { Logo } from '../ui/Logo';
-
-/**
- * ¿Hay sesión abierta? Se lee del navegador, no del servidor.
- *
- * Leerlo en el layout obligaría a renderizar bajo demanda las 24 páginas del
- * sitio público, que hoy se sirven prerenderizadas. La pista la escribe el
- * middleware y no contiene token —ver `infrastructure/auth/session-hint.ts`—.
- *
- * Arranca en `false` a propósito: el visitante anónimo es el caso mayoritario
- * y así ve el enlace correcto desde el primer pintado. Quien tiene sesión ve
- * cambiar el botón al hidratar, que es un parpadeo aceptable a cambio de no
- * sacar el sitio entero del prerenderizado.
- */
-function useSesionAbierta(): boolean {
-  const [abierta, setAbierta] = useState(false);
-  const ruta = usePathname();
-
-  // Se vuelve a leer en cada cambio de ruta. La cabecera vive en el layout y
-  // no se desmonta al navegar, así que con `[]` como dependencia se quedaba
-  // con el valor del primer montaje: tras cerrar sesión seguía ofreciendo
-  // «Mi panel» hasta recargar la página entera.
-  useEffect(() => {
-    const tiene = document.cookie
-      .split(';')
-      .some((c) => c.trim().startsWith(`${COOKIE_PISTA_SESION}=1`));
-    setAbierta(tiene);
-  }, [ruta]);
-
-  return abierta;
-}
 
 interface SiteHeaderProps {
   readonly slug: string;
@@ -61,7 +33,6 @@ interface SiteHeaderProps {
   readonly navigation: readonly NavItem[];
   readonly ctaLabel: string;
   readonly ctaSegment: string;
-  readonly showLogin: boolean;
 }
 
 export function SiteHeader({
@@ -71,9 +42,7 @@ export function SiteHeader({
   navigation,
   ctaLabel,
   ctaSegment,
-  showLogin,
 }: SiteHeaderProps) {
-  const sesionAbierta = useSesionAbierta();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -161,54 +130,6 @@ export function SiteHeader({
         </nav>
 
         <div className="flex items-center gap-2.5">
-          {/*
-            La visibilidad se controla desde un contenedor, no con `hidden` en
-            el `className` del botón: `hidden` y el `inline-flex` propio del
-            botón son ambos utilidades de `display`, y gana la que Tailwind
-            emita más tarde en la hoja. Componer evita ese conflicto sin
-            arrastrar `tailwind-merge` al bundle.
-          */}
-          {/*
-            Con sesión abierta el enlace deja de ofrecer «Acceso socios» y pasa
-            a llevar al panel: invitar a acceder a quien ya accedió confunde, y
-            además deja al socio sin ruta visible hacia lo suyo.
-          */}
-          {showLogin && (
-            <span className="hidden md:contents">
-              {sesionAbierta ? (
-                <LinkButton
-                  href={tenantHref(slug, 'panel')}
-                  variant="ghost"
-                  size="sm"
-                  icon="trainer"
-                  iconPosition="start"
-                >
-                  Mi panel
-                </LinkButton>
-              ) : (
-                /* Sin sesión, el acceso se abre en una ventana y no se pierde
-                   la página en la que estaba el visitante. El disparador
-                   sigue siendo el enlace real a `/acceso`: sin JavaScript, o
-                   abriéndolo en otra pestaña, funciona como siempre. */
-                <AccessModal
-                  slug={slug}
-                  gymName={name}
-                  disparador={
-                    <LinkButton
-                      href={tenantHref(slug, 'acceso')}
-                      variant="ghost"
-                      size="sm"
-                      icon="lock"
-                      iconPosition="start"
-                    >
-                      Acceso socios
-                    </LinkButton>
-                  }
-                />
-              )}
-            </span>
-          )}
-
           <span className="hidden sm:contents">
             <LinkButton href={tenantHref(slug, ctaSegment)} variant="primary" size="sm">
               {ctaLabel}
@@ -273,36 +194,6 @@ export function SiteHeader({
             <LinkButton href={tenantHref(slug, ctaSegment)} size="lg" fullWidth glow>
               {ctaLabel}
             </LinkButton>
-            {showLogin &&
-              (sesionAbierta ? (
-                <LinkButton
-                  href={tenantHref(slug, 'panel')}
-                  variant="secondary"
-                  size="lg"
-                  icon="trainer"
-                  iconPosition="start"
-                  fullWidth
-                >
-                  Mi panel
-                </LinkButton>
-              ) : (
-                <AccessModal
-                  slug={slug}
-                  gymName={name}
-                  disparador={
-                    <LinkButton
-                      href={tenantHref(slug, 'acceso')}
-                      variant="secondary"
-                      size="lg"
-                      icon="lock"
-                      iconPosition="start"
-                      fullWidth
-                    >
-                      Acceso socios
-                    </LinkButton>
-                  }
-                />
-              ))}
           </div>
         </nav>
       </div>

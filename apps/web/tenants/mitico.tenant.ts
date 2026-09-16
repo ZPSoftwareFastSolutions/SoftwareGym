@@ -3,7 +3,8 @@
  *
  * Este archivo es el único artefacto que define cómo se ve y qué dice el sitio
  * de Mítico Fitness. No existe ningún componente, ruta ni hoja de estilo
- * específica de este cliente.
+ * específica de este cliente, y en esta versión tampoco existe ninguna base de
+ * datos: la landing entera se prerenderiza a partir de lo que hay aquí.
  *
  * Paleta oficial (manual de marca):
  *   Neón Eléctrico    #39FF14  — acción, foco, énfasis
@@ -15,28 +16,60 @@
  * ─────────────────────────────────────────────────────────────────────────
  * ORIGEN DE LOS DATOS
  *
- * REAL (material comercial de la empresa): paquetes y precios, programas de
- * entrenamiento personalizado, productos, redes sociales, WhatsApp, slogan y
- * llamada a la acción.
+ * OFICIAL, de los documentos entregados por el cliente:
+ *   · `tarifario_gym_mitico.md` → planGroups, trainingPlans, plansNote
+ *   · `horarios_m_tico_fitness.md` → branches.sedes (direcciones no: ver abajo),
+ *     los horarios de atención de cada sede, los teléfonos y content.classes
+ *   · Slogan, redes sociales y llamada a la acción, del material comercial.
  *
- * PENDIENTE DE CONFIRMAR POR ESCRITO CON EL CLIENTE — siguen siendo valores
- * heredados de la demostración y no deben tomarse como definitivos:
- *   · contact.email y la dirección exacta (contact.addressLine dice solo la ciudad)
- *   · hours.week / holidayNote
- *   · content.about (relato, valores e hitos)
- *   · content.facilities, content.gallery, content.team, content.testimonials
- *   · content.hero.stats
- *   · enlace del grupo de WhatsApp (el material lo lista sin URL)
+ * REAL, heredado del material comercial anterior: content.products.
+ *
+ * PENDIENTE DE CONFIRMAR POR ESCRITO CON EL CLIENTE — redacción propia sobre
+ * hechos que sí constan, o huecos que el gimnasio debe rellenar:
+ *   · contact.email (hoy vacío a propósito: sin correo confirmado no se publica
+ *     uno inventado, y la vitrina omite la fila)
+ *   · La DIRECCIÓN EXACTA de cada sede. Los documentos solo dan el nombre de la
+ *     zona («Centro / El Prado», «Miraflores»); lo que hay en `address` es eso,
+ *     no una dirección postal.
+ *   · content.about (relato y valores), content.facilities (qué hay en cada
+ *     sede), content.gallery (fotografías reales) y content.hero.stats.
+ *
+ * NO SE PUBLICA LO QUE NO SE PUEDE SOSTENER: equipo (`showTeam`) y testimonios
+ * (`showTestimonials`) quedan apagados y sin contenido. Poner nombres de
+ * entrenadores o reseñas de socios inventados en el sitio real de un gimnasio
+ * no es contenido de relleno, es información falsa sobre personas.
  */
 
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
 import { DEFAULT_FEATURE_FLAGS } from '@core/domain/tenant/feature-flags';
 
+/** Horario de atención de la sede del Centro (El Prado). */
+const SEMANA_CENTRO = [
+  { day: 'Lunes', open: '07:00', close: '23:00', closed: false },
+  { day: 'Martes', open: '07:00', close: '23:00', closed: false },
+  { day: 'Miércoles', open: '07:00', close: '23:00', closed: false },
+  { day: 'Jueves', open: '07:00', close: '23:00', closed: false },
+  { day: 'Viernes', open: '07:00', close: '23:00', closed: false },
+  { day: 'Sábado', open: '09:00', close: '22:00', closed: false },
+  { day: 'Domingo', open: '', close: '', closed: true },
+] as const;
+
+/** Horario de atención de Mítico Fitness Life (Miraflores). Abre domingos. */
+const SEMANA_MIRAFLORES = [
+  { day: 'Lunes', open: '07:00', close: '23:00', closed: false },
+  { day: 'Martes', open: '07:00', close: '23:00', closed: false },
+  { day: 'Miércoles', open: '07:00', close: '23:00', closed: false },
+  { day: 'Jueves', open: '07:00', close: '23:00', closed: false },
+  { day: 'Viernes', open: '07:00', close: '23:00', closed: false },
+  { day: 'Sábado', open: '08:00', close: '22:00', closed: false },
+  { day: 'Domingo', open: '08:00', close: '14:00', closed: false },
+] as const;
+
 export const miticoTenant: TenantConfig = {
   slug: 'mitico',
   name: 'Mítico Fitness',
   legalName: 'Mítico Fitness S.R.L.',
-  tagline: 'El dolor que sentirás hoy es la fuerza que sentirás mañana',
+  tagline: 'El dolor que sientes hoy es la fuerza que tendrás mañana',
 
   domains: ['miticofitness.com', 'www.miticofitness.com'],
 
@@ -76,18 +109,16 @@ export const miticoTenant: TenantConfig = {
   },
 
   contact: {
-    phone: '+591 77700867',
+    phone: '77700867',
     whatsapp: '59177700867',
     whatsappMessage:
       'Hola Mítico Fitness 👋 Quiero información sobre los paquetes y precios.',
-    // PENDIENTE: confirmar con el cliente.
-    email: 'hola@miticofitness.com',
-    addressLine: 'Sedes en El Prado y Miraflores',
+    // Vacío a propósito: no hay correo confirmado por el cliente. La sección de
+    // contacto omite la fila en vez de publicar una dirección inventada.
+    email: '',
+    addressLine: 'Sedes en el Centro (El Prado) y en Miraflores',
     city: 'La Paz',
     country: 'Bolivia',
-    // Mapa oficial del local. El recuadro se atenúa por CSS cuando el
-    // tenant es de tema oscuro: Google no sirve una variante oscura del
-    // embed, y un rectángulo blanco sobre fondo carbón parte la página.
     mapEmbedUrl:
       'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d927.4326416674123!2d-68.13122116825956!3d-16.503825761222917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x915f210016025b69%3A0x484d1d8a96c0313f!2sM%C3%ADtico%20Fitness!5e1!3m2!1ses-419!2sbo!4v1788959383433!5m2!1ses-419!2sbo',
     mapLinkUrl: 'https://maps.app.goo.gl/?q=M%C3%ADtico+Fitness+La+Paz',
@@ -100,19 +131,16 @@ export const miticoTenant: TenantConfig = {
     youtube: 'https://www.youtube.com/@miticofitness',
   },
 
-  // PENDIENTE: confirmar los horarios reales con el cliente.
+  /**
+   * Horario general del gimnasio: el de la sede principal. El de cada sucursal
+   * vive en su propia entrada de `branches.sedes` y es el que manda en la
+   * página de horarios, porque las dos sedes no cierran igual.
+   */
   hours: {
     timezone: 'America/La_Paz',
-    week: [
-      { day: 'Lunes', open: '05:30', close: '23:00', closed: false },
-      { day: 'Martes', open: '05:30', close: '23:00', closed: false },
-      { day: 'Miércoles', open: '05:30', close: '23:00', closed: false },
-      { day: 'Jueves', open: '05:30', close: '23:00', closed: false },
-      { day: 'Viernes', open: '05:30', close: '23:00', closed: false },
-      { day: 'Sábado', open: '07:00', close: '20:00', closed: false, note: 'Horario continuo' },
-      { day: 'Domingo', open: '08:00', close: '14:00', closed: false, note: 'Solo sala de pesas' },
-    ],
-    holidayNote: 'Feriados nacionales: 08:00 a 13:00. Se anuncia por redes con 48 h de aviso.',
+    week: [...SEMANA_CENTRO],
+    holidayNote:
+      'Mítico Fitness Life (Miraflores) abre también los domingos, de 08:00 a 14:00.',
   },
 
   /**
@@ -125,8 +153,8 @@ export const miticoTenant: TenantConfig = {
     { label: 'Nosotros', segment: 'nosotros' },
     { label: 'Servicios', segment: 'servicios' },
     { label: 'Planes', segment: 'planes', requiresFeature: 'showPlans' },
-    { label: 'Sucursales', segment: 'sucursales', requiresFeature: 'enableMultiBranch' },
-    { label: 'Clases', segment: 'clases', requiresFeature: 'enableClasses' },
+    { label: 'Sucursales', segment: 'sucursales', requiresFeature: 'showBranches' },
+    { label: 'Clases', segment: 'clases', requiresFeature: 'showClasses' },
     { label: 'Instalaciones', segment: 'instalaciones', requiresFeature: 'showFacilities' },
     { label: 'Galería', segment: 'galeria', requiresFeature: 'showGallery' },
     { label: 'Horarios', segment: 'horarios', requiresFeature: 'showSchedule' },
@@ -135,62 +163,38 @@ export const miticoTenant: TenantConfig = {
 
   features: {
     ...DEFAULT_FEATURE_FLAGS,
-    showTeam: true,
-    showLocationMap: true,
-    showProducts: true,
+    showPlans: true,
     showTrainingPlans: true,
+    showProducts: true,
+    showFacilities: true,
+    showGallery: true,
+    showSchedule: true,
+    showClasses: true,
+    showBranches: true,
+    showLocationMap: true,
+    whatsappFloatingButton: true,
+    contactForm: true,
 
-    // Capacidades de operación (V2.1). Mítico tiene contratado el plan
-    // `professional`; Aurora Fit sigue en `starter` de prueba y las mantiene
-    // apagadas. Es la demostración de que son capacidades CONTRATADAS y no
-    // código: encender una es cambiar esta línea, y apagarla hace que su ruta
-    // responda 404, no que se esconda el enlace.
-    enableAttendance: true,
-    enableQrAttendance: true,
-    enableNotifications: true,
-    enableReports: true,
-    enablePayments: true,
-    enableMemberManagement: true,
-
-    // V3.0: dos sedes (Prado y Miraflores). Las sedes NO se declaran aquí: son
-    // datos de la base que gerencia administra en /panel/sucursales, y la
-    // vitrina las lee de allí.
-    enableMultiBranch: true,
-
-    // V3.1: entrenadores (perfiles, sedes, ausencias, asignación de socios
-    // según el plan) y catálogo de ejercicios con medios. Los entrenadores y
-    // ejercicios son datos de la base, no de este archivo.
-    enableTrainers: true,
-    enableExercises: true,
-
-    // V3.2: programas, rutinas asignadas a socios, registro de ejercicios
-    // completados y las métricas de entrenamiento que salen de ese registro.
-    enableRoutines: true,
-
-    // V3.3: clases grupales (Baile fitness, Bachata, Box…) con horario semanal,
-    // sesiones por sede, planes que incluyen cada clase y asistencia a clase.
-    // Las clases son datos de la base; la página pública solo enseña las que
-    // gerencia marca como publicadas.
-    enableClasses: true,
-
-    // V3.4: reservas de clases con lista de espera, faltas y bloqueo. Las reglas
-    // (ventana, tope, cancelación libre, bloqueo) las ajusta gerencia en el panel.
-    enableReservations: true,
+    // Sin datos confirmados no hay sección: ver la nota de cabecera.
+    showTeam: false,
+    showTestimonials: false,
   },
 
   seo: {
-    title: 'Mítico Fitness — El dolor que sentirás hoy es la fuerza que sentirás mañana',
+    title: 'Mítico Fitness — El dolor que sientes hoy es la fuerza que tendrás mañana',
     titleTemplate: '%s | Mítico Fitness',
     description:
-      'Gimnasio en La Paz con dos sedes, Prado y Miraflores, y una sola membresía. Paquetes mensuales desde 160 Bs, entrenamiento personalizado con rutinas temáticas, baile fitness, nutricionista y suplementación deportiva.',
+      'Gimnasio en La Paz con dos sedes, Centro (El Prado) y Miraflores, y una sola membresía. Paquetes mensuales desde 180 Bs, rutinas de entrenamiento personalizado, baile urbano, Fight DO, heels, danza árabe y nutricionista profesional.',
     keywords: [
       'gimnasio la paz',
       'gimnasio el prado la paz',
       'gimnasio miraflores la paz',
       'mítico fitness',
+      'mítico fitness life',
       'entrenamiento personalizado',
-      'suplementos deportivos',
-      'baile fitness',
+      'baile urbano la paz',
+      'fight do',
+      'danza árabe',
       'paquetes de gimnasio',
     ],
     locale: 'es_BO',
@@ -204,18 +208,21 @@ export const miticoTenant: TenantConfig = {
 
   content: {
     hero: {
-      eyebrow: 'La Paz · Prado y Miraflores',
+      eyebrow: 'La Paz · Centro y Miraflores',
       title: 'Vamos con',
       titleAccent: 'todo',
       subtitle:
-        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Entrenamiento personalizado, baile fitness, nutrición y suplementación, ahora en dos sedes con una sola membresía.',
+        'El dolor que sientes hoy es la fuerza que tendrás mañana. Entrenamiento personalizado, clases dirigidas y nutrición profesional, en dos sedes con una sola membresía.',
       primaryCta: { label: 'Ver paquetes', segment: 'planes' },
       secondaryCta: { label: 'Hablar por WhatsApp', segment: 'contacto' },
+      // PENDIENTE: cifras a confirmar con el cliente. Las dos primeras salen de
+      // los documentos oficiales; las otras dos son las que el gimnasio tiene
+      // que dar antes de publicar.
       stats: [
         { value: '2', label: 'sedes en La Paz' },
-        { value: '+2.400', label: 'socios activos' },
-        { value: '18', label: 'clases semanales' },
-        { value: '6', label: 'años de trayectoria' },
+        { value: '5', label: 'disciplinas dirigidas' },
+        { value: '6', label: 'rutinas personalizadas' },
+        { value: '16 h', label: 'abierto cada día' },
       ],
     },
 
@@ -225,10 +232,9 @@ export const miticoTenant: TenantConfig = {
       lead:
         'Mítico Fitness es un gimnasio de La Paz donde el entrenamiento se arma alrededor de la persona, no al revés.',
       paragraphs: [
-        'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman baile fitness, nutricionista profesional o entrenador personal según lo que cada uno necesite. Puedes empezar por un día y decidir después.',
-        'El entrenamiento personalizado se organiza en rutinas con nombre propio —Batman, Gamora, Thor, Hulk, Capitana Marvel— que marcan el nivel y el enfoque de cada programa. No es decoración: cada rutina tiene una progresión distinta y un objetivo distinto.',
-        'Además del entrenamiento, en el mostrador encuentras la suplementación y los accesorios que usamos y recomendamos: proteína, creatina, pre-entrenos, shakers y ropa deportiva de la casa.',
-        'Hoy entrenamos en dos sedes: el Prado, en el centro de la ciudad, y Miraflores, en el Edificio Torre Vicenta. Tu membresía vale en las dos, así que eliges cada día dónde entrenar.',
+        'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman disciplinas de baile, batido semanal o nutricionista profesional según lo que cada uno necesite. Puedes empezar por un día y decidir después.',
+        'El entrenamiento personalizado se organiza en rutinas con nombre propio —Spiderman, Batman, Thor, Hulk, Viuda Negra, Gamora, Capitana Marvel, Fénix, Mujer Maravilla—. No es decoración: cada rutina tiene una progresión distinta y un objetivo distinto.',
+        'Entrenamos en dos sedes: la del Centro, en El Prado, y Mítico Fitness Life, en Miraflores. Cada una tiene su propio horario y su propia agenda de clases, y hay paquetes que valen en las dos.',
       ],
       values: [
         {
@@ -240,29 +246,25 @@ export const miticoTenant: TenantConfig = {
         {
           title: 'Nutrición profesional',
           description:
-            'Nutricionista disponible en los paquetes Fit, Mítico y en el plan personalizado Premium.',
+            'Nutricionista disponible en los paquetes Básico Fit, Mítico y Mítico Dance, y en la rutina Hulk / Mujer Maravilla.',
           icon: 'nutrition',
         },
         {
-          title: 'Baile fitness',
+          title: 'Clases dirigidas',
           description:
-            'Bachata, twerking y dance como parte del entrenamiento en los paquetes Dance.',
+            'Baile urbano, Fight DO, heels y danza árabe como parte del entrenamiento en los paquetes Dance.',
           icon: 'group',
         },
         {
           title: 'Suplementación',
           description:
-            'Proteína, creatina, pre-entrenos y aminoácidos disponibles en el gimnasio.',
+            'Proteína, creatina, pre-entrenos y aminoácidos disponibles en el mostrador del gimnasio.',
           icon: 'sparkle',
         },
       ],
-      milestones: [
-        { year: '2019', text: 'Abrimos la primera sala de 180 m² con catorce máquinas.' },
-        { year: '2021', text: 'Sumamos el área funcional y las primeras clases grupales.' },
-        { year: '2023', text: 'Nos instalamos en el Prado, a pasos de la Plaza del Estudiante.' },
-        { year: '2025', text: 'Incorporamos evaluación de composición corporal para todos los socios.' },
-        { year: '2026', text: 'Abrimos Mítico Miraflores en el Edificio Torre Vicenta: dos sedes, una sola membresía.' },
-      ],
+      // PENDIENTE: el gimnasio no ha entregado su cronología. Sin hitos
+      // confirmados la sección «Nuestra historia» no se dibuja.
+      milestones: [],
     },
 
     services: [
@@ -271,34 +273,34 @@ export const miticoTenant: TenantConfig = {
         name: 'Entrenamiento personalizado',
         summary: 'Descubre el héroe que vive en ti.',
         description:
-          'Cuatro planes con entrenador y seguimiento individual, cada uno con sus rutinas asignadas. Incluyen pre-entreno y batido semanal, y el plan Premium suma nutricionista profesional.',
+          'Seis rutinas con entrenador y seguimiento individual, de 240 a 550 Bs al mes. Incluyen pre-entreno y batido semanal, y la rutina Hulk / Mujer Maravilla suma nutricionista profesional.',
         icon: 'trainer',
-        highlights: ['Desde 220 Bs al mes', 'Rutinas con nombre propio', 'Seguimiento personal'],
+        highlights: ['Desde 240 Bs al mes', 'Rutinas con nombre propio', 'Seguimiento personal'],
       },
       {
         id: 'acceso-gimnasio',
         name: 'Acceso al gimnasio',
         summary: 'Acceso completo a todas las máquinas, con horario flexible.',
         description:
-          'Todos los paquetes mensuales incluyen acceso completo al gimnasio, horario flexible y uso de todas las máquinas, además del entrenamiento personalizado.',
+          'Todos los paquetes mensuales incluyen acceso completo al gimnasio y entrenamiento personalizado. Los paquetes Life valen en las dos sucursales.',
         icon: 'dumbbell',
-        highlights: ['Horario flexible', 'Todas las máquinas', 'Desde 160 Bs al mes'],
+        highlights: ['Desde 180 Bs al mes', 'Abierto de 07:00 a 23:00', 'Opción para dos sedes'],
       },
       {
-        id: 'baile-fitness',
-        name: 'Baile fitness',
-        summary: 'Bachata, twerking y dance como parte del entrenamiento.',
+        id: 'clases-dirigidas',
+        name: 'Clases dirigidas',
+        summary: 'Baile urbano, Fight DO, heels y danza árabe.',
         description:
-          'Disponible en los paquetes Fit Dance, Básico Dance, Mítico Fitness y Mítico Dance. Entrenas y bailas dentro de la misma membresía, sin pagar aparte.',
+          'Disponibles en los paquetes Básico Dance, Fit Dance, Mítico Fitness y Mítico Dance. Entrenas y bailas dentro de la misma membresía, sin pagar aparte.',
         icon: 'group',
-        highlights: ['Bachata y twerking', 'Incluido en paquetes Dance', 'Sin costo adicional'],
+        highlights: ['Cuatro disciplinas', 'Incluidas en los paquetes Dance', 'Horario propio por sede'],
       },
       {
         id: 'nutricion',
         name: 'Asesoría nutricional',
         summary: 'Nutricionista profesional dentro del gimnasio.',
         description:
-          'Incluida en los paquetes Básico Fit, Mítico y Mítico Dance, y en el plan de entrenamiento personalizado Premium. El plan alimentario acompaña al entrenamiento, no lo contradice.',
+          'Incluida en los paquetes Básico Fit, Mítico y Mítico Dance, y en la rutina personalizada Hulk / Mujer Maravilla. El plan alimentario acompaña al entrenamiento, no lo contradice.',
         icon: 'nutrition',
         highlights: ['Nutricionista profesional', 'Incluida en varios paquetes', 'Seguimiento continuo'],
       },
@@ -313,68 +315,72 @@ export const miticoTenant: TenantConfig = {
       },
     ],
 
+    // Tarifario oficial. Los paquetes que el documento vende con dos precios
+    // —una sucursal o las dos— se declaran como UN paquete con `altPrice`, que
+    // es como están escritos: no son dos productos distintos.
     planGroups: [
       {
         id: 'mensual-basico',
         name: 'Paquete Mensual Básico',
         description:
-          'Opciones ideales para comenzar tu transformación. Acceso completo al gimnasio con entrenamiento personalizado y horarios flexibles.',
+          'Para comenzar. Acceso completo al gimnasio con entrenamiento personalizado, y la opción de entrar a las dos sucursales o de sumar una disciplina de baile.',
         plans: [
           {
             id: 'basico',
-            name: 'Paquete Básico',
+            name: 'Básico',
             tagline: 'El punto de partida',
-            price: 160,
+            price: 180,
             currency: 'Bs',
             period: 'mensual',
             featured: true,
             badge: 'Más popular',
             features: [
               { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Baile fitness', included: false },
-              { label: 'Batido semanal', included: false },
-              { label: 'Nutricionista profesional', included: false },
+              { label: 'Entrada a dos sucursales', included: false },
+              { label: 'Disciplina de baile', included: false },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'basico-life',
+            name: 'Básico Life',
+            tagline: 'El mismo paquete, en las dos sedes',
+            price: 200,
+            currency: 'Bs',
+            period: 'mensual',
+            featured: false,
+            features: [
+              { label: 'Entrenamiento personalizado', included: true },
+              { label: 'Entrada a dos sucursales', included: true },
+              { label: 'Disciplina de baile', included: false },
             ],
             ctaLabel: 'Consultar',
           },
           {
             id: 'basico-dance',
-            name: 'Paquete Básico Dance',
-            tagline: 'Suma baile fitness',
-            price: 250,
+            name: 'Básico Dance',
+            tagline: 'Suma una disciplina',
+            price: 300,
             currency: 'Bs',
             period: 'mensual',
             featured: false,
             features: [
-              { label: 'Baile fitness', included: true },
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Batido semanal', included: false },
-              { label: 'Nutricionista profesional', included: false },
+              { label: 'Una disciplina de baile', included: true },
+              { label: 'Entrada a dos sucursales', included: false },
             ],
             ctaLabel: 'Consultar',
           },
           {
-            id: 'quincenal',
-            name: 'Paquete 15 días',
-            tagline: 'Para probar sin comprometerte al mes',
-            price: 110,
+            id: 'basico-dance-life',
+            name: 'Básico Dance Life',
+            tagline: 'Una disciplina, en las dos sedes',
+            price: 400,
             currency: 'Bs',
-            period: 'quincenal',
+            period: 'mensual',
             featured: false,
             features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio por 15 días', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Baile fitness', included: false },
-              { label: 'Batido semanal', included: false },
-              { label: 'Nutricionista profesional', included: false },
+              { label: 'Una disciplina de baile Life', included: true },
+              { label: 'Entrada a dos sucursales', included: true },
             ],
             ctaLabel: 'Consultar',
           },
@@ -384,62 +390,56 @@ export const miticoTenant: TenantConfig = {
         id: 'mensual-fit',
         name: 'Paquete Mensual Fit',
         description:
-          'Potencia tus resultados con batidos semanales y asesoría nutricional profesional. Diseñados para quienes buscan un nivel superior de fitness.',
+          'Potencia tus resultados con batido semanal y asesoría nutricional profesional. Cada paquete tiene su precio para una sucursal y para las dos.',
         plans: [
           {
             id: 'fit',
-            name: 'Paquete Fit',
+            name: 'Fit',
             tagline: 'Entrenamiento con batido semanal',
-            price: 180,
+            price: 220,
             currency: 'Bs',
             period: 'mensual',
+            altPrice: { label: 'con las dos sucursales', price: 240 },
             featured: true,
             badge: 'Más popular',
             features: [
-              { label: 'Batido semanal', included: true },
               { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Baile fitness', included: false },
+              { label: 'Batido semanal', included: true },
               { label: 'Nutricionista profesional', included: false },
+              { label: 'Disciplina de baile', included: false },
             ],
             ctaLabel: 'Consultar',
           },
           {
             id: 'basico-fit',
-            name: 'Paquete Básico Fit',
+            name: 'Básico Fit',
             tagline: 'Con nutricionista profesional',
-            price: 260,
+            price: 280,
             currency: 'Bs',
             period: 'mensual',
+            altPrice: { label: 'con las dos sucursales', price: 300 },
             featured: false,
             features: [
-              { label: 'Nutricionista profesional', included: true },
               { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Nutricionista profesional', included: true },
               { label: 'Batido semanal', included: false },
-              { label: 'Baile fitness', included: false },
+              { label: 'Disciplina de baile', included: false },
             ],
             ctaLabel: 'Consultar',
           },
           {
             id: 'fit-dance',
-            name: 'Paquete Fit Dance',
+            name: 'Fit Dance',
             tagline: 'Batido semanal y baile fitness',
-            price: 280,
+            price: 300,
             currency: 'Bs',
             period: 'mensual',
+            altPrice: { label: 'con las dos sucursales', price: 420 },
             featured: false,
             features: [
+              { label: 'Entrenamiento personalizado', included: true },
               { label: 'Batido semanal', included: true },
               { label: 'Baile fitness', included: true },
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
               { label: 'Nutricionista profesional', included: false },
             ],
             ctaLabel: 'Consultar',
@@ -450,154 +450,147 @@ export const miticoTenant: TenantConfig = {
         id: 'mensual-mitico',
         name: 'Paquete Mensual Mítico',
         description:
-          'La experiencia completa. Combina fitness, baile y nutrición profesional. Incluye clases especiales de bachata, twerking y dance fitness.',
+          'La experiencia completa: entrenamiento, baile y nutrición profesional. Cada paquete tiene su precio para una sucursal y para las dos.',
         plans: [
           {
             id: 'mitico',
             name: 'Mítico',
             tagline: 'Nutrición y batido semanal',
-            price: 280,
-            currency: 'Bs',
-            period: 'mensual',
-            featured: false,
-            features: [
-              { label: 'Batido semanal', included: true },
-              { label: 'Nutricionista profesional', included: true },
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Baile fitness', included: false },
-            ],
-            ctaLabel: 'Consultar',
-          },
-          {
-            id: 'mitico-fitness',
-            name: 'Mítico Fitness',
-            tagline: 'Bachata y twerking incluidos',
             price: 300,
             currency: 'Bs',
             period: 'mensual',
-            featured: false,
+            altPrice: { label: 'con las dos sucursales', price: 320 },
+            featured: true,
+            badge: 'Más elegido',
             features: [
-              { label: 'Bachata', included: true },
-              { label: 'Twerking', included: true },
               { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-              { label: 'Nutricionista profesional', included: false },
+              { label: 'Batido semanal', included: true },
+              { label: 'Nutricionista profesional', included: true },
+              { label: 'Disciplina de baile', included: false },
             ],
             ctaLabel: 'Consultar',
           },
           {
             id: 'mitico-dance',
             name: 'Mítico Dance',
-            tagline: 'Todo incluido',
-            price: 380,
+            tagline: 'Todo lo anterior, más baile fitness',
+            price: 400,
             currency: 'Bs',
             period: 'mensual',
-            featured: true,
-            badge: 'Más popular',
+            altPrice: { label: 'con las dos sucursales', price: 450 },
+            featured: false,
             features: [
-              { label: 'Baile fitness', included: true },
+              { label: 'Entrenamiento personalizado', included: true },
               { label: 'Batido semanal', included: true },
               { label: 'Nutricionista profesional', included: true },
+              { label: 'Baile fitness', included: true },
+            ],
+            ctaLabel: 'Consultar',
+          },
+          {
+            id: 'mitico-fitness',
+            name: 'Mítico Fitness',
+            tagline: 'Dos disciplinas de baile',
+            price: 430,
+            currency: 'Bs',
+            period: 'mensual',
+            altPrice: { label: 'con las dos sucursales', price: 530 },
+            featured: false,
+            features: [
               { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
+              { label: 'Dos disciplinas de baile', included: true },
+              { label: 'Batido semanal', included: false },
+              { label: 'Nutricionista profesional', included: false },
             ],
             ctaLabel: 'Consultar',
           },
         ],
       },
       {
-        id: 'especiales',
-        name: 'Paquetes especiales',
+        id: 'otros-planes',
+        name: 'Otros planes',
         description:
-          'Planes extendidos con beneficios adicionales. Todos incluyen acceso completo y entrenamiento personalizado.',
+          'La sesión suelta para probar sin comprometerte, y los planes largos para quien ya sabe que se queda.',
         plans: [
           {
-            id: 'sesion-individual',
-            name: 'Sesión Individual',
-            tagline: 'Un día, sin compromiso',
-            price: 25,
+            id: 'sesion',
+            name: 'Sesión',
+            tagline: 'Un día, para probar',
+            price: 30,
             currency: 'Bs',
             period: 'diario',
             featured: false,
-            features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-            ],
+            features: [{ label: 'Acceso completo al gimnasio por un día', included: true }],
             ctaLabel: 'Consultar',
           },
           {
             id: 'trimestral',
-            name: 'Plan Trimestral',
+            name: 'Trimestral',
             tagline: 'Tres meses por adelantado',
-            price: 400,
+            price: 420,
             currency: 'Bs',
             period: 'trimestral',
             featured: false,
-            features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-            ],
+            features: [{ label: 'Acceso completo al gimnasio por tres meses', included: true }],
             ctaLabel: 'Consultar',
           },
           {
             id: 'semestral',
-            name: 'Plan Semestral',
+            name: 'Semestral',
             tagline: 'Seis meses por adelantado',
-            price: 800,
+            price: 820,
             currency: 'Bs',
             period: 'semestral',
             featured: false,
-            features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-            ],
+            features: [{ label: 'Acceso completo al gimnasio por seis meses', included: true }],
             ctaLabel: 'Consultar',
           },
           {
             id: 'anual',
-            name: 'Plan Anual',
-            tagline: 'El año completo',
+            name: 'Anual',
+            tagline: 'El año entero',
             price: 1500,
             currency: 'Bs',
             period: 'anual',
-            featured: false,
-            badge: 'Mejor valor',
-            features: [
-              { label: 'Entrenamiento personalizado', included: true },
-              { label: 'Acceso completo al gimnasio', included: true },
-              { label: 'Horario flexible', included: true },
-              { label: 'Acceso a todas las máquinas', included: true },
-            ],
+            featured: true,
+            badge: 'Mejor precio por mes',
+            features: [{ label: 'Acceso completo al gimnasio por un año', included: true }],
             ctaLabel: 'Consultar',
           },
         ],
       },
     ],
-    plansNote:
-      'Todos los precios están en bolivianos. Puedes pagar por QR o consultarnos por WhatsApp: te ayudamos a elegir el paquete que mejor se adapta a tus objetivos.',
 
-    /**
-     * Programas de entrenamiento personalizado. No llevan nombre comercial:
-     * lo que los identifica es el precio, lo que incluyen y sus rutinas.
-     * `imageSrc` queda reservado para la fotografía de referencia de cada uno.
-     */
+    plansNote:
+      'Precios en bolivianos, vigentes según el tarifario oficial del gimnasio. Consúltanos por WhatsApp qué paquete te conviene antes de pagar: te lo explicamos sin compromiso y el pago se hace en recepción.',
+
+    // Planes Superhéroes del tarifario oficial. Categoría distinta de los
+    // paquetes: se venden por la rutina que te asignan, no por el acceso.
     trainingPlans: [
       {
-        id: 'programa-220',
-        price: 220,
+        id: 'rutina-spiderman',
+        name: 'Rutina Spiderman / Viuda Negra',
+        tagline: 'Entrenamiento y seguimiento, con dos batidos por semana',
+        price: 240,
+        currency: 'Bs',
+        period: 'mensual',
+        featured: false,
+        features: [
+          { label: 'Entrenamiento personalizado', included: true },
+          { label: 'Seguimiento personal', included: true },
+          { label: '2 batidos semanales', included: true },
+          { label: 'Pre-entreno', included: false },
+          { label: 'Nutricionista profesional', included: false },
+        ],
+        routines: ['Spiderman (hombres)', 'Viuda Negra (mujeres)'],
+        ctaLabel: 'Consultar',
+        seed: 17,
+      },
+      {
+        id: 'rutina-batman',
+        name: 'Rutina Batman / Gamora',
+        tagline: 'Suma el pre-entreno al seguimiento personal',
+        price: 240,
         currency: 'Bs',
         period: 'mensual',
         featured: false,
@@ -606,33 +599,36 @@ export const miticoTenant: TenantConfig = {
           { label: 'Seguimiento personal', included: true },
           { label: '1 pre-entreno', included: true },
           { label: '1 batido semanal', included: true },
-          { label: 'Entrenador personal', included: false },
           { label: 'Nutricionista profesional', included: false },
         ],
-        routines: ['Rutina Batman', 'Rutina Gamora'],
+        routines: ['Batman (hombres)', 'Gamora (mujeres)'],
         ctaLabel: 'Consultar',
         seed: 31,
       },
       {
-        id: 'programa-350',
-        price: 350,
+        id: 'rutina-capitan-america',
+        name: 'Rutina Capitán América / Capitana Marvel',
+        tagline: 'Dos pre-entrenos personales cada semana',
+        price: 370,
         currency: 'Bs',
         period: 'mensual',
         featured: false,
         features: [
           { label: 'Entrenamiento personalizado', included: true },
-          { label: '2 pre-entrenos personal', included: true },
+          { label: '2 pre-entrenos personales', included: true },
           { label: '1 batido semanal', included: true },
           { label: 'Entrenador personal', included: false },
           { label: 'Nutricionista profesional', included: false },
         ],
-        routines: ['Rutina Capitán América', 'Rutina Capitana Marvel'],
+        routines: ['Capitán América (hombres)', 'Capitana Marvel (mujeres)'],
         ctaLabel: 'Consultar',
         seed: 47,
       },
       {
-        id: 'programa-400',
-        price: 400,
+        id: 'rutina-thor',
+        name: 'Rutina Thor / Fénix',
+        tagline: 'Ya con entrenador personal',
+        price: 420,
         currency: 'Bs',
         period: 'mensual',
         featured: false,
@@ -642,13 +638,15 @@ export const miticoTenant: TenantConfig = {
           { label: '1 batido semanal', included: true },
           { label: 'Nutricionista profesional', included: false },
         ],
-        routines: ['Rutina Thor', 'Rutina Fénix'],
+        routines: ['Thor (hombres)', 'Fénix (mujeres)'],
         ctaLabel: 'Consultar',
         seed: 63,
       },
       {
-        id: 'programa-480',
-        price: 480,
+        id: 'rutina-hulk',
+        name: 'Rutina Hulk / Mujer Maravilla',
+        tagline: 'Entrenador personal y nutricionista profesional',
+        price: 500,
         currency: 'Bs',
         period: 'mensual',
         featured: true,
@@ -659,9 +657,24 @@ export const miticoTenant: TenantConfig = {
           { label: '1 batido semanal', included: true },
           { label: 'Nutricionista profesional', included: true },
         ],
-        routines: ['Rutina Hulk', 'Rutina Mujer Maravilla'],
+        routines: ['Hulk (hombres)', 'Mujer Maravilla (mujeres)'],
         ctaLabel: 'Consultar',
         seed: 79,
+      },
+      {
+        id: 'rutina-avengers',
+        name: 'Rutina Avengers Unidas',
+        tagline: 'El programa más completo del gimnasio',
+        price: 550,
+        currency: 'Bs',
+        period: 'mensual',
+        featured: false,
+        // El tarifario oficial da el precio y no desglosa las prestaciones.
+        // Se dice eso, en vez de copiar las de otra rutina.
+        features: [{ label: 'Consulta en recepción todo lo que incluye', included: true }],
+        routines: ['Avengers Unidas'],
+        ctaLabel: 'Consultar',
+        seed: 91,
       },
     ],
 
@@ -723,196 +736,238 @@ export const miticoTenant: TenantConfig = {
       },
     ],
 
+    /**
+     * Instalaciones repartidas por sede: las que declaran `branchCode` salen en
+     * la pestaña de su sucursal, y las que no lo declaran se repiten en todas
+     * porque las hay en cualquiera de las dos.
+     *
+     * PENDIENTE: `area` y `stats` van vacíos a propósito. El gimnasio no ha
+     * entregado metros ni número de equipos, y la sección está preparada para
+     * no anunciar un «0 m²» que nadie midió.
+     */
     facilities: [
       {
-        id: 'sala-pesas',
+        id: 'pesas-prado',
         name: 'Sala de pesas',
         description:
-          'Planta principal de 520 m² con equipamiento de marcas líderes, cuatro racks de potencia y una zona de peso libre que no se satura ni en hora pico.',
-        area: '520 m²',
+          'La planta principal de la sede del Centro: peso libre, máquinas y el espacio donde se entrena la fuerza con seguimiento de los entrenadores.',
+        area: '',
         icon: 'dumbbell',
-        stats: [
-          { label: 'Racks de potencia', value: '4' },
-          { label: 'Estaciones', value: '62' },
-          { label: 'Mancuernas', value: '2–50 kg' },
-        ],
+        stats: [],
+        branchCode: 'PRADO',
       },
       {
-        id: 'funcional',
-        name: 'Área funcional',
-        description:
-          'Espacio abierto con piso amortiguado, trineos, cuerdas de batalla y estructura de calistenia. Diseñado para circuitos y trabajo en grupo reducido.',
-        area: '300 m²',
-        icon: 'boxing',
-        stats: [
-          { label: 'Piso amortiguado', value: 'Sí' },
-          { label: 'Cupo por circuito', value: '12' },
-          { label: 'Kettlebells', value: '4–40 kg' },
-        ],
-      },
-      {
-        id: 'salon-clases',
-        name: 'Salón de clases',
-        description:
-          'Sala insonorizada con espejos de pared completa, sistema de audio profesional y climatización independiente. Sede de las dieciocho clases semanales.',
-        area: '180 m²',
-        icon: 'group',
-        stats: [
-          { label: 'Capacidad', value: '28' },
-          { label: 'Clases/semana', value: '18' },
-          { label: 'Climatización', value: 'Independiente' },
-        ],
-      },
-      {
-        id: 'cardio',
+        id: 'cardio-prado',
         name: 'Zona de cardio',
         description:
-          'Cintas, elípticos, remos y bicicletas de aire frente al ventanal norte. Cada equipo con pantalla propia y toma de carga.',
-        area: '140 m²',
+          'Cintas, elípticos y bicicletas para el trabajo aeróbico, dentro del mismo horario extendido de 07:00 a 23:00.',
+        area: '',
         icon: 'heart',
-        stats: [
-          { label: 'Equipos', value: '24' },
-          { label: 'Pantalla propia', value: 'Todos' },
-          { label: 'Luz natural', value: 'Ventanal norte' },
-        ],
+        stats: [],
+        branchCode: 'PRADO',
       },
       {
-        id: 'recuperacion',
-        name: 'Zona de recuperación',
+        id: 'salon-prado',
+        name: 'Salón de clases',
         description:
-          'Área silenciosa para movilidad, estiramiento asistido y masaje deportivo con turno previo. Rodillos, bandas y camillas disponibles.',
-        area: '60 m²',
-        icon: 'spa',
-        stats: [
-          { label: 'Camillas', value: '3' },
-          { label: 'Turnos', value: 'Con reserva' },
-          { label: 'Uso libre', value: 'Rodillos y bandas' },
-        ],
+          'Donde se dictan baile urbano, Fight DO, heels y danza árabe de la sede del Centro, de lunes a viernes por la tarde y la noche.',
+        area: '',
+        icon: 'group',
+        stats: [],
+        branchCode: 'PRADO',
+      },
+      {
+        id: 'pesas-miraflores',
+        name: 'Sala de pesas',
+        description:
+          'La sala de Mítico Fitness Life, en Miraflores, con el mismo trabajo de fuerza y seguimiento personalizado de la casa.',
+        area: '',
+        icon: 'dumbbell',
+        stats: [],
+        branchCode: 'MIRAFLORES',
+      },
+      {
+        id: 'cardio-miraflores',
+        name: 'Zona de cardio',
+        description:
+          'Trabajo aeróbico en la sede que además abre los domingos por la mañana, de 08:00 a 14:00.',
+        area: '',
+        icon: 'heart',
+        stats: [],
+        branchCode: 'MIRAFLORES',
+      },
+      {
+        id: 'salon-miraflores',
+        name: 'Salón de baile',
+        description:
+          'La sala de Miraflores: baile urbano por la tarde, baile fitness, Fight DO y danza árabe, con su propio horario semanal.',
+        area: '',
+        icon: 'group',
+        stats: [],
+        branchCode: 'MIRAFLORES',
       },
       {
         id: 'vestuarios',
         name: 'Vestuarios',
-        description:
-          'Vestuarios amplios con casilleros, duchas de agua caliente permanente y área de secado. Limpieza documentada tres veces al día.',
-        area: '110 m²',
+        description: 'Vestuarios con casilleros y duchas. Los hay en las dos sedes.',
+        area: '',
         icon: 'shield',
-        stats: [
-          { label: 'Casilleros', value: '160' },
-          { label: 'Duchas', value: '12' },
-          { label: 'Limpieza', value: '3×/día' },
+        stats: [],
+      },
+      {
+        id: 'mostrador',
+        name: 'Mostrador y suplementación',
+        description:
+          'Recepción, información de paquetes y la venta de proteína, creatina, pre-entrenos, shakers y la ropa deportiva de la casa.',
+        area: '',
+        icon: 'sparkle',
+        stats: [],
+      },
+    ],
+
+    /**
+     * Clases dirigidas, del documento oficial de horarios. Cada franja dice en
+     * qué sede se dicta, y esa es la única razón por la que la agenda puede
+     * presentarse por sucursal sin que ninguna página sepa cuántas sedes hay.
+     */
+    classes: [
+      {
+        id: 'baile-urbano',
+        name: 'Baile urbano',
+        description:
+          'Coreografía y ritmo urbano. Se dicta en las dos sedes, por la tarde: en Miraflores a las 16:00 y en el Centro a las 18:00.',
+        category: 'baile',
+        level: 'todos',
+        horarios: [
+          { weekday: 1, startTime: '18:00', endTime: '19:30', branchCode: 'PRADO' },
+          { weekday: 3, startTime: '18:00', endTime: '19:30', branchCode: 'PRADO' },
+          { weekday: 1, startTime: '16:00', endTime: '17:30', branchCode: 'MIRAFLORES' },
+          { weekday: 3, startTime: '16:00', endTime: '17:30', branchCode: 'MIRAFLORES' },
         ],
+        seed: 12,
+      },
+      {
+        id: 'fight-do',
+        name: 'Fight DO',
+        description:
+          'Entrenamiento de combate coreografiado: cardio, fuerza y técnica sobre una misma clase.',
+        category: 'combate',
+        level: 'todos',
+        horarios: [
+          { weekday: 1, startTime: '17:00', endTime: '18:00', branchCode: 'PRADO' },
+          { weekday: 3, startTime: '19:30', endTime: '20:30', branchCode: 'PRADO' },
+          { weekday: 2, startTime: '19:00', endTime: '20:00', branchCode: 'MIRAFLORES' },
+          { weekday: 4, startTime: '19:00', endTime: '20:00', branchCode: 'MIRAFLORES' },
+        ],
+        seed: 28,
+      },
+      {
+        id: 'heels',
+        name: 'Heels',
+        description:
+          'Baile en tacones: técnica, postura y actitud. En la sede del Centro hay dos turnos seguidos, martes y jueves.',
+        category: 'baile',
+        level: 'todos',
+        horarios: [
+          { weekday: 2, startTime: '18:00', endTime: '19:30', branchCode: 'PRADO' },
+          { weekday: 2, startTime: '19:30', endTime: '21:00', branchCode: 'PRADO' },
+          { weekday: 4, startTime: '18:00', endTime: '19:30', branchCode: 'PRADO' },
+          { weekday: 4, startTime: '19:30', endTime: '21:00', branchCode: 'PRADO' },
+        ],
+        note: 'En Mítico Fitness Life (Miraflores), consulta los horarios de heels en recepción.',
+        seed: 44,
+      },
+      {
+        id: 'danza-arabe',
+        name: 'Danza árabe',
+        description:
+          'Trabajo de cadera, coordinación y expresión. Miércoles y viernes en las dos sedes, a distinta hora.',
+        category: 'baile',
+        level: 'todos',
+        horarios: [
+          { weekday: 3, startTime: '20:30', endTime: '21:30', branchCode: 'PRADO' },
+          { weekday: 5, startTime: '20:30', endTime: '21:30', branchCode: 'PRADO' },
+          { weekday: 3, startTime: '18:00', endTime: '19:00', branchCode: 'MIRAFLORES' },
+          { weekday: 5, startTime: '18:00', endTime: '19:00', branchCode: 'MIRAFLORES' },
+        ],
+        seed: 60,
+      },
+      {
+        id: 'baile-fitness',
+        name: 'Baile fitness',
+        description:
+          'Cardio bailado, en Mítico Fitness Life. El martes es la única clase de la mañana de toda la semana.',
+        category: 'fit',
+        level: 'todos',
+        horarios: [
+          // El documento oficial solo publica la hora de inicio del martes.
+          { weekday: 2, startTime: '11:00', branchCode: 'MIRAFLORES' },
+          { weekday: 3, startTime: '19:00', endTime: '20:00', branchCode: 'MIRAFLORES' },
+        ],
+        note: 'La clase del martes empieza a las 11:00; confirma en recepción a qué hora termina.',
+        seed: 76,
       },
     ],
 
+    // PENDIENTE: fotografías reales del gimnasio. Mientras no lleguen, cada
+    // pieza usa la composición generativa de marca en vez de una imagen rota.
     gallery: [
-      { id: 'g1', title: 'Sala principal', caption: 'Planta de pesas en horario pico', span: 2, seed: 11 },
-      { id: 'g2', title: 'Zona de fuerza', caption: 'Plataformas y racks de potencia', span: 1, seed: 27 },
-      { id: 'g3', title: 'Área funcional', caption: 'Circuito de alta intensidad', span: 1, seed: 42 },
-      { id: 'g4', title: 'Clase de spinning', caption: 'Martes y jueves, 19:00', span: 1, seed: 58 },
-      { id: 'g5', title: 'Cardio', caption: 'Ventanal norte al atardecer', span: 2, seed: 73 },
-      { id: 'g6', title: 'Recuperación', caption: 'Movilidad y estiramiento asistido', span: 1, seed: 89 },
-      { id: 'g7', title: 'Recepción', caption: 'Entrada principal del gimnasio', span: 1, seed: 104 },
-      { id: 'g8', title: 'Comunidad', caption: 'Reto mensual de fin de mes', span: 1, seed: 120 },
+      { id: 'g1', title: 'Sala de pesas', caption: 'Sede Centro, El Prado', span: 2, seed: 11 },
+      { id: 'g2', title: 'Zona de fuerza', caption: 'Peso libre y máquinas', span: 1, seed: 27 },
+      { id: 'g3', title: 'Salón de clases', caption: 'Baile urbano, tarde de lunes', span: 1, seed: 42 },
+      { id: 'g4', title: 'Fight DO', caption: 'Combate coreografiado', span: 1, seed: 58 },
+      { id: 'g5', title: 'Mítico Fitness Life', caption: 'Sede Miraflores', span: 2, seed: 73 },
+      { id: 'g6', title: 'Danza árabe', caption: 'Miércoles y viernes', span: 1, seed: 89 },
+      { id: 'g7', title: 'Mostrador', caption: 'Suplementación y ropa de la casa', span: 1, seed: 104 },
+      { id: 'g8', title: 'Heels', caption: 'Martes y jueves, dos turnos', span: 1, seed: 120 },
     ],
 
-    team: [
-      {
-        id: 't1',
-        name: 'Camila Rojas',
-        role: 'Coordinadora metodológica',
-        bio: 'Licenciada en Ciencias del Deporte. Diseña y audita los programas de todos los entrenadores del equipo.',
-        specialties: ['Programación de fuerza', 'Readaptación'],
-        seed: 7,
-      },
-      {
-        id: 't2',
-        name: 'Diego Antelo',
-        role: 'Entrenador de fuerza',
-        bio: 'Ocho años en levantamiento olímpico. Lleva la zona de peso libre y la preparación de competidores.',
-        specialties: ['Levantamiento olímpico', 'Powerlifting'],
-        seed: 23,
-      },
-      {
-        id: 't3',
-        name: 'Valeria Suárez',
-        role: 'Instructora de clases grupales',
-        bio: 'Certificada en spinning, GAP y movilidad. Responsable del calendario semanal de clases.',
-        specialties: ['Spinning', 'HIIT', 'Movilidad'],
-        seed: 51,
-      },
-      {
-        id: 't4',
-        name: 'Martín Céspedes',
-        role: 'Nutricionista deportivo',
-        bio: 'Atiende dentro del gimnasio. Trabaja sobre hábitos reales y compras semanales, no sobre dietas ideales.',
-        specialties: ['Composición corporal', 'Nutrición deportiva'],
-        seed: 66,
-      },
-    ],
-
-    testimonials: [
-      {
-        id: 'ts1',
-        quote:
-          'Llevaba años empezando y dejando gimnasios. Acá me hicieron una evaluación, me armaron algo realista y por primera vez pasé del tercer mes. Ya van dos años.',
-        author: 'Andrea M.',
-        context: 'Socia desde 2024 · Paquete Fit',
-        rating: 5,
-      },
-      {
-        id: 'ts2',
-        quote:
-          'Volví de una lesión de rodilla con miedo. Diego me armó una progresión de seis meses y no tuve una sola recaída. El seguimiento fue serio de verdad.',
-        author: 'Rodrigo V.',
-        context: 'Socio desde 2023 · Mítico Dance',
-        rating: 5,
-      },
-      {
-        id: 'ts3',
-        quote:
-          'Lo que más valoro es que siempre hay alguien en sala. No es el gimnasio donde entras, haces cualquier cosa y te vas. Te corrigen.',
-        author: 'Paola C.',
-        context: 'Socia desde 2022 · Paquete Básico',
-        rating: 5,
-      },
-    ],
+    // Sin datos confirmados no se publica: ver la nota de cabecera.
+    team: [],
+    testimonials: [],
 
     faq: [
       {
         id: 'sucursales',
         question: '¿Puedo entrenar en las dos sedes?',
         answer:
-          'Sí. Tu membresía vale en Prado y en Miraflores: eliges cada día dónde entrenar, con el mismo QR y sin pagar nada extra. Tus visitas y tu racha cuentan igual en las dos sedes.',
+          'Con los paquetes Life y con los que traen «entrada a dos sucursales», sí: entrenas tanto en la sede del Centro (El Prado) como en Mítico Fitness Life (Miraflores). Los paquetes de una sola sucursal valen en la que elijas al contratar.',
       },
       {
         id: 'empezar',
         question: '¿Cuánto cuesta empezar?',
         answer:
-          'La sesión individual cuesta 25 Bs y te da acceso completo al gimnasio por un día. Si prefieres el mes, el Paquete Mensual Básico está en 160 Bs e incluye entrenamiento personalizado, horario flexible y acceso a todas las máquinas.',
+          'La sesión suelta cuesta 30 Bs y te da acceso completo al gimnasio por un día. Si prefieres el mes, el Paquete Básico está en 180 Bs e incluye entrenamiento personalizado; el Básico Life, en 200 Bs, añade la entrada a las dos sucursales.',
+      },
+      {
+        id: 'horarios',
+        question: '¿A qué hora abren?',
+        answer:
+          'Las dos sedes abren de lunes a viernes de 07:00 a 23:00. Los sábados, el Centro de 09:00 a 22:00 y Miraflores de 08:00 a 22:00. Miraflores abre además los domingos, de 08:00 a 14:00.',
       },
       {
         id: 'pago',
         question: '¿Cómo puedo pagar?',
         answer:
-          'Puedes pagar por QR. Si tienes dudas sobre qué paquete te conviene, escríbenos por WhatsApp al 77700867 y te asesoramos antes de que pagues.',
+          'El pago se hace en recepción. Si tienes dudas sobre qué paquete te conviene, escríbenos por WhatsApp al 77700867 (Centro) o al 78992777 (Miraflores) y te asesoramos antes.',
       },
       {
         id: 'personalizado',
         question: '¿Qué incluye el entrenamiento personalizado?',
         answer:
-          'Hay cuatro planes, de 220 a 480 Bs al mes. Todos incluyen entrenamiento personalizado, pre-entreno y un batido semanal. Del Avanzado en adelante sumas entrenador personal, y el Premium incluye además nutricionista profesional.',
+          'Hay seis rutinas, de 240 a 550 Bs al mes. Todas incluyen entrenamiento personalizado y batido semanal; de la rutina Thor / Fénix en adelante sumas entrenador personal, y la Hulk / Mujer Maravilla incluye además nutricionista profesional.',
       },
       {
         id: 'rutinas',
         question: '¿Qué son las rutinas con nombre de superhéroe?',
         answer:
-          'Cada plan de entrenamiento personalizado trae dos rutinas asignadas —Batman y Gamora en el Básico, Hulk y Mujer Maravilla en el Premium, entre otras—. El nombre marca el nivel y el enfoque del programa que vas a seguir.',
+          'Cada programa de entrenamiento personalizado trae su rutina asignada —Spiderman y Viuda Negra, Batman y Gamora, Thor y Fénix, Hulk y Mujer Maravilla, entre otras—. El nombre marca el nivel y el enfoque del programa que vas a seguir.',
       },
       {
-        id: 'baile',
-        question: '¿Hay clases de baile?',
+        id: 'clases',
+        question: '¿Qué clases dirigidas hay?',
         answer:
-          'Sí. Los paquetes Fit Dance, Básico Dance y Mítico Dance incluyen baile fitness, y el paquete Mítico Fitness incluye bachata y twerking. No se pagan aparte: van dentro de la membresía.',
+          'Baile urbano, Fight DO, heels y danza árabe, y baile fitness en Miraflores. Van dentro de los paquetes Dance, Mítico Fitness y Mítico Dance: no se pagan aparte. Cada sede tiene su propio horario, que puedes ver en la página de clases.',
       },
       {
         id: 'suplementos',
@@ -922,76 +977,78 @@ export const miticoTenant: TenantConfig = {
       },
     ],
 
-    // Respaldo de titular y nota. La imagen del QR del banco la sube gerencia
-    // en /panel/cobros; mientras no esté, la ventana explica cómo se paga.
-    // Ver `PaymentQrInfo`.
-    paymentQr: {
-      holder: 'Mítico Fitness',
-      note:
-        'Pide el QR en recepción o escríbenos por WhatsApp y te lo enviamos. ' +
-        'Envía el comprobante con tu nombre completo para activar tu paquete el mismo día.',
-    },
-
     closingCta: {
       title: '¡Vamos con todo!',
       subtitle:
-        'El dolor que sentirás hoy es la fuerza que sentirás mañana. Te esperamos en Prado o en Miraflores: escríbenos y armamos tu plan.',
+        'El dolor que sientes hoy es la fuerza que tendrás mañana. Te esperamos en el Centro o en Miraflores: escríbenos y armamos tu plan.',
       label: 'Consultar por WhatsApp',
     },
 
     /**
-     * Vitrina de sucursales (V3.0). Las sedes y sus datos (dirección, horario,
-     * mapa) vienen de la base; aquí solo el texto comercial, unido por `code`.
-     * PENDIENTE DE CONFIRMAR CON EL CLIENTE: descripciones y destacados son una
-     * propuesta de redacción.
+     * Las dos sedes, completas. En esta versión no hay panel ni base: los datos
+     * de puerta y el texto comercial de cada sucursal viven aquí, juntos.
      */
     branches: {
       eyebrow: 'Nuestras sucursales',
       title: 'Dos sedes,',
-      titleAccent: 'una sola membresía',
-      lead: 'Entrena en el Prado o en Miraflores, cuando quieras y donde te quede mejor. Tu plan, tu QR y tu racha te acompañan en las dos.',
+      titleAccent: 'una sola forma de entrenar',
+      lead: 'Entrena en el Centro o en Miraflores. Cada sede tiene su horario y su agenda de clases, y hay paquetes que valen en las dos.',
       benefits: [
         {
-          title: 'Una membresía, dos sedes',
-          description: 'Pagas un solo plan y entrenas en Prado y en Miraflores sin costo adicional.',
+          title: 'Paquetes para las dos sedes',
+          description: 'Los paquetes Life y los de «dos sucursales» te dejan entrenar en cualquiera de ellas.',
           icon: 'shield',
         },
         {
-          title: 'El mismo QR',
-          description: 'Enséñalo en cualquier recepción: tu entrada queda registrada en la sede donde estés.',
-          icon: 'qr',
+          title: 'Cada sede, su agenda',
+          description: 'Las clases dirigidas tienen horario propio en cada sucursal: elige la que te quede mejor.',
+          icon: 'calendar',
         },
         {
-          title: 'Tu racha no se corta',
-          description: 'Un día en Prado y al siguiente en Miraflores suman como días seguidos.',
-          icon: 'fire',
+          title: 'El mismo método',
+          description: 'Entrenamiento personalizado, seguimiento y rutinas asignadas en las dos sedes.',
+          icon: 'trainer',
         },
       ],
-      showcase: [
+      sedes: [
         {
           code: 'PRADO',
+          name: 'Centro · El Prado',
           tagline: 'El clásico del centro',
           description:
-            'Nuestra casa de siempre, a pasos de la Plaza del Estudiante. La sede donde Mítico se hizo fuerte: sala de pesas completa, entrenamiento personalizado y el ambiente de comunidad que nos define. Ideal si estudias o trabajas en el centro.',
+            'Nuestra casa de siempre, en el Prado. Sala de pesas completa, entrenamiento personalizado y el salón donde se dictan baile urbano, Fight DO, heels y danza árabe. Ideal si estudias o trabajas en el centro.',
           highlights: [
-            'A pasos de la Plaza del Estudiante',
             'Sala de pesas y máquinas completas',
             'Entrenadores con seguimiento personal',
+            'Cuatro disciplinas dirigidas',
             'Suplementos y productos en mostrador',
           ],
+          // PENDIENTE: dirección postal exacta. El documento oficial solo indica
+          // la zona, y eso es lo que se publica hasta que el cliente la confirme.
+          address: 'Zona Centro, El Prado · La Paz',
+          phone: '77700867',
+          week: [...SEMANA_CENTRO],
+          isPrimary: true,
           seed: 41,
         },
         {
           code: 'MIRAFLORES',
-          tagline: 'La nueva casa de Mítico',
+          name: 'Miraflores · Mítico Fitness Life',
+          tagline: 'La casa que abre los domingos',
           description:
-            'Abrimos en el Edificio Torre Vicenta, sobre la Av. Argentina, para llevar Mítico a quienes viven y trabajan en Miraflores. Espacios renovados, equipamiento nuevo y el mismo equipo de entrenadores, con toda la energía de la marca.',
+            'Mítico Fitness Life, en Miraflores. Misma forma de entrenar, agenda de clases propia —con baile fitness por la mañana— y la única sede que abre los domingos.',
           highlights: [
-            'Edificio Torre Vicenta, Av. Argentina',
-            'Espacios renovados y equipamiento nuevo',
-            'Entrenamiento personalizado y baile fitness',
-            'Mismo plan y mismo QR que en Prado',
+            'Abierta también los domingos',
+            'Baile fitness los martes por la mañana',
+            'Baile urbano, Fight DO y danza árabe',
+            'Entrenamiento personalizado y seguimiento',
           ],
+          // PENDIENTE: dirección postal exacta, igual que en la sede del Centro.
+          address: 'Zona Miraflores · La Paz',
+          phone: '78992777',
+          week: [...SEMANA_MIRAFLORES],
+          scheduleNote: 'Única sede con atención los domingos.',
+          isPrimary: false,
           seed: 88,
         },
       ],

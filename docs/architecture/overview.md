@@ -1,5 +1,14 @@
 # Arquitectura — GYM PLATFORM
 
+> ⚠️ **RAMA `miticogym-v1` — este documento describe el PRODUCTO COMPLETO, no
+> esta rama.** Aquí no hay base de datos, ni autenticación, ni panel de gestión:
+> solo la landing de Mítico Fitness. Lo que se conserva de este documento es la
+> parte de sitio público; todo lo que mencione Supabase, RLS, sesiones o el panel
+> pertenece a `feat/goldgym-v1`. Ver
+> [ADR 0012](adr/0012-landing-sin-base-de-datos.md) y `CLAUDE.md`.
+
+---
+
 > ⚠️ **Este documento describe la arquitectura de V1** (sitio público). Sigue
 > siendo válido para esa parte —capas, contrato del enlatado, temas,
 > renderizado—, pero no cubre el sistema privado de V2 a V2.2 (Supabase, RLS,

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { loadTenantPage, tenantPageMetadata, type TenantPageParams } from '@/lib/page-guards';
-import { cobroDeTenant } from '@/lib/cobro';
 import { PageHero } from '@/presentation/layouts/PageHero';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
@@ -18,7 +17,6 @@ export async function generateMetadata({ params }: TenantPageParams): Promise<Me
  */
 export default async function PlansPage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params, 'showPlans');
-  const cobro = cobroDeTenant(tenant);
   const { content, features, slug, contact, navigation } = tenant;
 
   const breadcrumb = navigation.find((n) => n.segment === 'planes')?.label ?? 'Planes';
@@ -34,7 +32,6 @@ export default async function PlansPage({ params }: TenantPageParams) {
       />
 
       <PlansSection
-        cobro={cobro}
         groups={content.planGroups}
         note={content.plansNote}
         slug={slug}
@@ -46,7 +43,7 @@ export default async function PlansPage({ params }: TenantPageParams) {
           retícula. Comparar el precio de un programa con el de una mensualidad
           lleva a una conclusión equivocada. */}
       {features.showTrainingPlans && (
-        <TrainingPlansSection plans={content.trainingPlans} slug={slug} cobro={cobro} />
+        <TrainingPlansSection plans={content.trainingPlans} slug={slug} />
       )}
 
       {features.showTestimonials && (

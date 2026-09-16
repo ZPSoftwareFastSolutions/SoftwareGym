@@ -1,14 +1,9 @@
 /**
  * CAPA: Presentation / UI (átomo)
  *
- * El giro de carga del panel (V4). Lo usan el enlace que se está siguiendo
- * (`IconoDeEnlace`), la paginación, los filtros, el ZIP de comprobantes y los
- * formularios de personal: un solo indicador, el mismo en todas partes.
- *
- * Es la ÚLTIMA capa contra la sensación de congelamiento, no la primera: antes
- * se corrigió lo que tardaba (políticas evaluadas por fila, listas completas para
- * contar, sin paginar). Lo que todavía tarda —una red lenta— al menos avisa en el
- * acto de que la app respondió.
+ * El giro de carga. Lo usa el enlace que se está siguiendo (`IconoDeEnlace`),
+ * que es el único sitio de esta versión donde hay algo que esperar: las páginas
+ * están prerenderizadas, así que aparece solo cuando la red va lenta.
  *
  * Sin estado ni efectos. Respeta `prefers-reduced-motion`: sin movimiento, el
  * botón o el enlace siguen diciendo en texto que están esperando.

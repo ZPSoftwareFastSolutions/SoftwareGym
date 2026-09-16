@@ -1,8 +1,8 @@
 /**
- * Guardas de página del sitio público.
+ * Guardas de página del sitio.
  *
  * REGLA DE SEGURIDAD: ocultar un enlace del menú NO cierra la sección. Si
- * `showGallery` está apagada pero `/aurora-fit/galeria` sigue respondiendo
+ * `showGallery` está apagada pero `/<gimnasio>/galeria` sigue respondiendo
  * 200, la capacidad no está realmente desactivada: solo está escondida.
  *
  * Toda página protegida por una feature flag pasa por `loadTenantPage`, que
@@ -38,10 +38,10 @@ export async function loadTenantPage(
   // layout deja de aplicarse si mañana una ruta se monta fuera de él.
   if (tenant.features.publicSite !== true) notFound();
 
-  // Se admite una lista porque las pantallas del panel dependen de DOS
-  // capacidades: la que abre el panel (`memberLogin`) y la del módulo
-  // concreto (`enableAttendance`, `enableReports`). Exigirlas por separado en
-  // cada página acabaría con alguna comprobando solo una.
+  // Se admite una lista porque una página puede depender de DOS capacidades:
+  // la agenda de clases necesita `showClasses` y, para repartirla por sede,
+  // `showBranches`. Exigirlas por separado en cada página acabaría con alguna
+  // comprobando solo una.
   if (requiredFeature) {
     const exigidas = Array.isArray(requiredFeature) ? requiredFeature : [requiredFeature];
     for (const bandera of exigidas as readonly (keyof FeatureFlags)[]) {

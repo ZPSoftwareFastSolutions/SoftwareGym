@@ -1,35 +1,33 @@
 /**
- * CAPA: Presentation / App — Sucursales del gimnasio (V3.0).
+ * CAPA: Presentation / App — Sucursales del gimnasio.
  *
  * Todas las sedes con su mapa, horario, contacto y texto de vitrina. Es la
  * página a la que llevan los chips del inicio y las tarjetas de la portada
  * (`#sede-CODE`).
  *
- * Capacidad `enableMultiBranch`: apagada, la ruta responde 404 aunque alguien
- * escriba la URL. Las sedes vienen de la base con el cliente anónimo, así que
- * la página sigue siendo estática y se regenera cada cinco minutos (ISR).
+ * Capacidad `showBranches`: apagada, la ruta responde 404 aunque alguien
+ * escriba la URL. Las sedes salen del archivo del gimnasio: la página es
+ * estática y no consulta nada.
  */
 
 import type { Metadata } from 'next';
 import { loadTenantPage, tenantPageMetadata, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
-import { publicBranchesRepository } from '@infra/config/composition-root';
+import { ordenarSedes } from '@core/domain/catalog/branches';
 import { PageHero } from '@/presentation/layouts/PageHero';
 import { Icon } from '@/presentation/icons/Icon';
 import { BranchesSection } from '@/presentation/sections/BranchesSection';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { LinkButton } from '@/presentation/ui/Button';
 
-export const revalidate = 300;
-
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
   return tenantPageMetadata(params, 'Sucursales', 'Nuestras sedes, con dirección, horario y cómo llegar. Una sola membresía para entrenar en todas.');
 }
 
 export default async function SucursalesPage({ params }: TenantPageParams) {
-  const tenant = await loadTenantPage(params, 'enableMultiBranch');
+  const tenant = await loadTenantPage(params, 'showBranches');
   const { content, contact, features, name, slug, navigation } = tenant;
-  const sucursales = await (await publicBranchesRepository()).sucursalesPublicas(slug);
+  const sedes = ordenarSedes(content.branches?.sedes ?? []);
 
   const breadcrumb = navigation.find((n) => n.segment === 'sucursales')?.label ?? 'Sucursales';
   const titulo = content.branches
@@ -46,17 +44,17 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
         breadcrumb={breadcrumb}
       />
 
-      {sucursales.length > 1 && (
+      {sedes.length > 1 && (
         <nav aria-label="Ir a una sede" className="shell -mt-4 lg:-mt-8">
           <ul className="flex flex-wrap gap-2.5">
-            {sucursales.map((sucursal) => (
-              <li key={sucursal.id}>
+            {sedes.map((sede) => (
+              <li key={sede.code}>
                 <a
-                  href={`#sede-${sucursal.code}`}
+                  href={`#sede-${sede.code}`}
                   className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-raised px-4 text-[0.9rem] font-semibold text-ink transition-colors hover:border-action hover:text-action"
                 >
                   <Icon name="pin" size={15} className="text-action" />
-                  {sucursal.name}
+                  {sede.name}
                 </a>
               </li>
             ))}
@@ -64,9 +62,9 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
         </nav>
       )}
 
-      {sucursales.length > 0 ? (
+      {sedes.length > 0 ? (
         <BranchesSection
-          sucursales={sucursales}
+          sedes={sedes}
           tenantName={name}
           slug={slug}
           contact={contact}
@@ -76,8 +74,9 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
           conEncabezado={false}
         />
       ) : (
-        // Sin sedes publicadas (o sin respuesta de la base en el último
-        // regenerado) se ofrece el contacto, no una página vacía.
+        // El validador del build no deja encender `showBranches` sin sedes, así
+        // que esto no debería verse nunca. Se conserva porque una página en
+        // blanco sería la peor forma de enterarse de que ocurrió.
         <section className="section">
           <div className="shell">
             <div className="surface-card flex flex-col items-center gap-4 p-10 text-center">

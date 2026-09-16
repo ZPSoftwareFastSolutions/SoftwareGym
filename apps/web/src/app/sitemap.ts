@@ -36,15 +36,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: item.segment === '' ? 0.9 : 0.7,
       });
     }
-
-    if (tenant.features.memberLogin) {
-      entries.push({
-        url: `${BASE_URL}/${slug}/acceso`,
-        lastModified: now,
-        changeFrequency: 'yearly',
-        priority: 0.3,
-      });
-    }
   }
 
   return entries;

@@ -4,15 +4,7 @@ import { PageHero } from '@/presentation/layouts/PageHero';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FacilitiesSection } from '@/presentation/sections/FacilitiesSection';
 import { GallerySection } from '@/presentation/sections/GallerySection';
-import { publicBranchesRepository } from '@infra/config/composition-root';
-
-/**
- * V4.1 · Las sedes vienen de la base para poder repartir las áreas por sucursal
- * (gerencia las edita sin desplegar), así que la página se regenera en segundo
- * plano cada cinco minutos, igual que el inicio y `/sucursales`. Sigue siendo
- * estática: se lee con el cliente anónimo, sin cookies.
- */
-export const revalidate = 300;
+import { ordenarSedes } from '@core/domain/catalog/branches';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
   return tenantPageMetadata(params, 'Instalaciones');
@@ -22,10 +14,8 @@ export default async function FacilitiesPage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params, 'showFacilities');
   const { content, features, slug, contact, navigation } = tenant;
 
-  // Sin multisede no hay reparto que hacer: no se consulta.
-  const sucursales = features.enableMultiBranch
-    ? await (await publicBranchesRepository()).sucursalesPublicas(slug)
-    : [];
+  // Sin multisede no hay reparto que hacer: una sola lista, como siempre.
+  const sedes = features.showBranches ? ordenarSedes(content.branches?.sedes ?? []) : [];
 
   const breadcrumb = navigation.find((n) => n.segment === 'instalaciones')?.label ?? 'Instalaciones';
 
@@ -52,7 +42,7 @@ export default async function FacilitiesPage({ params }: TenantPageParams) {
 
       <FacilitiesSection
         facilities={content.facilities}
-        sucursales={sucursales}
+        sucursales={sedes}
         eyebrow="Recorrido"
         title="Conoce cada área"
         layout="rows"

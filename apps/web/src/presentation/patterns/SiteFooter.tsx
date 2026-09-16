@@ -17,7 +17,7 @@ interface SiteFooterProps {
 }
 
 export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
-  const { slug, name, legalName, contact, social, hours, branding, features } = tenant;
+  const { slug, name, legalName, contact, social, hours, branding } = tenant;
   const year = new Date().getFullYear();
 
   const openDays = hours.week.filter((d) => !d.closed);
@@ -57,16 +57,6 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
                   </Link>
                 </li>
               ))}
-              {features.memberLogin && (
-                <li>
-                  <Link
-                    href={tenantHref(slug, 'acceso')}
-                    className="inline-flex min-h-9 items-center text-[0.92rem] text-muted transition-colors hover:text-action"
-                  >
-                    Acceso socios
-                  </Link>
-                </li>
-              )}
             </ul>
           </nav>
 

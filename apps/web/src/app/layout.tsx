@@ -36,14 +36,16 @@ const displaySerif = Fraunces({
   variable: '--font-display-serif',
 });
 
+/**
+ * EL TÍTULO NO SE DECLARA AQUÍ, y es a propósito.
+ *
+ * Una plantilla en la raíz (`'%s | GYM PLATFORM'`) se aplica también al título
+ * por defecto de las rutas hijas: el sitio del gimnasio salía como «Mítico
+ * Fitness — … | GYM PLATFORM», firmando cada pestaña del cliente con el nombre
+ * del producto. El título lo pone el layout del gimnasio, que es quien sabe
+ * cómo se llama el sitio; esta capa solo aporta lo que no depende del cliente.
+ */
 export const metadata: Metadata = {
-  title: {
-    default: 'GYM PLATFORM — Software para gimnasios',
-    template: '%s | GYM PLATFORM',
-  },
-  description:
-    'Plataforma web vertical para gimnasios: sitio público configurable y sistema de gestión multi-tenant. Desarrollada por ZP Software Fast Solutions.',
-  applicationName: 'GYM PLATFORM',
   authors: [{ name: 'ZP Software Fast Solutions' }],
   robots: { index: true, follow: true },
 };

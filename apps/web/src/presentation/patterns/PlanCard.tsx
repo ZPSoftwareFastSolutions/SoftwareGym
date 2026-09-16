@@ -74,6 +74,18 @@ export function PlanCard({ plan, href, accion }: PlanCardProps) {
         <span className="pb-1 text-[0.85rem] text-muted">{PERIOD_LABEL[plan.period]}</span>
       </div>
 
+      {/* Segundo precio del mismo paquete («con las dos sucursales»). Va pegado
+          al precio y en la misma unidad, no como una prestación más de la
+          lista: es una alternativa de compra, no algo que el paquete incluya. */}
+      {plan.altPrice && (
+        <p className="relative mt-2.5 flex items-baseline gap-2 text-[0.86rem]">
+          <span className="font-semibold text-action">
+            {plan.currency} {plan.altPrice.price.toLocaleString('es-BO')}
+          </span>
+          <span className="text-muted">{plan.altPrice.label}</span>
+        </p>
+      )}
+
       {plan.compareAtPrice && (
         <p className="relative mt-2 text-[0.85rem] text-muted">
           <span className="line-through">

@@ -1,4 +1,8 @@
-# Runbook — Despliegue del sitio público
+# Runbook — Despliegue de la landing de Mítico Fitness
+
+> Rama `miticogym-v1`. Publica un sitio **estático y sin servicios externos**:
+> no hay base de datos, ni autenticación, ni variables de entorno que
+> configurar. Ver [ADR 0012](../architecture/adr/0012-landing-sin-base-de-datos.md).
 
 ## Entorno
 
@@ -6,125 +10,109 @@
 |---|---|
 | Plataforma | Vercel |
 | Framework | Next.js 16 (App Router) |
-| Salida | Estático prerenderizado |
-| **Root Directory** | `apps/web` |
+| Salida | Estático prerenderizado (10 páginas) |
 | Node | 20 o superior |
-| Proyecto | `zp-software-fast-solutions/gym-platform` |
-| URL pública | https://gym-platform-alpha.vercel.app |
+| Variables de entorno | **Ninguna** |
+| Proyecto de Vercel | **Por crear.** Ver más abajo |
 
-La configuración de build vive en `apps/web/vercel.json`. El *Root Directory*
-del proyecto debe ser `apps/web`: Vercel detecta el framework leyendo el
-`package.json` de esa carpeta, no el de la raíz del repositorio.
+La configuración de build vive en `apps/web/vercel.json`.
 
-> **Protección de despliegue.** Vercel Authentication viene activada por
-> defecto y protege las URL de despliegue (`gym-platform-<hash>-...`). El alias
-> de producción `gym-platform-alpha.vercel.app` es el que se comparte con
-> clientes: es público. Si al enviarle el enlace a alguien le aparece una
-> pantalla de login de Vercel, le pasaste una URL de despliegue en vez del
-> alias.
-
----
-
-## Variables de entorno
-
-Ninguna es obligatoria: V1 no consume servicios autenticados y **no hay
-secretos en este proyecto**.
-
-| Variable | Efecto si falta |
-|---|---|
-| `NEXT_PUBLIC_SITE_URL` | `sitemap.xml` y `robots.txt` usan la URL por defecto. Conviene fijarla en producción |
-| `NEXT_PUBLIC_DEFAULT_TENANT` | El tenant por defecto es `mitico` |
-
-> Recordatorio: todo lo prefijado con `NEXT_PUBLIC_` llega al navegador y es
-> **público por definición**. Nunca poner ahí una credencial.
-
----
-
-## Despliegue
-
-### Automático
-
-Cada push a `main` despliega a producción. Cada PR genera un despliegue de
-vista previa con su propia URL — es la forma correcta de que el cliente revise
-cambios antes de publicarlos.
-
-### Manual
-
-```bash
-npx vercel --prod
-```
-
-### Verificación previa (obligatoria)
+## Antes de desplegar
 
 ```bash
 cd apps/web
+npm install
 npm run typecheck
+npm test
 npm run build
+npm audit
 ```
 
-El build ejecuta el validador de configuración de todos los tenants: si alguno
-está mal, falla ahí y no en producción.
+El build **valida la configuración del gimnasio**: si `mitico.tenant.ts` tiene
+una errata (una sede sin siete días, una clase que apunta a una sucursal que no
+existe, un enlace del menú que no exige su capacidad), el build falla. Es a
+propósito: sin panel ni base de datos, el validador es lo único que hay entre
+una errata y lo que se publica.
 
----
+## Proyecto de Vercel
 
-## Checklist post-despliegue
+⚠️ **`apps/web/.vercel` apunta hoy al proyecto `gold-gym`**, que sirve la rama
+`feat/goldgym-v1` (otro cliente). Un `vercel deploy --prod` desde aquí
+**actualizaría el sitio de Gold's Gym con la landing de Mítico**.
+
+Antes del primer despliegue de esta rama hay que apuntar a un proyecto propio:
 
 ```bash
-BASE=https://<dominio>
-
-# Rutas
-for u in / /mitico /aurora-fit /mitico/planes /aurora-fit/planes \
-         /mitico/acceso /sitemap.xml /robots.txt; do
-  printf "%-24s %s\n" "$u" "$(curl -s -o /dev/null -w '%{http_code}' $BASE$u)"
-done
-
-# Un tenant inexistente debe dar 404, no 200 con página vacía
-curl -s -o /dev/null -w 'inexistente: %{http_code}\n' $BASE/no-existe
-
-# Cabeceras de seguridad
-curl -sI $BASE/mitico | grep -iE 'content-security-policy|x-content-type|referrer-policy|x-frame'
+cd apps/web
+npx vercel whoami                       # cuenta zapasoftwarefastsolutions-1320
+npx vercel link --yes --project mitico-gym
 ```
 
-Revisión manual:
+Si el proyecto no existe, `vercel link` ofrece crearlo.
 
-- [ ] `/mitico` en verde sobre negro; `/aurora-fit` en terracota sobre claro.
-      Si los dos se ven iguales, el tema no se está inyectando.
-- [ ] Menú móvil abre, cierra con `Escape` y bloquea el scroll del fondo.
-- [ ] WhatsApp abre con el número y el mensaje del gimnasio correcto.
-- [ ] Sin scroll horizontal a 320 px.
-- [ ] Recorrido completo con teclado: el foco siempre visible.
+## Desplegar
 
----
+Desde `apps/web`, **no desde la raíz del repositorio**:
+
+```bash
+cd apps/web
+npx vercel deploy --yes          # vista previa
+npx vercel deploy --prod --yes   # producción
+```
+
+> **El despliegue por push de Git no funciona en estos proyectos** y es
+> esperable: se crearon por CLI desde `apps/web`, con Root Directory en la raíz.
+> Cambiarlo arregla Git y rompe la CLI. Se despliega por CLI.
+
+## El alias público
+
+Un proyecto nuevo nace con dos alias y **solo uno es público**:
+`<proyecto>-<equipo>.vercel.app` está protegido por Vercel Authentication (302 a
+`vercel.com/sso-api`) y `<proyecto>-<sufijo>.vercel.app` es el que se comparte.
+
+```bash
+npx vercel alias ls
+```
+
+**No adivinar el alias por el nombre.** Ya pasó con `gold-gym.vercel.app`, que
+existe, respondió 200 y era una aplicación de otra cuenta. Verificar siempre el
+`<title>` servido antes de dar una URL por buena:
+
+```bash
+curl -s https://<alias>/mitico | grep -o '<title>[^<]*</title>'
+```
+
+Debe decir `Mítico Fitness — El dolor que sientes hoy es la fuerza que tendrás mañana`.
+
+## Verificación tras desplegar
+
+```bash
+B=https://<alias>
+for r in / /mitico /mitico/planes /mitico/clases /mitico/horarios /mitico/instalaciones \
+         /mitico/sucursales /mitico/contacto /mitico/galeria /mitico/nosotros /mitico/servicios \
+         /mitico/acceso /mitico/panel /mitico/pago/qr /no-existe; do
+  printf "%-26s %s\n" "$r" "$(curl -s -o /dev/null -w '%{http_code}' "$B$r")"
+done
+curl -sI "$B/mitico" | grep -iE 'permissions-policy|content-security-policy|x-frame-options'
+```
+
+Esperado:
+
+| Ruta | Código |
+|---|---|
+| `/` | 308 (permanente a `/mitico`) |
+| Las diez páginas del gimnasio | 200 |
+| `/mitico/acceso`, `/mitico/panel`, `/mitico/pago/qr` | 404 |
+| `/no-existe` | 404 |
+
+Y en las cabeceras: `camera=()`, `connect-src 'self'`, `X-Frame-Options: DENY`.
 
 ## Rollback
 
-Vercel conserva todos los despliegues. En el panel: **Deployments → el anterior
-que funcionaba → Promote to Production**. Es instantáneo y no requiere build.
+```bash
+cd apps/web
+npx vercel ls                          # lista de despliegues
+npx vercel promote <url-del-anterior>  # vuelve a producción
+```
 
-Si la causa fue una configuración de tenant inválida, el build habría fallado
-antes de desplegar. Un fallo en producción con build verde apunta a datos
-—textos, precios, enlaces—, no a estructura.
-
----
-
-## Diagnóstico
-
-| Síntoma | Causa probable | Comprobación |
-|---|---|---|
-| Un tenant se ve con el tema de otro | El `<style>` del tema no se inyectó | Ver `:root` en el HTML servido |
-| Un tenant nuevo da 404 | Falta en `TENANT_REGISTRY` | `tenant.registry.ts` |
-| Una sección da 404 inesperadamente | Su feature flag está apagada | `features` del tenant |
-| El sitemap apunta a la URL equivocada | `NEXT_PUBLIC_SITE_URL` sin fijar | Variables del proyecto |
-| Fuentes que no cargan | CSP bloqueando | `font-src 'self'` en `next.config.ts` |
-| Build falla con `InvalidTenantConfigError` | Configuración inválida | El mensaje enumera cada problema |
-
----
-
-## Dominio propio por cliente
-
-1. Añadir el dominio en el panel de Vercel y apuntar el DNS.
-2. Declararlo en `TenantConfig.domains`.
-3. Añadir el middleware de resolución por host (aún no implementado:
-   `findByHost` ya existe en el puerto y está listo para usarse).
-
-Hasta entonces, cada gimnasio se sirve bajo su ruta: `/<slug>`.
+No hay migraciones que revertir ni datos que restaurar: el sitio es el build.

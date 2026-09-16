@@ -78,6 +78,9 @@ export function AboutSection({ about, withArt = true }: AboutSectionProps) {
         </div>
       </section>
 
+      {/* Un gimnasio que todavía no escribió su historia no publica una línea
+          de tiempo vacía con el borde dibujado: la sección entera no existe. */}
+      {about.milestones.length > 0 && (
       <section className="section" aria-labelledby="historia-title">
         <div className="shell">
           <h2 id="historia-title" className="t-h2 max-w-2xl">
@@ -105,6 +108,7 @@ export function AboutSection({ about, withArt = true }: AboutSectionProps) {
           </ol>
         </div>
       </section>
+      )}
     </>
   );
 }

@@ -132,7 +132,6 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
         navigation={navigation}
         ctaLabel={heroCta.label}
         ctaSegment={heroCta.segment}
-        showLogin={tenant.features.memberLogin}
       />
 
       <main id="contenido">{children}</main>

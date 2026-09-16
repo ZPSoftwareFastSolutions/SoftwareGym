@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { loadTenantPage, tenantPageMetadata, type TenantPageParams } from '@/lib/page-guards';
 import { PageHero } from '@/presentation/layouts/PageHero';
-import { publicBranchesRepository } from '@infra/config/composition-root';
+import { ordenarSedes } from '@core/domain/catalog/branches';
 import { BranchesSection } from '@/presentation/sections/BranchesSection';
 import { ContactSection } from '@/presentation/sections/ContactSection';
 import { ScheduleSection } from '@/presentation/sections/ScheduleSection';
@@ -10,15 +10,12 @@ export async function generateMetadata({ params }: TenantPageParams): Promise<Me
   return tenantPageMetadata(params, 'Contacto');
 }
 
-/** Las sedes vienen de la base: se regenera cada cinco minutos (ISR), sin salir del CDN. */
-export const revalidate = 300;
-
 export default async function ContactPage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params);
   const { contact, social, features, hours, name, slug, navigation } = tenant;
-  const sucursales = features.enableMultiBranch ? await (await publicBranchesRepository()).sucursalesPublicas(slug) : [];
+  const sedes = features.showBranches ? ordenarSedes(tenant.content.branches?.sedes ?? []) : [];
   // Con sedes, cada una lleva su mapa; el mapa único del contacto sobraría.
-  const conSucursales = sucursales.length > 0;
+  const conSucursales = sedes.length > 0;
 
   const breadcrumb = navigation.find((n) => n.segment === 'contacto')?.label ?? 'Contacto';
 
@@ -42,7 +39,7 @@ export default async function ContactPage({ params }: TenantPageParams) {
 
       {conSucursales && (
         <BranchesSection
-          sucursales={sucursales}
+          sedes={sedes}
           tenantName={name}
           slug={slug}
           contact={contact}
@@ -56,6 +53,7 @@ export default async function ContactPage({ params }: TenantPageParams) {
       {features.showSchedule && (
         <ScheduleSection
           hours={hours}
+          sedes={sedes}
           eyebrow="Cuándo venir"
           title="Horario de atención"
           lead="Si vas a pasar por primera vez, te recomendamos evitar la franja de mayor concurrencia."

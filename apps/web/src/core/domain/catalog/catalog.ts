@@ -5,8 +5,38 @@
  * equipo, testimonios y preguntas frecuentes.
  *
  * Todo es DATO configurable. Ninguna de estas estructuras conoce React ni el
- * transporte por el que llega (hoy archivo TS, mañana la API .NET).
+ * transporte por el que llega.
+ *
+ * Este archivo es también la puerta del catálogo: reexporta los módulos
+ * hermanos —horarios, sedes y clases— para que la configuración de un gimnasio
+ * importe de un solo sitio y no tenga que saber en qué archivo vive cada tipo.
  */
+
+export type { BusinessHours, DaySchedule } from './schedule';
+export { DIAS_DE_LA_SEMANA, diasAbiertos, resumirSemana } from './schedule';
+export type { SedeDeVitrina } from './branches';
+export { ordenarSedes, sedePorCodigo, urlDeMapaEmbebido, urlDeUbicacion } from './branches';
+export type {
+  CategoriaDeClase,
+  ClaseDeVitrina,
+  DiaDeAgenda,
+  DiaIso,
+  FranjaConClase,
+  FranjaDeClase,
+  NivelDeClase,
+} from './classes';
+export {
+  clasesDeSede,
+  DIAS_ISO,
+  diasLegibles,
+  duracionEnMinutos,
+  NOMBRE_DE_CATEGORIA,
+  NOMBRE_DE_DIA_ISO,
+  NOMBRE_DE_NIVEL_DE_CLASE,
+  rangoLegible,
+  semanaDeSede,
+  totalDeFranjas,
+} from './classes';
 
 export interface ServiceItem {
   readonly id: string;
@@ -55,6 +85,12 @@ export interface MembershipPlan {
   readonly period: BillingPeriod;
   /** Precio anterior tachado. Omitir si no hay promoción vigente. */
   readonly compareAtPrice?: number;
+  /**
+   * Segundo precio del MISMO paquete, no otro paquete: «con entrada a las dos
+   * sucursales, 240 Bs». El gimnasio lo vende así, en una línea del tarifario,
+   * y partirlo en dos tarjetas obligaría a comparar dos veces lo mismo.
+   */
+  readonly altPrice?: { readonly label: string; readonly price: number };
   /** Destaca visualmente el plan y lo eleva en la retícula. */
   readonly featured: boolean;
   readonly badge?: string;
@@ -83,12 +119,16 @@ export interface PlanGroup {
  *
  * NO es un `MembershipPlan`. Un paquete se compra por lo que da acceso; un
  * programa se compra por lo que te hace hacer. Se modelan aparte porque no
- * comparten forma —el programa no tiene nombre comercial, tiene rutinas
- * asignadas e imagen de referencia— y porque mezclarlos en la misma retícula
- * invita a comparar precios entre cosas que no son alternativas.
+ * comparten forma —el programa no tiene periodo de acceso ni grupo comercial,
+ * tiene rutinas asignadas e imagen de referencia— y porque mezclarlos en la
+ * misma retícula invita a comparar precios entre cosas que no son alternativas.
  */
 export interface TrainingPlan {
   readonly id: string;
+  /** Cómo lo llama el gimnasio: «Rutina Thor / Fénix». Es lo que se pide en recepción. */
+  readonly name: string;
+  /** A quién va dirigido o qué lo distingue, en una línea. */
+  readonly tagline: string;
   readonly price: number;
   readonly currency: string;
   readonly period: BillingPeriod;

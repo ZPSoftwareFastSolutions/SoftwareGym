@@ -8,8 +8,11 @@
  * hace que el visitante lea «400 Bs» al lado de «180 Bs» y concluya que uno es
  * caro, cuando no está comparando lo mismo.
  *
- * La tarjeta no lleva nombre comercial: lo que identifica al programa es su
- * precio, lo que incluye y las rutinas asignadas.
+ * La tarjeta SÍ lleva nombre: las rutinas de Mítico se venden por él («Rutina
+ * Thor»), y esconderlo obligaría a leer la lista de prestaciones para saber de
+ * cuál se está hablando.
+ *
+ * El botón lleva a contacto, como el de los paquetes: aquí no se cobra nada.
  */
 
 import type { TrainingPlan } from '@core/domain/catalog/catalog';
@@ -18,8 +21,6 @@ import { tenantHref } from '@/lib/tenant-links';
 import { Icon } from '../icons/Icon';
 import { ArtFrame } from '../ui/ArtFrame';
 import { Badge } from '../ui/Badge';
-import type { CobroPorQr } from '@/lib/cobro';
-import { PaymentQrModal } from '../patterns/PaymentQrModal';
 import { LinkButton } from '../ui/Button';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from '../ui/SectionHeading';
@@ -40,8 +41,6 @@ interface TrainingPlansSectionProps {
   readonly title?: string;
   readonly lead?: string;
   readonly note?: string;
-  /** Cobro por QR. Ausente cuando el gimnasio no tiene la capacidad contratada. */
-  readonly cobro?: CobroPorQr;
 }
 
 export function TrainingPlansSection({
@@ -51,7 +50,6 @@ export function TrainingPlansSection({
   title = 'Descubre el héroe que vive en ti',
   lead = 'Planes de entrenamiento con temática de superhéroes. Cada programa trae sus rutinas asignadas.',
   note,
-  cobro,
 }: TrainingPlansSectionProps) {
   if (plans.length === 0) return null;
 
@@ -105,7 +103,10 @@ export function TrainingPlansSection({
                     </div>
                   )}
 
-                  <p className="flex items-end gap-2">
+                  <h3 className="t-h3">{plan.name}</h3>
+                  <p className="mt-1.5 text-[0.86rem] text-muted">{plan.tagline}</p>
+
+                  <p className="mt-5 flex items-end gap-2">
                     <span className="text-[0.9rem] font-semibold text-muted">{plan.currency}</span>
                     <span
                       className="text-4xl font-bold leading-none text-ink"
@@ -164,32 +165,15 @@ export function TrainingPlansSection({
                   </div>
 
                   <div className="mt-7">
-                    {cobro ? (
-                      /* Estos programas no tienen nombre comercial —es una
-                         decisión de V1, no un olvido— así que la ventana se
-                         titula con el periodo, que es lo que los distingue. */
-                      <PaymentQrModal
-                        slug={cobro.slug}
-                        codigoDePlan={plan.id}
-                        nombreDelPaquete={`Entrenamiento personalizado · ${plan.period}`}
-                        precio={`${plan.currency} ${plan.price.toLocaleString('es-BO')}`}
-                        etiquetaDelBoton={plan.ctaLabel}
-                        destacado={plan.featured}
-                        pago={cobro.pago}
-                        whatsappHref={cobro.whatsappHref}
-                        gimnasio={cobro.gimnasio}
-                      />
-                    ) : (
-                      <LinkButton
-                        href={href}
-                        variant={plan.featured ? 'primary' : 'secondary'}
-                        size="lg"
-                        fullWidth
-                        glow={plan.featured}
-                      >
-                        {plan.ctaLabel}
-                      </LinkButton>
-                    )}
+                    <LinkButton
+                      href={href}
+                      variant={plan.featured ? 'primary' : 'secondary'}
+                      size="lg"
+                      fullWidth
+                      glow={plan.featured}
+                    >
+                      {plan.ctaLabel}
+                    </LinkButton>
                   </div>
                 </div>
               </article>
