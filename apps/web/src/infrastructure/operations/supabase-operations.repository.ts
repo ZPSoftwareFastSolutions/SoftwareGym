@@ -30,11 +30,15 @@ import type {
 } from '@core/domain/operations/dashboard';
 import { numero } from '@core/domain/operations/dashboard';
 import type {
+  IdentidadDeSocio,
   MetodoDeAsistencia,
   PatronDeAsistencia,
   RegistroDeAsistencia,
   ResultadoDeCheckIn,
 } from '@core/domain/operations/attendance';
+import { diasSeguidos } from '@core/domain/operations/streak';
+import { rutaDeAvatar, type TipoDeAvatar } from '@core/domain/operations/avatars';
+import { exito, fallo, type ResultadoDeOperacion } from '@core/application/ports/resultado';
 import { acotarPorPagina, rangoDePagina, type Pagina } from '@core/domain/shared/paginacion';
 import { FILTRO_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import type { AvisoInterno, MembresiaParaAvisar } from '@core/domain/operations/notifications';
@@ -102,6 +106,9 @@ function filtroDeAsistencia<Q extends ConsultaDeBitacora<Q>>(consulta: Q, filtro
   if (seguro) q = q.or(`customer_name.ilike.%${seguro}%,customer_code.ilike.%${seguro}%`);
   return q;
 }
+
+/** Bucket privado de fotos de perfil (V4.2). */
+const BUCKET_AVATARES = 'avatares';
 
 /** Formato del identificador de check-in, el mismo que impone la base. */
 const PATRON_TOKEN = /^[0-9A-F]{24}$/;
@@ -181,6 +188,92 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
     return { estado: 'ok', perfil };
   }
 
+  /**
+   * Foto del socio de la sesión (V4.2).
+   *
+   * La URL se firma por cinco minutos: el bucket es privado porque la cara de
+   * un socio es dato personal, y una URL sin caducidad en el HTML sería una
+   * filtración de larguísimo recorrido.
+   */
+  async miFoto(): Promise<{ readonly url: string | null }> {
+    const ruta = await this.rutaDeMiFoto();
+    if (ruta === null) return { url: null };
+    const { data } = await this.supabase.storage.from(BUCKET_AVATARES).createSignedUrl(ruta, 300);
+    return { url: data?.signedUrl ?? null };
+  }
+
+  async guardarMiFoto(
+    bytes: Uint8Array,
+    tipo: TipoDeAvatar,
+  ): Promise<ResultadoDeOperacion<{ readonly url: string | null }>> {
+    const perfil = await this.perfil();
+    if (!perfil?.customerId || !perfil.tenantId) {
+      return fallo('Tu cuenta todavía no está vinculada a una ficha de socio.');
+    }
+
+    const anterior = await this.rutaDeMiFoto();
+    const ruta = rutaDeAvatar(perfil.tenantId, perfil.customerId, tipo, crypto.randomUUID());
+
+    const { error: errorDeSubida } = await this.supabase.storage
+      .from(BUCKET_AVATARES)
+      .upload(ruta, bytes, { contentType: tipo, upsert: false });
+    if (errorDeSubida) {
+      const detalle = errorDeSubida.message ?? '';
+      if (detalle.includes('row-level security') || detalle.includes('Unauthorized')) {
+        return fallo('Tu cuenta no puede cambiar esta foto.');
+      }
+      if (detalle.includes('maximum allowed size')) return fallo('La foto pesa demasiado.');
+      return fallo('No se pudo subir la foto. Vuelve a intentarlo.');
+    }
+
+    // La ficha se actualiza DESPUÉS de que el archivo exista: al revés, un
+    // fallo de subida dejaría la ficha apuntando a una ruta vacía.
+    const { data, error } = await this.supabase
+      .from('customers')
+      .update({ photo_url: ruta })
+      .eq('id', perfil.customerId)
+      .select('id');
+
+    if (error || !data || data.length === 0) {
+      // Se limpia lo subido para no dejar huérfanos en el bucket.
+      await this.supabase.storage.from(BUCKET_AVATARES).remove([ruta]);
+      return fallo('No se pudo guardar la foto en tu ficha.');
+    }
+
+    if (anterior !== null) await this.supabase.storage.from(BUCKET_AVATARES).remove([anterior]);
+
+    const { data: firmada } = await this.supabase.storage.from(BUCKET_AVATARES).createSignedUrl(ruta, 300);
+    return exito({ url: firmada?.signedUrl ?? null });
+  }
+
+  async quitarMiFoto(): Promise<ResultadoDeOperacion<null>> {
+    const perfil = await this.perfil();
+    if (!perfil?.customerId) return fallo('Tu cuenta todavía no está vinculada a una ficha de socio.');
+
+    const ruta = await this.rutaDeMiFoto();
+
+    const { data, error } = await this.supabase
+      .from('customers')
+      .update({ photo_url: null })
+      .eq('id', perfil.customerId)
+      .select('id');
+    if (error || !data || data.length === 0) return fallo('No se pudo quitar la foto.');
+
+    if (ruta !== null) await this.supabase.storage.from(BUCKET_AVATARES).remove([ruta]);
+    return exito(null);
+  }
+
+  /** Ruta guardada en la ficha del socio de la sesión, o `null`. */
+  private async rutaDeMiFoto(): Promise<string | null> {
+    const perfil = await this.perfil();
+    if (!perfil?.customerId) return null;
+    const { data } = await this.supabase
+      .from('customers')
+      .select('photo_url')
+      .eq('id', perfil.customerId)
+      .maybeSingle();
+    return texto(data?.photo_url);
+  }
   async hoyDelGimnasio(tenantSlug: string): Promise<string> {
     // `v_dashboard_kpis` la calcula con la zona horaria del propio gimnasio.
     // Es legible por cualquiera que pertenezca a él —la fila sale de
@@ -443,13 +536,18 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
 
     const { data: socio } = await this.supabase
       .from('customers')
-      .select('first_name, last_name')
+      .select('first_name, last_name, code, photo_url')
       .eq('id', customerId)
       .maybeSingle();
 
     const nombre = socio
       ? `${texto(socio.first_name) ?? ''} ${texto(socio.last_name) ?? ''}`.trim()
       : 'Socio';
+
+    // V4.2 · La identidad que verá el mostrador. Sale ENTERA de la base: el QR
+    // solo trajo un token opaco, y nada de lo que mande el navegador influye
+    // en la cara, el nombre o el código que se muestran.
+    const identidad = await this.identidadDeSocio(customerId, nombre, texto(socio?.code), texto(socio?.photo_url));
 
     const { data: membresia } = await this.supabase
       .from('v_memberships')
@@ -488,6 +586,7 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
           socio: nombre,
           hora: texto(previa?.checked_in_at) ?? ahora.toISOString(),
           sucursal: texto(previa?.branch_name),
+          identidad,
         };
       }
       if (error.message.includes('sucursal_no_disponible') || error.message.includes('sucursal_requerida')) {
@@ -505,7 +604,7 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       // La entrada QUEDÓ registrada: quien llegó, llegó, y borrarlo sería
       // falsear la asistencia. Lo que devuelve es el aviso para que
       // recepción le ofrezca la renovación.
-      return { tipo: 'sin-membresia', socio: nombre, sucursal: sucursal.name };
+      return { tipo: 'sin-membresia', socio: nombre, sucursal: sucursal.name, identidad };
     }
 
     return {
@@ -514,6 +613,46 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       hora: ahora.toISOString(),
       diasRestantes: numero(membresia.days_remaining, 0),
       sucursal: sucursal.name,
+      identidad,
     };
+  }
+
+  /**
+   * Cara, código y racha de quien acaba de pasar el QR (V4.2).
+   *
+   * La URL de la foto se FIRMA aquí y dura cinco minutos: el bucket es privado
+   * porque la cara de un socio es dato personal, y una URL eterna en el HTML
+   * del mostrador sería una filtración con fecha de caducidad muy larga.
+   *
+   * La racha es el conteo simple de `diasSeguidos`, no el de `calcularRacha`:
+   * aquella conoce los días que el gimnasio cierra y para eso necesita la
+   * configuración del tenant, que aquí no está. En un gimnasio abierto todos los
+   * días coinciden; en uno que cierra los domingos, el panel del socio puede
+   * mostrar un número mayor. Está declarado en `streak.ts`.
+   */
+  private async identidadDeSocio(
+    customerId: string,
+    nombre: string,
+    codigo: string | null,
+    rutaDeFoto: string | null,
+  ): Promise<IdentidadDeSocio> {
+    let fotoUrl: string | null = null;
+    if (rutaDeFoto !== null) {
+      const { data } = await this.supabase.storage.from('avatares').createSignedUrl(rutaDeFoto, 300);
+      fotoUrl = data?.signedUrl ?? null;
+    }
+
+    const { data: dias } = await this.supabase
+      .from('v_attendance_log')
+      .select('attendance_date')
+      .eq('customer_id', customerId)
+      .order('attendance_date', { ascending: false })
+      .limit(120);
+
+    const fechas = (dias ?? [])
+      .map((fila) => texto((fila as Record<string, unknown>).attendance_date))
+      .filter((f): f is string => f !== null);
+
+    return { nombre, codigo, fotoUrl, racha: diasSeguidos(fechas) };
   }
 }

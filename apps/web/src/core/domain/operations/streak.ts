@@ -192,3 +192,34 @@ export function calcularRacha(
 
   return { actual, mejor, estado, ultimaVisita, semanas, visitasEnCalendario };
 }
+
+/**
+ * Días seguidos entrenando, contados a secas (V4.2).
+ *
+ * Es el número que saluda al socio en el mostrador. **No es exactamente el mismo
+ * que `calcularRacha`**, y la diferencia está declarada a propósito: aquella
+ * conoce el horario del gimnasio y no rompe la racha los días que cierra, pero
+ * para eso necesita la configuración del tenant, que el mostrador no tiene a
+ * mano al resolver un QR. En un gimnasio que abre todos los días coinciden; en
+ * uno que cierra los domingos, el panel del socio puede mostrar un número mayor.
+ *
+ * Si algún día el mostrador necesita el número exacto, lo que hay que pasarle es
+ * el horario, no duplicar la lógica.
+ */
+export function diasSeguidos(fechas: readonly string[]): number {
+  const unicas = [...new Set(fechas.filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f)))].sort().reverse();
+  const primera = unicas[0];
+  if (primera === undefined) return 0;
+
+  let seguidos = 1;
+  let anterior = Date.parse(`${primera}T00:00:00Z`);
+
+  for (const fecha of unicas.slice(1)) {
+    const actual = Date.parse(`${fecha}T00:00:00Z`);
+    if (anterior - actual !== 86_400_000) break;
+    seguidos += 1;
+    anterior = actual;
+  }
+
+  return seguidos;
+}

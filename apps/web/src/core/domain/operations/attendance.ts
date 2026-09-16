@@ -102,13 +102,57 @@ export interface EstadisticasDeAsistencia {
  * caso tiene una respuesta distinta en pantalla: repetido es informativo, no
  * es un error, y sin membresía es una venta, no un rechazo.
  */
+/**
+ * Quién es quien acaba de pasar el QR (V4.2).
+ *
+ * Va aparte del resultado porque acompaña a los tres desenlaces en que hay una
+ * persona identificada, y porque lo que el mostrador necesita ver es siempre lo
+ * mismo: cara, nombre, código y estado. **Todo sale del BACKEND**: el QR solo
+ * lleva un token opaco y nada de lo que viaja desde el navegador decide qué se
+ * muestra aquí.
+ */
+export interface IdentidadDeSocio {
+  readonly nombre: string;
+  /** Código correlativo visible (`MF-001`). Confirma la ficha sin exponer el id. */
+  readonly codigo: string | null;
+  /** URL firmada y de corta duración. `null` si el socio aún no subió foto. */
+  readonly fotoUrl: string | null;
+  /** Días seguidos entrenando, para saludar con algo que el socio reconoce. */
+  readonly racha: number;
+}
+
 export type ResultadoDeCheckIn =
-  | { readonly tipo: 'registrado'; readonly socio: string; readonly hora: string; readonly diasRestantes: number | null; readonly sucursal: string }
+  | {
+      readonly tipo: 'registrado';
+      readonly socio: string;
+      readonly hora: string;
+      readonly diasRestantes: number | null;
+      readonly sucursal: string;
+      readonly identidad: IdentidadDeSocio;
+    }
   /** `sucursal` y `hora` son las de la entrada que YA tenía hoy, que puede ser de otra sede. */
-  | { readonly tipo: 'repetido'; readonly socio: string; readonly hora: string; readonly sucursal: string | null }
-  | { readonly tipo: 'sin-membresia'; readonly socio: string; readonly sucursal: string }
+  | {
+      readonly tipo: 'repetido';
+      readonly socio: string;
+      readonly hora: string;
+      readonly sucursal: string | null;
+      readonly identidad: IdentidadDeSocio;
+    }
+  | {
+      readonly tipo: 'sin-membresia';
+      readonly socio: string;
+      readonly sucursal: string;
+      readonly identidad: IdentidadDeSocio;
+    }
   | { readonly tipo: 'desconocido' }
   | { readonly tipo: 'error'; readonly mensaje: string };
+
+/** Si este resultado trae a alguien identificado (y, por tanto, hay modal que enseñar). */
+export function identidadDelResultado(resultado: ResultadoDeCheckIn): IdentidadDeSocio | null {
+  return resultado.tipo === 'registrado' || resultado.tipo === 'repetido' || resultado.tipo === 'sin-membresia'
+    ? resultado.identidad
+    : null;
+}
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'] as const;
 

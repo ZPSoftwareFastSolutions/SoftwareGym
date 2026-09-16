@@ -39,6 +39,7 @@ import { BotonDeReserva, type EstadoDeReservaDeSesion } from '@/presentation/pat
 import { matrizQr } from '@infra/operations/qr';
 import { NotificationsPanel } from '@/presentation/patterns/NotificationsPanel';
 import { RachaCalendario } from '@/presentation/patterns/RachaCalendario';
+import { FotoDePerfilForm } from '@/presentation/patterns/FotoDePerfilForm';
 import { SubirComprobanteForm } from '@/presentation/patterns/ComprobanteForms';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
@@ -83,7 +84,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   const multisede = features.enableMultiBranch === true;
   const hoy = await repo.hoyDelGimnasio(slug);
 
-  const [avisos, ficha, dias, historial, planes, pagos, comprobantes] = await Promise.all([
+  const [avisos, ficha, dias, historial, planes, pagos, comprobantes, miFoto] = await Promise.all([
     repo.avisos(),
     customerId ? socios.ficha(customerId) : Promise.resolve(null),
     customerId ? socios.diasDeAsistencia(customerId, 365) : Promise.resolve([] as readonly string[]),
@@ -93,6 +94,9 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
     conPagos ? socios.planesVendibles() : Promise.resolve([]),
     customerId ? socios.pagos(customerId) : Promise.resolve([]),
     conPagos && customerId ? (await receiptsRepository()).listar({ customerId, limite: 10 }) : Promise.resolve([]),
+    // V4.2 · Su foto de perfil. URL firmada de cinco minutos: el bucket es
+    // privado porque una cara es dato personal.
+    customerId ? repo.miFoto() : Promise.resolve({ url: null }),
   ]);
 
   // V3.2: sus rutinas vigentes. RLS solo devuelve las del propio socio.
@@ -204,6 +208,18 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
         </section>
       ) : (
         <>
+          {/* V4.2 · Lo primero que ve el socio es quién es: su cara y su nombre.
+              No es adorno —es lo que recepción compara al escanear su QR—, y por
+              eso va arriba y no escondido en «información personal». */}
+          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-mi-identidad">
+            <h2 id="titulo-mi-identidad" className="t-h3">
+              Hola, {perfil.fullName.split(/\s+/)[0] ?? perfil.fullName}
+            </h2>
+            <div className="mt-5">
+              <FotoDePerfilForm slug={slug} nombre={perfil.fullName} fotoUrl={miFoto.url} />
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               href="#mi-membresia"

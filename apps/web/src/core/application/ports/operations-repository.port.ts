@@ -37,6 +37,8 @@ import type {
 import type { Pagina } from '../../domain/shared/paginacion';
 import type { AvisoInterno, MembresiaParaAvisar } from '../../domain/operations/notifications';
 import type { PerfilOperativo } from '../../domain/operations/workspace';
+import type { TipoDeAvatar } from '../../domain/operations/avatars';
+import type { ResultadoDeOperacion } from './resultado';
 
 export interface SerieDiaria {
   readonly dia: string;
@@ -85,6 +87,25 @@ export interface OperationsRepositoryPort {
 
   /** Como `perfil()`, pero distingue «no hay» de «no se pudo leer». */
   perfilDetallado(): Promise<LecturaDePerfil>;
+
+  /**
+   * Foto de perfil del socio de la sesión (V4.2).
+   *
+   * Vive aquí y NO en el repositorio de gestión de socios a propósito: aquel
+   * está detrás de `enableMemberManagement`, una capacidad que un gimnasio
+   * puede no tener contratada, y la foto es del socio —la sube él— no del
+   * módulo de gestión. GOLD, sin ir más lejos, no tiene esa capacidad.
+   */
+  miFoto(): Promise<{ readonly url: string | null }>;
+
+  /** Guarda la foto del socio de la sesión y borra la anterior. */
+  guardarMiFoto(
+    bytes: Uint8Array,
+    tipo: TipoDeAvatar,
+  ): Promise<ResultadoDeOperacion<{ readonly url: string | null }>>;
+
+  /** La quita: del bucket y de la ficha. */
+  quitarMiFoto(): Promise<ResultadoDeOperacion<null>>;
 
   /**
    * Fecha de HOY en la zona horaria del gimnasio, en formato `YYYY-MM-DD`.

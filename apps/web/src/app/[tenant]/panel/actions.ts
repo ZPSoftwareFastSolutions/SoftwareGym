@@ -18,7 +18,9 @@ import { PREFIJO_DE_AVISO_PERSONAL } from '@core/domain/operations/notifications
 import { branchesRepository, operationsRepository, reservationsRepository, tenantRepository } from '@infra/config/composition-root';
 import { createSupabaseServerClient } from '@infra/auth/supabase.server';
 import { isSupabaseConfigured } from '@infra/auth/supabase.config';
-import { contextoDeAccion } from './_acciones';
+import { esTipoDeAvatar, motivoDeRechazo } from '@core/domain/operations/avatars';
+import { detectarTipoDeImagen } from '@core/domain/operations/receipts';
+import { contextoDeAccion, type EstadoDeFormulario } from './_acciones';
 import { COOKIE_DE_SUCURSAL, contextoDeSucursal, opcionesDeCookieDeSucursal } from './_sucursal';
 
 export interface EstadoDeCheckIn {
@@ -149,4 +151,57 @@ export async function marcarAvisoLeido(form: FormData): Promise<void> {
     .upsert({ notice_id: avisoId, app_user_id: perfil.id }, { onConflict: 'notice_id,app_user_id' });
 
   revalidatePath(`/${slug}/panel`, 'layout');
+}
+
+/**
+ * Foto de perfil del socio (V4.2).
+ *
+ * POR QUÉ NO EXIGE NINGUNA CAPACIDAD. La foto la sube el propio socio sobre su
+ * propia ficha; no es parte del módulo de gestión de socios, que un gimnasio
+ * puede no tener contratado. Lo único que se exige es sesión y ficha vinculada,
+ * y la base lo vuelve a exigir: `customers_update_self` solo deja tocar la fila
+ * propia y un disparador rechaza cualquier cambio que no sea la foto.
+ *
+ * Los bytes se validan por su FIRMA BINARIA, nunca por el `type` que escribe el
+ * navegador: un HTML renombrado a `.jpg` no pasa.
+ */
+export async function guardarMiFotoDePerfil(
+  _previo: EstadoDeFormulario,
+  form: FormData,
+): Promise<EstadoDeFormulario> {
+  const permiso = await contextoDeAccion(form, []);
+  if (!permiso.ok) return { mensaje: permiso.mensaje };
+
+  const archivo = form.get('foto');
+  if (!(archivo instanceof File) || archivo.size === 0) {
+    return { mensaje: 'Elige una foto para subir.' };
+  }
+
+  const bytes = new Uint8Array(await archivo.arrayBuffer());
+  const tipo = detectarTipoDeImagen(bytes);
+  const rechazo = motivoDeRechazo(bytes.byteLength, tipo);
+  if (rechazo !== null) return { mensaje: rechazo };
+  if (tipo === null || !esTipoDeAvatar(tipo)) {
+    return { mensaje: 'Esa imagen no es JPG, PNG ni WebP.' };
+  }
+
+  const resultado = await permiso.contexto.repo.guardarMiFoto(bytes, tipo);
+  if (!resultado.ok) return { mensaje: resultado.mensaje };
+
+  revalidatePath(`/${permiso.contexto.slug}/panel`, 'layout');
+  return { exito: 'Foto actualizada.' };
+}
+
+export async function quitarMiFotoDePerfil(
+  _previo: EstadoDeFormulario,
+  form: FormData,
+): Promise<EstadoDeFormulario> {
+  const permiso = await contextoDeAccion(form, []);
+  if (!permiso.ok) return { mensaje: permiso.mensaje };
+
+  const resultado = await permiso.contexto.repo.quitarMiFoto();
+  if (!resultado.ok) return { mensaje: resultado.mensaje };
+
+  revalidatePath(`/${permiso.contexto.slug}/panel`, 'layout');
+  return { exito: 'Foto quitada.' };
 }

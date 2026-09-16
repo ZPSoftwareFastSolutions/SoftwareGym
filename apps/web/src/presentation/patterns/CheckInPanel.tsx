@@ -21,6 +21,7 @@ import { useFormStatus } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { registrarCheckIn, type EstadoDeCheckIn } from '@/app/[tenant]/panel/actions';
+import { IdentidadDeIngreso } from './IdentidadDeIngreso';
 
 const QrScanner = dynamic(() => import('./QrScanner').then((modulo) => modulo.QrScanner), {
   ssr: false,
@@ -70,6 +71,17 @@ export function CheckInPanel({ slug, sucursal, mostrarSucursal = false, empezarC
   const campo = useRef<HTMLInputElement>(null);
   const formulario = useRef<HTMLFormElement>(null);
   const resultado = estado.resultado;
+
+  /**
+   * V4.2 · Un contador que sube en cada resultado, para que la ventana de
+   * identidad vuelva a abrirse aunque sea el MISMO socio dos veces seguidas
+   * (el objeto sería idéntico y un efecto que mirara el resultado no se
+   * dispararía). En un mostrador eso pasa constantemente.
+   */
+  const [intento, setIntento] = useState(0);
+  useEffect(() => {
+    if (resultado) setIntento((n) => n + 1);
+  }, [resultado]);
 
   useEffect(() => {
     if (!resultado) return;
@@ -161,6 +173,10 @@ export function CheckInPanel({ slug, sucursal, mostrarSucursal = false, empezarC
       <div aria-live="polite" aria-atomic="true">
         {resultado && <Resultado resultado={resultado} />}
       </div>
+
+      {/* La ventana con la cara del socio. Se abre sola al resolverse el
+          escaneo; el texto de arriba queda como registro de lo que pasó. */}
+      <IdentidadDeIngreso resultado={resultado} intento={intento} sucursal={sucursal?.name ?? "—"} />
 
       {resultado && !camara && (
         <button
