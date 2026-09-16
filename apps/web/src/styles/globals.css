@@ -327,7 +327,7 @@ ol {
     letter-spacing: var(--t-label-tracking);
   }
 
-  .fill-action {
+  .relleno-de-marca {
     background-image: var(--t-action-fill);
   }
 }

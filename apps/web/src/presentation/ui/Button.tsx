@@ -25,9 +25,9 @@ const BASE =
   'disabled:pointer-events-none disabled:opacity-45';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  // `fill-action`: con acabado metálico el botón lleva el degradado de la marca;
+  // `relleno-de-marca` (no `fill-*`, que es la utilidad de Tailwind para SVG): con acabado metálico el botón lleva el degradado de la marca;
   // con acabado sólido no pinta nada y queda el color de siempre.
-  primary: 'fill-action bg-action text-on-action hover:bg-action-strong',
+  primary: 'relleno-de-marca bg-action text-on-action hover:bg-action-strong',
   secondary: 'bg-card text-ink border border-line hover:border-action hover:text-action',
   outline: 'border border-action text-action hover:bg-action hover:text-on-action',
   ghost: 'text-ink/90 hover:text-action',
