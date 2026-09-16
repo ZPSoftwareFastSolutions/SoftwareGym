@@ -2014,8 +2014,29 @@ prueba afirma que **exactamente una** —no tener sesión— lleva al formulario
 - **Trampa nueva del runbook:** comprobar QUÉ ROLES tiene la cuenta con la que se prueba. La primera pasada dio tres
   «fugas» que no lo eran: se estaba probando «el socio» con Juan Pérez, que es el administrador de Mítico desde V4.
 
+**Login entre gimnasios y operación de GOLD (2026-09-16, commit `4e3e6c8`, `dpl_GqT5TcdbfwVGTFnLS2A3mKdbVTRa`).**
+- **Hueco cerrado:** Supabase Auth es uno para todos los gimnasios, así que la contraseña correcta de una cuenta de Mítico
+  en el formulario de GOLD abría sesión. Ahora `iniciarSesion` pregunta a la base (`v_my_profile`, con el mismo cliente
+  que autenticó; **nunca `user_metadata`**, que el usuario puede reescribir) a qué gimnasio pertenece la cuenta. Si no es
+  el de la ruta: `signOut({ scope: 'local' })` —el global cerraría sus sesiones legítimas en su propio gimnasio— y el
+  MISMO mensaje que una contraseña incorrecta. La plataforma entra por cualquiera. Decisión en
+  `decidirLoginPorGimnasio` (`operations/acceso-al-panel.ts`), con pruebas.
+- **GOLD enciende su operación:** `enableAttendance`, `enableQrAttendance`, `enableMemberManagement`, `enablePayments`,
+  `enableNotifications`, `enableReports`, `enableReservations`. Hasta aquí seguían «pendientes de contratación» y todo lo
+  de V1 respondía 404 en GOLD. Entrenadores, ejercicios y rutinas siguen apagados. Verificado sobre el dominio: 10 rutas
+  del panel de GOLD pasan de 404 a 307, su CSV da 401, y lo no contratado sigue en 404.
+- **Cuentas de prueba de GOLD — SIN CREAR TODAVÍA.** El clasificador de permisos bloqueó al asistente la escritura en
+  `auth.users` de producción, y no se forzó. Hay un script para que lo ejecute una persona en el SQL Editor de Supabase:
+  cinco cuentas con el correo confirmado en `@pruebas.gymplatform.bo` —`administracion.gold`, `gerencia.gold`,
+  `recepcion.gold` (asignada a LAVITA y ELALTO), `socio.gold` (GO-001, Plan Aeróbicos, pago de 150 Bs, sede LAVITA) y
+  `socio2.gold` (GO-002, sin membresía)—. Las fichas se crean con `registrar_socio` simulando la sesión de
+  Administración. **Las contraseñas NO están en el repositorio** (a diferencia de §8, que es de V2): se entregaron al
+  usuario fuera de git.
+
 **Pendiente:**
-1. ~~Desplegar y medir los códigos de estado~~ **hecho** (ver arriba). Falta el 403 y el 503, que exigen sesión.
+1. ~~Desplegar y medir los códigos de estado~~ **hecho** (ver arriba).
+1b. **Ejecutar el script de cuentas de prueba de GOLD** y, con ellas, probar el login cruzado: una cuenta de Mítico en
+   `/golds-gym-premium/acceso` tiene que responder «Correo o contraseña incorrectos» y no abrir sesión. Falta el 403 y el 503, que exigen sesión.
 2. **Pegar la plantilla del correo** en Supabase (Authentication → Emails → Confirm signup) y registrar una cuenta de
    prueba en cada gimnasio: la interpolación ocurre en el servidor de Supabase y no se puede verificar desde aquí.
 3. Revisión humana con sesión de todo lo de esta rama, incluidos los tres tableros con recepción, gerencia y
