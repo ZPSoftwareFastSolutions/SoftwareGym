@@ -189,3 +189,8 @@ Pruebas por rol, aislamiento entre gimnasios y filtro de la vitrina anónima:
 
 Pruebas por rol, tope diario, alcance de sede, guarda de la foto y autorización de clases:
 [`docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql`](../../docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql).
+
+> **Las etapas 5 y 6 de V4.2 no añaden ninguna migración.** La pantalla de admisiones, el historial de ingresos, los
+> tableros por puesto, las clases del socio y el correo de confirmación se apoyan enteros en lo que ya existe
+> (`v_access_passes`, `class_session_admissions`, las vistas agregadas de V4 y los metadatos del alta). La batería
+> V4.2 los cubre tal cual está: si se vuelve a tocar la base, hay que volver a pasarla.

@@ -4,7 +4,7 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-15 · **V4.1 anuncios del gimnasio, instalaciones por sucursal y alta de GOLD'S GYM PREMIUM** (**migraciones aplicadas, batería RLS pasada y desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `9332021` —, ver §13c).
+> - **Última actualización:** 2026-09-16 · **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas y batería RLS pasada; **sin desplegar todavía, por decisión del usuario**, ver §13d). La anterior fue V4.1, en producción en https://gold-gym-psi.vercel.app (§13c).
 > - **Rama de trabajo vigente:** `feat/goldgym-v1` (sale de `feat/v4-seradmingym`). Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
@@ -28,12 +28,12 @@
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
 | **En producción** | **V4.1 en https://gold-gym-psi.vercel.app** (proyecto Vercel `gold-gym`, commit `9332021`, al que está enlazado hoy `apps/web`). El mismo despliegue sirve los tres gimnasios. `web` (https://web-rust-xi-23.vercel.app) quedó en V4 y `gym-platform` (https://gym-platform-alpha.vercel.app) en V3.2 (ver §7 y §14) |
 | **Clientes** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) · **`/golds-gym-premium` (real, V4.1: cuatro sucursales, anuncios y clases; sin módulos operativos contratados)** |
-| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · V4 ✅ administración del gimnasio + jerarquía de roles + rendimiento · **V4.1 ✅ anuncios del gimnasio + instalaciones por sucursal + alta de GOLD** |
+| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · V4 ✅ administración del gimnasio + jerarquía de roles + rendimiento · V4.1 ✅ anuncios + instalaciones por sucursal + alta de GOLD · **V4.2 ✅ identidad y foto del socio, pases de acceso con tope diario, alcance de sede por plan, autorización de clases e invitados, historial de ingresos, tableros por puesto, clases del socio y correo de confirmación por marca (sin desplegar)** |
 | **Roles** | Plataforma (`super_admin`) · **Administración (`admin`, V4)** · Gerencia · Recepción · Entrenador · Socio. Jerarquía en la base: `roles.level` 100/40/30/20/10/0 (§4.6) |
-| **Siguiente** | 1) Revisar V4.1 con sesión (§13c) · 2) Completar los datos que GOLD no entregó (§12, bloque GOLD) · 3) Designar el administrador de Mítico y revisar V4 con sesión (§13b) · 4) V4.x: suscripciones, licencias, facturación (§13) |
+| **Siguiente** | 1) **Desplegar V4.2** y medir los estados con `curl`, incluido el 403 (§13d) · 2) Pegar la plantilla del correo en Supabase (runbook) · 3) Revisar V4.1 y V4.2 con sesión · 4) Completar los datos que GOLD no entregó (§12, bloque GOLD) · 5) V4.x: suscripciones, licencias, facturación (§13) |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
-de datos), §12 (deuda viva) y §13b (qué cambió en V4 y qué queda pendiente).
+de datos), §12 (deuda viva), §13d (**V4.2, lo último y lo que queda**) y §13b (V4).
 
 **Cinco reglas que no se rompen nunca:**
 
@@ -83,6 +83,7 @@ V3.3 ✅  Clases grupales por plan, horario semanal, sesiones generadas por sede
 V3.4 ✅  Reservas con reglas por gimnasio, lista de espera automática, faltas y bloqueo, avisos al socio, reportes
 V4   ✅  Administración del gimnasio (rol admin + jerarquía), rendimiento con volumen, paginación, navegación agrupada
 V4.1 ✅  Anuncios del gimnasio (carrusel + detalle, gestionables), instalaciones por sucursal y alta de GOLD'S GYM PREMIUM
+V4.2 ✅  GOLD V1: identidad del socio, pases de acceso, clases con invitados, tableros por puesto y correo por marca
 V4.x ⏭  Suscripciones, licencias, facturación, integraciones
 ```
 
@@ -286,7 +287,8 @@ src/
         reportes/ [reporte]/ csv/ _filtros.ts Reportes híbridos
   core/
     domain/
-      tenant/                    tenant-config.ts (CONTRATO CENTRAL), branding.ts, feature-flags.ts
+      tenant/                    tenant-config.ts (CONTRATO CENTRAL), branding.ts, feature-flags.ts,
+                                 correo-de-confirmacion.ts (V4.2: la plantilla de Supabase, generada por marca)
       catalog/catalog.ts         Servicios, planes, programas, productos, galería, equipo…
       shared/                    Tipos base, marcas nominales y paginacion.ts (V4: página de la URL, rango, números visibles, consulta con filtros)
       catalog/facilities.ts      V4.1: reparto de instalaciones por sede (el puente es `branches.code`)
@@ -306,6 +308,9 @@ src/
         training.ts              Rutinas y LECTURA del entrenamiento: etiqueta del día por grupo/familia, conclusiones (V3.2); V4: tituloDeRutina, nombreSinEtiquetaDelDia
         classes.ts               Clases: acceso por plan, fechas de un horario, cruces, estado de sesión, ocupación, conclusiones (V3.3)
         reservations.ts          Reservas: ventana, cancelación tardía, cupo y espera, bloqueo por faltas, reglas, conclusiones (V3.4)
+        tablero.ts               V4.2: con qué mirada se abre un dashboard (enfoque, orden de bloques, acciones rápidas)
+        agenda-del-socio.ts      V4.2: en qué situación está el socio ante una sesión (inscrito, completo, próximo…)
+        acceso-al-panel.ts       V4.2: situación → respuesta (acceso, 403, 503, su panel). Solo «sin sesión» va al login
         periodo.ts               Presets hoy/ayer/7d/30d/mes/mes-anterior/año
         reports.ts               Catálogo de 11 reportes, resumen, serie, CSV seguro, TOPE_DE_FILAS_DE_REPORTE (2 000)
     application/
@@ -793,6 +798,7 @@ README de migraciones.
 | `…/panel/gimnasio` | dinámica | `dashboard.read` | Dashboard de gerencia y recepción («Operación del día» para Administración). V4: contadores de socios desde `v_customer_counts` |
 | `…/panel/plataforma` | dinámica | `tenants.manage` | Resumen de gimnasios (sin datos personales). V4: «Designar» administrador por gimnasio (correo de una cuenta ya registrada) |
 | `…/panel/asistencia` | dinámica | `enableAttendance` + `attendance.read` | Check-in, estadísticas (V4: agregadas en la base, 30 días reales), historial paginado (25) con filtros |
+| `…/panel/accesos` | dinámica | `enableAttendance` + `attendance.read` (**V4.2**) | Historial de INGRESOS: cada paso por la puerta con su hora y su sede, paginado en la base (25), con filtros de rango, socio, sucursal y tipo (todos / en su sede de origen / en otra sucursal). Distinto de «Asistencia», que cuenta un día por socio |
 | `…/panel/socios`, `/nuevo`, `/[id]` | dinámica | `enableMemberManagement` + `customers.*` | Lista paginada (25) con búsqueda, plan y accesos rápidos contados por la base (en rejilla, sin scroll horizontal), alta, ficha completa |
 | `…/panel/comprobantes`, `/[id]/imagen` | dinámica | `enablePayments` + `payments.read` | Bandeja paginada (12 tarjetas), totales por importe, revisión, ZIP que pide la lista filtrada al pulsar (tope 500) |
 | `…/panel/cobros` | dinámica | `enablePayments` + `settings.manage` | Datos y modalidad, QR general y QR de cada plan activo (libre/exacto, vencimiento, «se cobra con»), eliminar |
@@ -1182,6 +1188,10 @@ terminal la renueva. Usar `GIT_TERMINAL_PROMPT=0` en la sesión.
 **Desarrollo local:** `.claude/launch.json` define `gym-web` (`npm run dev` en
 `apps/web`, puerto 3000) para el panel de navegador.
 
+**`npm run correo` (V4.2).** Regenera `docs/correo/confirmacion.html` desde el registro de gimnasios. Se ejecuta al dar
+de alta un gimnasio o al cambiar la paleta, el logotipo o el correo de contacto de uno, y el resultado lo pega una
+persona en el panel de Supabase: [`docs/runbooks/correo-de-confirmacion.md`](docs/runbooks/correo-de-confirmacion.md).
+
 **Ramas** (cadena lineal; cada una contiene a la anterior):
 
 ```text
@@ -1296,8 +1306,9 @@ cd apps/web
 npm run typecheck    # incluye apps/web/tests
 npm test             # node --test, sin dependencias: dominio puro (sedes, racha, cobro QR,
                      # entrenadores, ejercicios, rutinas, métricas, clases, reservas, jerarquía de
-                     # roles, título de rutina, paginación, navegación, patrones y, desde V4.1,
-                     # estado y orden de anuncios y reparto de instalaciones) — 199 pruebas
+                     # roles, título de rutina, paginación, navegación, patrones, anuncios e
+                     # instalaciones y, desde V4.2, identidad, admisiones, tablero por puesto,
+                     # agenda del socio, respuestas de acceso y correo) — 280 pruebas
 npm run build        # valida también la configuración de todos los tenants
 npm audit            # debe dar 0
 ```
@@ -1555,6 +1566,13 @@ ningún chunk servido.
 48. **Navegación sin desplazamiento horizontal**: hasta 6 entradas a la vista; más, agrupadas en menús. Ninguna opción se quita.
 49. **Un dato, un campo** (rutinas): la etiqueta del día no se repite en el nombre; la base normaliza y el título se arma en un solo sitio.
 50. **Migraciones de V4 en adelante: archivo versionado + autorización del usuario antes de aplicarlas a producción.**
+51. **Un PASE no es una ENTRADA** (V4.2): `access_passes` cuenta cada vez que alguien cruza una puerta y `attendance_records` sigue siendo «este socio vino este día», una por día. El tope diario se cuenta sobre los pases; la racha, los KPI y los reportes siguen contando entradas. Las dos cifras son correctas y la interfaz lo dice.
+52. **El tope de accesos lo cuenta la BASE, con la fila del socio bloqueada** (`for update`) antes de contar: un `if accesos < 3` en el navegador no sobrevive a dos mostradores escaneando a la vez.
+53. **Un plan puede acotar en qué sedes vale** (`membership_plans.branch_scope`: `todas` · `sede_origen` · `listadas`), pero el valor por defecto sigue siendo `todas`: ningún plan existente cambió de significado.
+54. **La foto del socio vive en Storage privado**, servida con URL firmada de corta duración, nunca como binario en una columna de PostgreSQL. Es identificación en el mostrador, no un álbum.
+55. **Cada situación de acceso tiene su respuesta, y solo «no hay sesión» lleva al formulario** (V4.2, §19/§20): un fallo de red es 503 con la sesión intacta, una cuenta sin ficha y una sin permiso son 403, el gimnasio equivocado es una vuelta a su propio panel, y la capacidad no contratada sigue siendo 404. Es una tabla en el dominio con una prueba que lo afirma, no una cadena de `if`.
+56. **El foco no es seguridad** (V4.2): qué acciones ve cada puesto lo decide `operations/tablero.ts`, y cambia el ORDEN, nunca el contenido. La ruta vuelve a exigir capacidad y permiso, y RLS decide qué filas existen.
+57. **El correo de confirmación se GENERA desde el registro de gimnasios** y elige su marca en tiempo de envío con los metadatos del alta: una sola plantilla en Supabase sirve a todos los clientes sin que ninguno reciba la marca de otro.
 
 ---
 
@@ -1932,6 +1950,10 @@ Encargo «GOLD'S GYM PREMIUM — V1». Se entregó por etapas; **las etapas 1 a 
 | 3 | **Pases de acceso**, tope diario y alcance de sede por plan | `2efff8e` |
 | — | Corrección que encontró la batería + runbook V4.2 | `7f408e0` |
 | 4 | **Autorización nominal de clases e invitados** (`access_mode = 'autorizados'`) | `d36f2fa` |
+| 4 · UI | Pantalla de admisiones en la sesión: autorizar socios e invitados | `519f85b` |
+| 5 · §12 | **Historial de ingresos** filtrable (`/panel/accesos`) sobre `v_access_passes` | `fe84cf3` |
+| 5 | **Tableros por puesto** (§9, §10, §11, §13, §21) y **clases del socio** (§15, §16) | `9622fc5` |
+| 6 · §17 | **Correo de confirmación** con la marca de cada gimnasio, y §19/§20 con prueba | `5229b02` |
 
 **Los bugs, con su causa medida en el código:**
 - **Login tras confirmar (§18):** la ruta SÍ creaba la sesión; redirigía siempre a `/<slug>/acceso`, el formulario de
@@ -1943,8 +1965,35 @@ Encargo «GOLD'S GYM PREMIUM — V1». Se entregó por etapas; **las etapas 1 a 
   permiso» es 403 real (`forbidden()` de Next 16, con `experimental.authInterrupts`); «no se pudo comprobar» es
   `panel/error.tsx` con reintentar y las cookies intactas; capacidad no contratada sigue siendo 404.
 
-**Estado (2026-09-16): etapas 1-4 cerradas, 5 migraciones aplicadas y verificadas, SIN DESPLEGAR.**
-- Código: typecheck limpio · **218 pruebas** · build de 99 páginas · `npm audit` 0.
+**Lo que resolvió la etapa 5 (2026-09-16).** Ninguna pantalla nueva salvo el historial de ingresos: las que había
+enseñaban todo a la vez y en el mismo orden para todos.
+- **`operations/tablero.ts`** decide, desde capacidades y permisos, qué acciones frecuentes se ofrecen y en qué orden
+  van los bloques (`operacion` · `dinero` · `socios` · `sucursales`). Recepción abre con el mostrador; gerencia y
+  administración, con el dinero. **Lo que cambia es el ORDEN, no el contenido**: un dashboard por rol habría duplicado
+  la pantalla y las copias se irían separando con cada arreglo. El enfoque sale de lo que la persona PUEDE
+  (`reports.read`), no del nombre del rol: recepción y gerencia comparten espacio de trabajo.
+- **`presentation/patterns/AccionesRapidas.tsx`**: la fila de botones grandes, con «Escanear QR» como ventana del
+  mostrador y no como enlace. Que una acción no aparezca es FOCO, no seguridad.
+- **`operations/agenda-del-socio.ts`** resuelve en un sitio «¿en qué situación estoy con esta clase?» —inscrito, en
+  espera, disponible, completo, no incluida en tu plan, cancelada, próximamente— y `MiAgendaDeClases` la lee como pidió
+  el cliente: día → clase → hora → sede → disponibilidad → botón. Quien reservó sale como inscrito aunque la clase esté
+  llena (decisión 40). Se añade el horario del gimnasio con hoy destacado.
+- **`/panel/accesos`**: página aparte de «Asistencia» porque son dos preguntas distintas (una fila por socio y día
+  frente a una por paso). `range` + `count: exact`; el texto de búsqueda se limpia de comas y paréntesis porque
+  PostgREST separa por coma las condiciones de un `or`.
+
+**Lo que resolvió la etapa 6 (2026-09-16).** El correo de confirmación lo envía **Supabase**, con UNA plantilla para
+los tres gimnasios: poner ahí el dorado de GOLD habría dejado a Mítico con el correo de otra marca. La plantilla se
+**genera** desde `TENANT_REGISTRY` (`npm run correo` → `docs/correo/confirmacion.html`) y elige la marca en tiempo de
+envío con `.Data.tenant_slug`, que el alta ya manda. El slug se compara envuelto en `printf "%v"`: con `eq` a secas, un
+metadato ausente es un error de ejecución de Go que rompe el único correo que activa la cuenta. Instalarla es un paso
+humano, en [`docs/runbooks/correo-de-confirmacion.md`](docs/runbooks/correo-de-confirmacion.md).
+
+§19 y §20 pasan además de código a **tabla probada**: `operations/acceso-al-panel.ts` mapea situación → respuesta y una
+prueba afirma que **exactamente una** —no tener sesión— lleva al formulario de acceso.
+
+**Estado (2026-09-16): las seis etapas cerradas, 5 migraciones aplicadas y verificadas, SIN DESPLEGAR.**
+- Código: typecheck limpio · **280 pruebas** · build de **102 páginas** · `npm audit` 0 · greps limpios.
 - Base: batería V4.2 completa ([`docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql`](docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql)),
   advisors solo con el aviso aceptado. **Una corrección la encontró la batería**: la guarda de la foto bloqueaba
   también a quien no tiene sesión (migraciones y mantenimiento), porque `has_permission` es falso sin `auth.uid()`.
@@ -1953,20 +2002,20 @@ Encargo «GOLD'S GYM PREMIUM — V1». Se entregó por etapas; **las etapas 1 a 
 
 **Pendiente:**
 1. **Desplegar** y medir con `curl` los códigos de estado, incluido el **403 nuevo** (la lección del `loading.tsx` de
-   V4: el estado se mide sobre el dominio, no leyendo el código).
-2. **Etapa 4, interfaz:** la base admite invitados y admisiones nominales, pero falta la pantalla en
-   `/panel/clases/sesion/[id]` para crearlas. Hasta entonces `access_mode = 'autorizados'` no se puede activar desde
-   el panel (ninguna clase lo usa: la migración lo comprueba).
-3. **Etapa 5:** dashboards por rol (socio, recepción, gerencia, administración), historial de ingresos filtrable con
-   la vista `v_access_passes` y UX de reservas.
-4. **Etapa 6:** diseño del correo de confirmación con identidad de GOLD.
-5. Revisión humana con sesión de todo lo de esta rama.
+   V4: el estado se mide sobre el dominio, no leyendo el código). El usuario lo pidió para DESPUÉS de cerrar el plan.
+2. **Pegar la plantilla del correo** en Supabase (Authentication → Emails → Confirm signup) y registrar una cuenta de
+   prueba en cada gimnasio: la interpolación ocurre en el servidor de Supabase y no se puede verificar desde aquí.
+3. Revisión humana con sesión de todo lo de esta rama, incluidos los tres tableros con recepción, gerencia y
+   administración, y «Tus clases» del socio en 375 px.
+4. Las etapas 5 y 6 **no añaden tablas, políticas ni RPC**: la batería V4.2 las cubre tal cual está. Si se toca la
+   base otra vez, volver a pasarla.
 
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
+| V4.2 GOLD V1 | 2026-09-16 | `cca427d` → `5229b02` (rama `feat/goldgym-v1`) · **sin desplegar** | Encargo «GOLD'S GYM PREMIUM — V1», seis etapas. **Dos conflictos se resolvieron CON el usuario en vez de sobrescribir reglas**: los 3 accesos diarios contra «una entrada por socio y día» (decisión 20) → tabla `access_passes` aparte, `attendance_records` intacta; y el acceso multisede contra «la membresía vale en todas las sedes» (decisiones 19 y 24) → `membership_plans.branch_scope`, por defecto `todas`, con la migración comprobando que ningún plan existente cambió. Además: **foto de perfil** del socio en Storage privado (no un blob en Postgres) y **modal de identidad** al escanear, con todo el contenido venido del backend; **autorización nominal de clases** (`access_mode = 'autorizados'` + `class_session_admissions`) para eventos con invitados que no son socios; **historial de ingresos** filtrable y paginado en la base; **tableros por puesto** (el orden cambia, el contenido no); **clases del socio** con sus seis situaciones y agenda día → clase → hora → sede → disponibilidad → reservar; **correo de confirmación generado por marca** desde el registro de gimnasios. §18/§19/§20: confirmar el correo deja la sesión abierta en el panel, un fallo de red ya no cierra sesión y el 403 existe de verdad (`forbidden()` de Next 16). 5 migraciones aplicadas con autorización; batería RLS V4.2 (una corrección la encontró ella: la guarda de la foto bloqueaba también a quien no tiene sesión); 280 pruebas; build de 102 páginas |
 | V4.1 GOLD | 2026-09-15 | `9332021` (rama `feat/goldgym-v1`, en GitHub) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, despliegue `gold-6mgw9bczz…`) | **Tercer cliente de la plataforma, sin código propio.** Capacidad genérica de **anuncios** (tabla `announcements` con RLS y lectura anónima solo de lo publicado, bucket `anuncios`, `v_announcements_public`, permiso `content.manage`, flag `enableAnnouncements`, carrusel con detalle en `<dialog>` y `/panel/anuncios`) y **instalaciones repartidas por sucursal** (`FacilityItem.branchCode` unido a `branches.code` + `ui/Pestanas.tsx` genérico; sin reparto, comportamiento idéntico al anterior). Alta de **Gold's Gym Premium**: 4 sucursales, 7 planes, 15 clases y 60 horarios, todo sobre el modelo que ya existía. Un correo vacío pasa a ser válido y la vitrina lo omite; las áreas sin superficie ni fichas no pintan huecos. 2 migraciones; ADR 0011; batería RLS V4.1 (el anónimo ve 1 de 4 anuncios sembrados: ni borrador, ni programado, ni vencido); 199 pruebas; build de 99 páginas. Verificada sobre el dominio: públicas 200, panel 307, capacidad apagada 404, `/no-existe` 404, los tres gimnasios vivos, sin `service_role` en 11 chunks |
 | V4 administración | 2026-09-14 | `1860fda`, `f54ce26` (rama `feat/v4-seradmingym`) · **producción** Vercel `web` (`web-rust-xi-23.vercel.app`, despliegue `web-gu4lr6b3e…`) | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (contar 50 000 entradas: > 20 s → 18 ms; KPIs: timeout → 54 ms), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; indicador de carga en el enlace pulsado. 7 migraciones (2 de ellas encontradas por la batería: vistas con función por fila y `cambiar_estado_de_cuenta` sin grant de `updated_at`); ADR 0010; batería RLS V4; 174 pruebas. Verificada sobre el dominio: públicas 200, panel 307, CSV 401, capacidad apagada 404, sin `service_role` |
 | V1 | 2026-09-08/09 | `27d334e`, `38b83fd` | Sitio público multi-tenant, temas, flags, Next 16 |
