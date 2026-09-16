@@ -21,6 +21,7 @@ import {
   type EspacioDeTrabajo,
   type PerfilOperativo,
 } from '@core/domain/operations/workspace';
+import { respuestaDeAcceso, type SituacionDeAcceso } from '@core/domain/operations/acceso-al-panel';
 import { operationsRepository } from '@infra/config/composition-root';
 import { isSupabaseConfigured } from '@infra/auth/supabase.config';
 import { estadoDeSesion } from '@infra/auth/supabase.server';
@@ -87,47 +88,56 @@ export interface ContextoDelPanel {
 }
 
 /**
- * Exige sesión y devuelve el contexto. Redirige en vez de lanzar: para quien
- * llega sin sesión, «vuelve a la página de acceso» es la respuesta correcta,
- * no una pantalla de error.
+ * Exige sesión y devuelve el contexto, o corta el paso como corresponda.
  *
- * También redirige cuando el gimnasio de la ruta no es el del perfil. No es
- * una fuga —RLS no entrega un solo dato ajeno, y se comprobó— pero una página
- * que dice «Aurora Fit» mientras muestra los datos de un socio de Mítico está
- * mintiendo sobre dónde está el usuario, y ese descuido es el que se
- * convierte en fuga cuando alguien añade una consulta dando por hecho que la
- * ruta ya estaba validada.
+ * Qué corresponde en cada caso no se decide aquí: lo dice
+ * `respuestaDeAcceso` (dominio), y esta función solo lo ejecuta.
  */
 export async function exigirPerfil(slug: string): Promise<ContextoDelPanel> {
   const situacion = await situacionActual();
 
-  /**
-   * V4.2 · CADA SITUACIÓN TIENE SU RESPUESTA, y solo una lleva al formulario
-   * de acceso. Antes las cuatro terminaban ahí, así que un hipo de red se
-   * presentaba como «tu sesión terminó» y la persona perdía lo que estaba
-   * haciendo. La regla del producto es: **una operación fallida no cierra la
-   * sesión de nadie.**
-   */
-  if (situacion.estado === 'anonimo') redirect(tenantHref(slug, 'acceso'));
-
-  if (situacion.estado === 'indisponible') {
-    // 503 real y la sesión intacta: al recargar, quien ya estaba dentro sigue
-    // dentro. `unauthorized()` sería mentir —la sesión es válida— y `redirect`
-    // al login la daría por perdida.
-    throw new ErrorDeDisponibilidad();
-  }
-
-  // Sesión válida sin ficha operativa: es una cuenta a medio aprovisionar, no
-  // un intruso. Se le dice qué le falta en vez de mandarla a entrar otra vez.
-  if (situacion.estado === 'sin-perfil') forbidden();
+  // V4.2 · CADA SITUACIÓN TIENE SU RESPUESTA, y solo una lleva al formulario de
+  // acceso. Antes las cuatro terminaban ahí, así que un hipo de red se
+  // presentaba como «tu sesión terminó» y la persona perdía lo que estaba
+  // haciendo. Cuál es la respuesta de cada una lo dice el dominio
+  // (`acceso-al-panel.ts`), que es donde se puede probar.
+  if (situacion.estado !== 'ok') responder(situacion.estado, slug);
 
   const { perfil, repo } = situacion;
 
-  if (perfil.tenantSlug && perfil.tenantSlug !== slug) {
-    redirect(tenantHref(perfil.tenantSlug, 'panel'));
-  }
+  // El gimnasio de la ruta no es el suyo. No es una fuga —RLS no entrega un
+  // solo dato ajeno, y se comprobó— pero una página que dice «Aurora Fit»
+  // mientras muestra los datos de un socio de Mítico está mintiendo sobre dónde
+  // está el usuario, y ese descuido es el que se convierte en fuga cuando
+  // alguien añade una consulta dando por hecho que la ruta ya estaba validada.
+  if (perfil.tenantSlug && perfil.tenantSlug !== slug) responder('gimnasio-ajeno', perfil.tenantSlug);
 
   return { perfil, repo, espacio: espacioDeTrabajo(perfil) };
+}
+
+/**
+ * Traduce la respuesta que decide el dominio al mecanismo que usa Next.
+ *
+ * Nunca devuelve: o redirige, o interrumpe con 403, o lanza. Que el tipo sea
+ * `never` es lo que permite a TypeScript saber que después de llamarla la
+ * situación es «ok», sin repetir la comprobación.
+ */
+function responder(situacion: SituacionDeAcceso, slugDeDestino: string): never {
+  switch (respuestaDeAcceso(situacion)) {
+    // Único camino al formulario de acceso: no hay sesión que conservar.
+    case 'ir-al-acceso':
+      redirect(tenantHref(slugDeDestino, 'acceso'));
+    case 'ir-a-su-panel':
+      redirect(tenantHref(slugDeDestino, 'panel'));
+    // 403 de verdad. `unauthorized()` sería mentir: la sesión es válida.
+    case 'prohibido':
+      forbidden();
+    // 503 con las cookies intactas: al recargar, quien estaba dentro sigue dentro.
+    case 'no-disponible':
+      throw new ErrorDeDisponibilidad();
+    case 'continuar':
+      throw new Error('«continuar» no es una interrupción: no debería llegar aquí');
+  }
 }
 
 /**
@@ -147,9 +157,11 @@ export class ErrorDeDisponibilidad extends Error {
 /**
  * Exige además un permiso concreto.
  *
- * Devuelve al panel propio en vez de a un 403: quien llega aquí sin permiso
- * casi siempre es alguien que guardó un enlace de cuando tenía otro rol, y
- * una pantalla de error no le dice qué hacer. Su panel sí.
+ * V4.2 · Responde **403 de verdad**, no una redirección silenciosa. Antes se
+ * devolvía a la persona a su propio espacio sin decir nada, y el efecto era
+ * desconcertante: pulsas un enlace y «no pasa nada». Ahora `forbidden.tsx`
+ * explica que la cuenta no tiene ese permiso y ofrece la salida a su panel. La
+ * sesión NO se toca: estar autenticado sin permiso no es estar sin autenticar.
  *
  * Esto NO es lo que protege los datos. Aunque esta comprobación se cayera, la
  * consulta seguiría devolviendo cero filas: quien decide es RLS.
@@ -157,19 +169,7 @@ export class ErrorDeDisponibilidad extends Error {
 export async function exigirPermiso(slug: string, permiso: string): Promise<ContextoDelPanel> {
   const contexto = await exigirPerfil(slug);
 
-  /**
-   * V4.2 · **403 de verdad**, no una redirección silenciosa.
-   *
-   * Antes se devolvía a la persona a su propio espacio sin decir nada, y el
-   * efecto era desconcertante: pulsas un enlace y «no pasa nada». Ahora Next
-   * responde 403 y `forbidden.tsx` explica que la cuenta no tiene ese permiso,
-   * con la salida a su panel. La sesión NO se toca: estar autenticado sin
-   * permiso no es estar sin autenticar.
-   *
-   * Esto NO es lo que protege los datos. Aunque se cayera, la consulta seguiría
-   * devolviendo cero filas: quien decide es RLS.
-   */
-  if (!tienePermiso(contexto.perfil, permiso)) forbidden();
+  if (!tienePermiso(contexto.perfil, permiso)) responder('sin-permiso', slug);
 
   return contexto;
 }

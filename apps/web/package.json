@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/*.test.ts\""
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/*.test.ts\"",
+    "correo": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plantilla-de-correo.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",

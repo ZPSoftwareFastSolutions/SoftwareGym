@@ -1,0 +1,45 @@
+Asunto: Confirma tu correo para activar tu cuenta
+
+### mitico
+
+Mítico Fitness
+
+Hola{{ if .Data.full_name }}, {{ .Data.full_name }}{{ end }}:
+
+Tu cuenta de Mítico Fitness está creada. Confirma que este correo es tuyo para entrar a tu panel:
+
+{{ .ConfirmationURL }}
+
+Si no creaste esta cuenta, ignora este mensaje: sin confirmar, no se activa nada.
+
+¿Dudas? Escríbenos a hola@miticofitness.com.
+
+---
+
+### aurora-fit
+
+Aurora Fit
+
+Hola{{ if .Data.full_name }}, {{ .Data.full_name }}{{ end }}:
+
+Tu cuenta de Aurora Fit está creada. Confirma que este correo es tuyo para entrar a tu panel:
+
+{{ .ConfirmationURL }}
+
+Si no creaste esta cuenta, ignora este mensaje: sin confirmar, no se activa nada.
+
+¿Dudas? Escríbenos a hola@aurorafit.bo.
+
+---
+
+### golds-gym-premium
+
+Gold's Gym Premium
+
+Hola{{ if .Data.full_name }}, {{ .Data.full_name }}{{ end }}:
+
+Tu cuenta de Gold's Gym Premium está creada. Confirma que este correo es tuyo para entrar a tu panel:
+
+{{ .ConfirmationURL }}
+
+Si no creaste esta cuenta, ignora este mensaje: sin confirmar, no se activa nada.
