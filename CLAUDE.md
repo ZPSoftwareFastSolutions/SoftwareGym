@@ -2033,6 +2033,30 @@ prueba afirma que **exactamente una** —no tener sesión— lleva al formulario
   Administración. **Las contraseñas NO están en el repositorio** (a diferencia de §8, que es de V2): se entregaron al
   usuario fuera de git.
 
+**Portada compuesta por gimnasio (2026-09-16, `50e0509`, `dpl_G49gUobkJZPMDe2ZUHtbghL4pXyx`).** El usuario señaló, con
+razón, que lo visual del encargo V4.1 (§6, §17 y el criterio «GOLD debe sentirse como su propio gimnasio») no se había
+cumplido: el orden del inicio estaba escrito en `[tenant]/page.tsx` igual para todos, y GOLD usaba la misma tipografía,
+retícula y brillo que Mítico. Ahora:
+- **Capacidad `home`** (`core/domain/tenant/home-layout.ts`): `estilo` `clasica` | `anuncios`, `secciones` en orden y
+  `planes` `tarjetas` | `tarifario`. Sin declarar = `COMPOSICION_CLASICA`, idéntica al orden anterior (la portada de
+  Mítico mide los mismos 10 081 px). La sección solo se dibuja si su capacidad está contratada; el validador rompe el
+  build ante secciones repetidas, desconocidas o «anuncios» duplicado con el estilo `anuncios`.
+- **Piezas del producto:** `AnnouncementsHeroSection` (identidad + anuncios como pieza principal; sin anuncios, las
+  cifras del gimnasio), `HoursSummarySection` + `resumirHorario` (solo une días consecutivos), carrusel `destacado`,
+  tarifario en `PlansSection`.
+- **GOLD:** portada `anuncios`, tarifario con mensuales y largo plazo, horarios, instalaciones por sucursal, «Así se ve
+  por dentro» (composición generativa de marca hasta que haya fotos, `showGallery` encendida), sedes y cierre. Titulares
+  en Fraunces sin mayúsculas, superficies planas, sin retícula ni brillo.
+- **Defecto de plataforma corregido:** el brillo de botones, WhatsApp, puntos de sede y racha era fijo; ahora obedece a
+  `shape.glowIntensity` (`--t-glow-strength`).
+- **Capturas sin dependencias** con Edge por CDP: `kill` del proceso padre dejaba decenas de Edge vivos y sus perfiles
+  llenaron el disco. Cerrar siempre el árbol (`taskkill /T /F`).
+
+**Script de cuentas de prueba: la v1 no podía funcionar.** Escribía `auth.users.confirmed_at`, que en esta versión de
+Supabase es columna CALCULADA (`LEAST(email_confirmed_at, phone_confirmed_at)`); el INSERT fallaba, la transacción se
+revertía y no quedaba ninguna cuenta (también `auth.identities.email` es calculada). La v2 lo corrige y añade cinco
+anuncios con datos textuales del folleto. **A 2026-09-16 no se ha ejecutado:** 0 cuentas y 0 anuncios en GOLD.
+
 **Pendiente:**
 1. ~~Desplegar y medir los códigos de estado~~ **hecho** (ver arriba).
 1b. **Ejecutar el script de cuentas de prueba de GOLD** y, con ellas, probar el login cruzado: una cuenta de Mítico en
