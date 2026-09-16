@@ -4,7 +4,7 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-15 · **V4.1 anuncios del gimnasio, instalaciones por sucursal y alta de GOLD'S GYM PREMIUM** (**migraciones aplicadas y batería RLS pasada**, ver §13c). V4 sigue siendo lo desplegado en producción desde `f54ce26` (§13b): **V4.1 todavía no se ha desplegado**.
+> - **Última actualización:** 2026-09-15 · **V4.1 anuncios del gimnasio, instalaciones por sucursal y alta de GOLD'S GYM PREMIUM** (**migraciones aplicadas, batería RLS pasada y desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `9332021` —, ver §13c).
 > - **Rama de trabajo vigente:** `feat/goldgym-v1` (sale de `feat/v4-seradmingym`). Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
@@ -26,11 +26,11 @@
 | **Qué es** | Software **enlatado** multi-tenant para gimnasios: un solo código, un archivo de configuración por cliente. |
 | **Stack** | Next.js 16.3.4 (App Router) · React 19.1 · TypeScript 5.9 estricto · Tailwind v4 · Supabase (Auth + PostgreSQL 17 con RLS + Storage) · Vercel |
 | **Código** | Todo en `apps/web`. `src/Backend/` (.NET) son solo README: **no hay backend propio**. |
-| **En producción** | **V4 en https://web-rust-xi-23.vercel.app** (proyecto Vercel `web`, al que está enlazado `apps/web`; despliegue `web-gu4lr6b3e…`, commit `f54ce26`). El proyecto antiguo `gym-platform` (https://gym-platform-alpha.vercel.app) quedó en V3.2 (ver §7 y §14) |
+| **En producción** | **V4.1 en https://gold-gym-psi.vercel.app** (proyecto Vercel `gold-gym`, commit `9332021`, al que está enlazado hoy `apps/web`). El mismo despliegue sirve los tres gimnasios. `web` (https://web-rust-xi-23.vercel.app) quedó en V4 y `gym-platform` (https://gym-platform-alpha.vercel.app) en V3.2 (ver §7 y §14) |
 | **Clientes** | `/mitico` (real, todas las capacidades, **dos sedes: Prado y Miraflores**) · `/aurora-fit` (demo, solo sitio público, sede única Recoleta) · **`/golds-gym-premium` (real, V4.1: cuatro sucursales, anuncios y clases; sin módulos operativos contratados)** |
-| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · V4 ✅ administración del gimnasio + jerarquía de roles + rendimiento · **V4.1 ✅ anuncios del gimnasio + instalaciones por sucursal + alta de GOLD (sin desplegar)** |
+| **Estado** | V1 ✅ sitio público · V2 ✅ login · V2.1 ✅ dashboards, asistencia QR, reportes · V2.2 ✅ gestión de socios, cobro por QR · V3.0 ✅ multisucursal · V3.1 ✅ entrenadores + ejercicios · V3.2 ✅ rutinas + métricas · V3.3 ✅ clases + sesiones + acceso por plan · V3.4 ✅ reservas + lista de espera + faltas · V4 ✅ administración del gimnasio + jerarquía de roles + rendimiento · **V4.1 ✅ anuncios del gimnasio + instalaciones por sucursal + alta de GOLD** |
 | **Roles** | Plataforma (`super_admin`) · **Administración (`admin`, V4)** · Gerencia · Recepción · Entrenador · Socio. Jerarquía en la base: `roles.level` 100/40/30/20/10/0 (§4.6) |
-| **Siguiente** | 1) Desplegar V4.1 y revisarla con sesión (§13c) · 2) Completar los datos que GOLD no entregó (§13c) · 3) Designar el administrador de Mítico y revisar V4 con sesión (§13b) · 4) V4.x: suscripciones, licencias, facturación (§13) |
+| **Siguiente** | 1) Revisar V4.1 con sesión (§13c) · 2) Completar los datos que GOLD no entregó (§12, bloque GOLD) · 3) Designar el administrador de Mítico y revisar V4 con sesión (§13b) · 4) V4.x: suscripciones, licencias, facturación (§13) |
 
 **Antes de tocar nada, léase:** §2 (reglas), §3 (arquitectura), §4 (seguridad
 de datos), §12 (deuda viva) y §13b (qué cambió en V4 y qué queda pendiente).
@@ -1109,7 +1109,7 @@ los mismos filtros, BOM UTF-8, comillas en todo campo y neutraliza fórmulas
 
 | Servicio | Detalle |
 |---|---|
-| **Vercel** | Equipo `zp-software-fast-solutions` (`team_isXk9iHT5amXqAUJlB27m9uf`). **Dos proyectos:** `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`, Root Directory `apps/web`, alias público `gym-platform-alpha.vercel.app`, último despliegue V3.2) y **`web`** (`prj_xaWtcja3zUtZBrGT7exVgatwVlwJ`), al que está enlazado hoy `apps/web/.vercel` (lo enlazó el usuario). **Producción vigente: `web`, dominio `web-rust-xi-23.vercel.app`, V4** (despliegue `web-gu4lr6b3e…`, commit `f54ce26`, 2026-09-14). Production Branch `main`; se despliega por CLI desde `apps/web` |
+| **Vercel** | Equipo `zp-software-fast-solutions` (`team_isXk9iHT5amXqAUJlB27m9uf`). **Tres proyectos:** `gym-platform` (`prj_3Mm0F8ZG9Whii4GbFUffyodTbFFy`, alias `gym-platform-alpha.vercel.app`, quedó en V3.2) · `web` (`prj_xaWtcja3zUtZBrGT7exVgatwVlwJ`, alias **`web-rust-xi-23.vercel.app`**, V4, commit `f54ce26`) · **`gold-gym`** (`prj_Jki34sbboqbJOnzsgH7MTAB3TIXe`, alias público **`gold-gym-psi.vercel.app`**, **V4.1**, commit `9332021`, 2026-09-15). **Hoy `apps/web/.vercel` está enlazado a `gold-gym`**: un `vercel deploy --prod` desde `apps/web` actualiza GOLD, no `web`. Para volver a `web`: `npx vercel link --yes --project web`. Todos se despliegan por CLI desde `apps/web` |
 | **GitHub** | `ZPSoftwareFastSolutions/SoftwareGym` (**público**) · rama por defecto `main` |
 | **Supabase** | Proyecto `dnclwawnjnzqqxgsuhpn` · MCP conectado (SQL, migraciones, advisors) |
 
@@ -1125,8 +1125,18 @@ Preview fallan con «Cannot patch preview comments when immutable static file
 upload is enabled» (conflicto de la barra de comentarios de Vercel, no del
 código) y la Production Branch no es la rama de trabajo. Arreglo en el panel
 de Vercel: apagar Comments/Toolbar y fijar la Production Branch. El conector
-MCP de Vercel da 403 sobre el equipo; la CLI sí lo alcanza. Las URL con hash
+MCP de Vercel da 403 sobre el equipo (confirmado otra vez en V4.1 con
+`get_project_deployment_protection`); la CLI sí lo alcanza. Las URL con hash
 piden login de Vercel: **se comparte siempre el alias**.
+
+**Cuál es el alias público de un proyecto (V4.1).** Un proyecto nuevo nace con
+DOS alias y solo uno es público: `<proyecto>-<equipo>.vercel.app` está protegido
+por Vercel Authentication (302 a `vercel.com/sso-api`) y
+`<proyecto>-<sufijo>.vercel.app` —`gold-gym-psi`, `web-rust-xi-23`— es el que se
+comparte. Se listan con `npx vercel alias ls`. **No adivinar el alias por el
+nombre:** `gold-gym.vercel.app` existe y es de OTRA cuenta (un create-react-app
+ajeno con el título «Golds gym»); probarlo dio 200 y no era esta aplicación.
+Verificar siempre el `<title>` servido antes de dar una URL por buena.
 
 **Proyecto `web`: un Root Directory no sirve para los dos flujos (2026-09-14).** El proyecto se creó por CLI desde
 `apps/web` y tiene **Root Directory = raíz**. Eso es lo que necesita el **flujo de trabajo de este proyecto**
@@ -1874,7 +1884,14 @@ capacidades que cualquier otro gimnasio enciende con una flag. No hay ni un `if 
   superficie no pinta etiqueta ni retícula vacía; Karate es una clase sin plan declarado, así que la vitrina dice
   «consulta en recepción qué paquete la incluye».
 
-**Estado (2026-09-15): código cerrado y base aplicada; SIN DESPLEGAR.**
+**Estado (2026-09-15): cerrada, aplicada, publicada en GitHub y DESPLEGADA** en el proyecto Vercel `gold-gym`
+(alias **https://gold-gym-psi.vercel.app**, commit `9332021`). Rama `feat/goldgym-v1` en GitHub.
+
+Verificado sobre el dominio: `/golds-gym-premium` y sus 8 rutas públicas **200** (con el `<title>` de GOLD);
+`/golds-gym-premium/panel` y `/panel/anuncios` **307** sin sesión; `/golds-gym-premium/galeria` **404**
+(`showGallery` apagada); `/aurora-fit/clases` y `/no-existe` **404**; `/mitico` y `/aurora-fit` **200** (el mismo
+despliegue sirve los tres gimnasios); `camera=(self)`, `X-Frame-Options: DENY`, `nosniff`; **0 apariciones de
+`service_role` en 11 chunks**.
 - Código: typecheck limpio · **199 pruebas** (25 nuevas) · build de **99 páginas** · `npm audit` 0 · greps limpios.
 - Base: **2 migraciones aplicadas** con autorización del usuario; batería V4.1 completa como se esperaba
   (§9.2); advisors: solo el aviso aceptado de contraseñas filtradas; ninguna política nueva evalúa contexto por fila.
@@ -1882,8 +1899,7 @@ capacidades que cualquier otro gimnasio enciende con una flag. No hay ni un `if 
   Mítico intacto (sus 8 clases y sus datos, verificado).
 
 **Pendiente:**
-1. **Desplegar V4.1** (`npx vercel deploy --prod --yes` desde `apps/web`) y verificar las rutas de GOLD sobre el
-   dominio con `curl` (§9.3), incluidas `/golds-gym-premium/{clases,sucursales,instalaciones}` 200 y las de panel 307.
+1. ~~Desplegar V4.1 y verificar rutas~~ **hecho** (proyecto `gold-gym`, alias `gold-gym-psi.vercel.app`).
 2. **Revisión humana con sesión:** `/panel/anuncios` con gerencia (publicar con arte, programar, retirar), el carrusel
    y su detalle en escritorio y en 375 px, y las pestañas de instalaciones de las cuatro sedes.
 3. **Datos que tiene que entregar el cliente** (§12, bloque GOLD): direcciones de Garita, Cruce de Villas y
@@ -1896,7 +1912,7 @@ capacidades que cualquier otro gimnasio enciende con una flag. No hay ni un `if 
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
-| V4.1 GOLD | 2026-09-15 | rama `feat/goldgym-v1` (sale de `63c1150`) · **sin desplegar** | **Tercer cliente de la plataforma, sin código propio.** Capacidad genérica de **anuncios** (tabla `announcements` con RLS y lectura anónima solo de lo publicado, bucket `anuncios`, `v_announcements_public`, permiso `content.manage`, flag `enableAnnouncements`, carrusel con detalle en `<dialog>` y `/panel/anuncios`) y **instalaciones repartidas por sucursal** (`FacilityItem.branchCode` unido a `branches.code` + `ui/Pestanas.tsx` genérico; sin reparto, comportamiento idéntico al anterior). Alta de **Gold's Gym Premium**: 4 sucursales, 7 planes, 15 clases y 60 horarios, todo sobre el modelo que ya existía. Un correo vacío pasa a ser válido y la vitrina lo omite; las áreas sin superficie ni fichas no pintan huecos. 2 migraciones; ADR 0011; batería RLS V4.1 (el anónimo ve 1 de 4 anuncios sembrados: ni borrador, ni programado, ni vencido); 199 pruebas; build de 99 páginas |
+| V4.1 GOLD | 2026-09-15 | `9332021` (rama `feat/goldgym-v1`, en GitHub) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, despliegue `gold-6mgw9bczz…`) | **Tercer cliente de la plataforma, sin código propio.** Capacidad genérica de **anuncios** (tabla `announcements` con RLS y lectura anónima solo de lo publicado, bucket `anuncios`, `v_announcements_public`, permiso `content.manage`, flag `enableAnnouncements`, carrusel con detalle en `<dialog>` y `/panel/anuncios`) y **instalaciones repartidas por sucursal** (`FacilityItem.branchCode` unido a `branches.code` + `ui/Pestanas.tsx` genérico; sin reparto, comportamiento idéntico al anterior). Alta de **Gold's Gym Premium**: 4 sucursales, 7 planes, 15 clases y 60 horarios, todo sobre el modelo que ya existía. Un correo vacío pasa a ser válido y la vitrina lo omite; las áreas sin superficie ni fichas no pintan huecos. 2 migraciones; ADR 0011; batería RLS V4.1 (el anónimo ve 1 de 4 anuncios sembrados: ni borrador, ni programado, ni vencido); 199 pruebas; build de 99 páginas. Verificada sobre el dominio: públicas 200, panel 307, capacidad apagada 404, `/no-existe` 404, los tres gimnasios vivos, sin `service_role` en 11 chunks |
 | V4 administración | 2026-09-14 | `1860fda`, `f54ce26` (rama `feat/v4-seradmingym`) · **producción** Vercel `web` (`web-rust-xi-23.vercel.app`, despliegue `web-gu4lr6b3e…`) | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (contar 50 000 entradas: > 20 s → 18 ms; KPIs: timeout → 54 ms), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; indicador de carga en el enlace pulsado. 7 migraciones (2 de ellas encontradas por la batería: vistas con función por fila y `cambiar_estado_de_cuenta` sin grant de `updated_at`); ADR 0010; batería RLS V4; 174 pruebas. Verificada sobre el dominio: públicas 200, panel 307, CSV 401, capacidad apagada 404, sin `service_role` |
 | V1 | 2026-09-08/09 | `27d334e`, `38b83fd` | Sitio público multi-tenant, temas, flags, Next 16 |
 | V1 bonus | 2026-09-09 | `f3ea967`, `2880c8d` | Datos reales de Mítico: 13 paquetes en 4 grupos, 4 programas, 12 productos |
