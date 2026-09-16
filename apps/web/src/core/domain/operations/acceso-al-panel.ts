@@ -93,7 +93,13 @@ export type CuentaAlIniciarSesion =
   /** No se pudo leer. No se adivina en ninguna dirección. */
   | { readonly estado: 'indisponible' };
 
-export type DecisionDeLogin = 'permitir' | 'denegar' | 'reintentar';
+/**
+ * `otro-gimnasio` también DENIEGA; existe para poder decir por qué. Solo se
+ * alcanza con la contraseña correcta, así que no enseña nada a quien no la
+ * sabe: el mensaje neutro servía para no filtrar correos a un atacante, y aquí
+ * solo confundía al dueño de la cuenta, que se creía mal escrita la clave.
+ */
+export type DecisionDeLogin = 'permitir' | 'denegar' | 'otro-gimnasio' | 'reintentar';
 
 /**
  * Si una cuenta puede entrar por el formulario de acceso de ESTE gimnasio.
@@ -115,5 +121,6 @@ export function decidirLoginPorGimnasio(cuenta: CuentaAlIniciarSesion, slugDeLaR
   if (cuenta.estado === 'indisponible') return 'reintentar';
   if (cuenta.estado === 'sin-cuenta') return 'denegar';
   if (cuenta.esPlataforma) return 'permitir';
-  return cuenta.tenantSlug !== null && cuenta.tenantSlug === slugDeLaRuta ? 'permitir' : 'denegar';
+  if (cuenta.tenantSlug === null) return 'denegar';
+  return cuenta.tenantSlug === slugDeLaRuta ? 'permitir' : 'otro-gimnasio';
 }

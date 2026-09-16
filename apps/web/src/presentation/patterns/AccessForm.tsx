@@ -16,6 +16,7 @@ import { useSearchParams } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import {
   iniciarSesion,
+  reenviarConfirmacion,
   registrarse,
   type EstadoFormulario,
 } from '@/app/[tenant]/acceso/actions';
@@ -98,6 +99,44 @@ function LimpiarPasswordAlTerminar({
   return null;
 }
 
+/**
+ * Lee el resultado que Supabase deja en el FRAGMENTO al volver de un enlace
+ * reenviado (`#access_token=…` confirmado, `#error=…` caducado o usado).
+ *
+ * Los tokens del fragmento NO se usan para abrir sesión: la persona entra con
+ * su contraseña. Se borran de la barra en cuanto se leen, porque una URL con
+ * un token de acceso acaba copiada, compartida o en el historial.
+ */
+function useConfirmacionDelFragmento(activo: boolean): 'ok' | 'fallo' | undefined {
+  const [resultado, setResultado] = useState<'ok' | 'fallo' | undefined>();
+  useEffect(() => {
+    if (!activo || typeof window === 'undefined') return;
+    const fragmento = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (fragmento.get('error') || fragmento.get('error_code')) setResultado('fallo');
+    else if (fragmento.get('access_token')) setResultado('ok');
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.searchParams.delete('confirmado');
+    window.history.replaceState(null, '', url.toString());
+  }, [activo]);
+  return resultado;
+}
+
+/** Botón de reenviar: fuera del formulario de alta, con su propio estado. */
+function BotonReenviar() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="mt-2 text-[0.85rem] font-semibold text-action underline-offset-4 hover:underline disabled:opacity-60"
+    >
+      {pending ? 'Enviando…' : '¿No te llegó? Reenviar el correo'}
+    </button>
+  );
+}
+
 function ErrorCampo({ id, mensaje }: { readonly id: string; readonly mensaje?: string }) {
   if (!mensaje) return null;
   return (
@@ -121,8 +160,13 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
   // solo ve quien vuelve del correo de confirmación.
   const params = useSearchParams();
   const confirmado = params.get('confirmado');
+  const confirmacionDelFragmento = useConfirmacionDelFragmento(confirmado === 'fragmento');
   const confirmacion =
-    confirmado === '1' ? ('ok' as const) : confirmado === '0' ? ('fallo' as const) : undefined;
+    confirmado === '1'
+      ? ('ok' as const)
+      : confirmado === '0'
+        ? ('fallo' as const)
+        : confirmacionDelFragmento;
 
   const [pestana, setPestana] = useState<'login' | 'registro'>('login');
   const idBase = useId();
@@ -131,8 +175,19 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
 
   const [estadoLogin, accionLogin] = useActionState(iniciarSesion, ESTADO_INICIAL);
   const [estadoRegistro, accionRegistro] = useActionState(registrarse, ESTADO_INICIAL);
+  const [estadoReenvio, accionReenvio] = useActionState(reenviarConfirmacion, ESTADO_INICIAL);
 
-  const estado = pestana === 'login' ? estadoLogin : estadoRegistro;
+  // Cada acción devuelve un objeto nuevo: el que cambió último es el que se ve.
+  const [ultimaDelAlta, setUltimaDelAlta] = useState<'registro' | 'reenvio'>('registro');
+  useEffect(() => {
+    if (estadoRegistro !== ESTADO_INICIAL) setUltimaDelAlta('registro');
+  }, [estadoRegistro]);
+  useEffect(() => {
+    if (estadoReenvio !== ESTADO_INICIAL) setUltimaDelAlta('reenvio');
+  }, [estadoReenvio]);
+  const estadoDelAlta = ultimaDelAlta === 'reenvio' ? estadoReenvio : estadoRegistro;
+  const estado = pestana === 'login' ? estadoLogin : estadoDelAlta;
+  const correoPendiente = pestana === 'registro' ? estadoDelAlta.correoPendiente : undefined;
   const errores = estado.errores ?? {};
 
   // Un alta correcta deja el formulario vacío: si sigue lleno, el usuario duda
@@ -161,7 +216,7 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
           <span>
             {confirmacion === 'ok'
               ? 'Tu correo quedó confirmado. Ya puedes iniciar sesión.'
-              : 'No pudimos confirmar ese enlace. Puede haber caducado o haberse usado ya. Vuelve a registrarte o escríbenos.'}
+              : 'No pudimos confirmar ese enlace. Puede haber caducado o haberse usado ya. Prueba a iniciar sesión; si no puedes, pide que te reenviemos el correo desde «Crear cuenta».'}
           </span>
         </p>
       )}
@@ -210,6 +265,14 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
           <Icon name="check" size={16} className="mt-0.5 shrink-0 text-action" />
           <span>{estado.exito}</span>
         </p>
+      )}
+
+      {correoPendiente && (
+        <form action={accionReenvio} className="mt-1">
+          <input type="hidden" name="tenantSlug" value={slug} />
+          <input type="hidden" name="email" value={correoPendiente} />
+          <BotonReenviar />
+        </form>
       )}
 
       {/*

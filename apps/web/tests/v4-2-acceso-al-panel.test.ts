@@ -20,6 +20,12 @@ import {
   respuestaDeAcceso,
   type SituacionDeAcceso,
 } from '../src/core/domain/operations/acceso-al-panel.ts';
+import {
+  correoValido,
+  MENSAJE_CORREO_YA_REGISTRADO,
+  MENSAJE_CUENTA_DE_OTRO_GIMNASIO,
+  resultadoDelAlta,
+} from '../src/core/application/auth/login.usecase.ts';
 
 const TODAS: readonly SituacionDeAcceso[] = [
   'anonimo',
@@ -91,11 +97,11 @@ describe('V4.2 · la puerta de un gimnasio solo abre a los suyos', () => {
 
   it('credenciales CORRECTAS de Mítico en el login de GOLD: denegado', () => {
     // El caso que pidió el cliente. La contraseña está bien; la puerta no es la suya.
-    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: 'mitico', esPlataforma: false }, GOLD), 'denegar');
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: 'mitico', esPlataforma: false }, GOLD), 'otro-gimnasio');
   });
 
   it('y al revés: una cuenta de GOLD no entra por Mítico', () => {
-    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: GOLD, esPlataforma: false }, 'mitico'), 'denegar');
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: GOLD, esPlataforma: false }, 'mitico'), 'otro-gimnasio');
   });
 
   it('una cuenta sin gimnasio (y que no es plataforma) no entra por ninguno', () => {
@@ -110,5 +116,41 @@ describe('V4.2 · la puerta de un gimnasio solo abre a los suyos', () => {
 
   it('si no se pudo leer la cuenta no se adivina: ni se deja entrar ni se dice «incorrecto»', () => {
     assert.equal(decidirLoginPorGimnasio({ estado: 'indisponible' }, GOLD), 'reintentar');
+  });
+});
+
+describe('V4.2 · alta con un correo que ya existe y cuenta de otro gimnasio', () => {
+  it('Supabase da éxito sin enviar nada si el correo ya está registrado: se detecta', () => {
+    // Con confirmación por correo, `signUp` devuelve `identities: []` para un
+    // correo ya confirmado y NO envía el correo. Era «te enviamos un enlace».
+    assert.equal(resultadoDelAlta([]), 'ya-registrado');
+  });
+
+  it('un alta nueva trae su identidad y sí envía el correo', () => {
+    assert.equal(resultadoDelAlta([{ provider: 'email' }]), 'correo-enviado');
+  });
+
+  it('sin información de identidades no se afirma que ya exista', () => {
+    assert.equal(resultadoDelAlta(undefined), 'correo-enviado');
+    assert.equal(resultadoDelAlta(null), 'correo-enviado');
+  });
+
+  it('contraseña correcta de otro gimnasio: sigue sin entrar, pero se dice por qué', () => {
+    const decision = decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: 'mitico', esPlataforma: false }, 'golds-gym-premium');
+    assert.equal(decision, 'otro-gimnasio');
+    assert.notEqual(decision, 'permitir');
+  });
+
+  it('los mensajes dicen qué hacer y no nombran el otro gimnasio', () => {
+    for (const m of [MENSAJE_CORREO_YA_REGISTRADO, MENSAJE_CUENTA_DE_OTRO_GIMNASIO]) {
+      assert.match(m, /correo distinto/);
+      assert.doesNotMatch(m, /M[ií]tico|Aurora|GOLD/i);
+    }
+  });
+
+  it('el reenvío valida el formato del correo antes de llamar a Auth', () => {
+    assert.equal(correoValido('socio@gmail.com'), true);
+    assert.equal(correoValido('  '), false);
+    assert.equal(correoValido('sin-arroba'), false);
   });
 });

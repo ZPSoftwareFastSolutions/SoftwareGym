@@ -75,6 +75,36 @@ export function validarLogin(datos: CredencialesLogin): ResultadoValidacion {
   return Object.keys(errores).length > 0 ? { ok: false, errores } : { ok: true };
 }
 
+/** Formato de correo, para acciones que solo piden el correo (reenviar). */
+export function correoValido(correo: string): boolean {
+  const limpio = correo.trim();
+  return limpio.length > 0 && limpio.length <= 254 && PATRON_EMAIL.test(limpio);
+}
+
+/**
+ * Qué pasó de verdad en un alta que Supabase dio por buena.
+ *
+ * Con la confirmación por correo activa, `signUp` responde ÉXITO también cuando
+ * el correo ya tiene una cuenta confirmada, y en ese caso NO envía nada. Lo
+ * delata una sola cosa: el usuario vuelve con `identities` vacío. Tratar las dos
+ * respuestas igual hacía que la persona esperara un correo que nunca iba a
+ * llegar. Es lo que pasa, sobre todo, con quien ya es socio de OTRO gimnasio
+ * de la plataforma: las cuentas son una por correo para todos los gimnasios.
+ */
+export type ResultadoDelAlta = 'correo-enviado' | 'ya-registrado';
+
+export function resultadoDelAlta(identidades: readonly unknown[] | null | undefined): ResultadoDelAlta {
+  return Array.isArray(identidades) && identidades.length === 0 ? 'ya-registrado' : 'correo-enviado';
+}
+
+export const MENSAJE_CORREO_YA_REGISTRADO =
+  'Ese correo ya tiene una cuenta en la plataforma, así que no te enviamos ningún correo nuevo. ' +
+  'Si la creaste aquí, inicia sesión. Si es tu cuenta de otro gimnasio, crea esta con un correo distinto.';
+
+export const MENSAJE_CUENTA_DE_OTRO_GIMNASIO =
+  'Tu cuenta está registrada en otro gimnasio de la plataforma y no puede entrar aquí. ' +
+  'Para ser socio de este gimnasio, crea una cuenta con un correo distinto.';
+
 export function validarRegistro(datos: DatosRegistro): ResultadoValidacion {
   const errores: Record<string, string> = {};
 

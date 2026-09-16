@@ -19,7 +19,11 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { marcarSesionAbierta, marcarSesionCerrada } from '@infra/auth/session-hint';
 import {
+  correoValido,
+  MENSAJE_CORREO_YA_REGISTRADO,
+  MENSAJE_CUENTA_DE_OTRO_GIMNASIO,
   mensajeDeErrorDeAcceso,
+  resultadoDelAlta,
   validarLogin,
   validarRegistro,
 } from '@core/application/auth/login.usecase';
@@ -34,6 +38,16 @@ export interface EstadoFormulario {
   readonly errores?: Readonly<Record<string, string>>;
   readonly mensaje?: string;
   readonly exito?: string;
+  /**
+   * Correo de un alta que quedó esperando confirmación. Permite ofrecer
+   * «reenviar» sin pedirlo otra vez: el formulario ya se vació.
+   */
+  readonly correoPendiente?: string;
+}
+
+/** Adónde vuelve el enlace del correo. El gimnasio lo valida la ruta de retorno. */
+function retornoDelCorreo(slug: string): string {
+  return `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}`;
 }
 
 /** El slug solo es válido si corresponde a un gimnasio del registro. */
@@ -119,10 +133,14 @@ export async function iniciarSesion(
       mensaje:
         decision === 'reintentar'
           ? 'No pudimos comprobar tu cuenta en este momento. Vuelve a intentarlo.'
-          // EXACTAMENTE el mismo texto que una contraseña incorrecta. Decir
-          // «esta cuenta es de otro gimnasio» confirmaría que el correo existe,
-          // y el formulario se volvería un buscador de correos ajenos.
-          : mensajeDeErrorDeAcceso(undefined),
+          : decision === 'otro-gimnasio'
+            // Solo llega aquí quien escribió la contraseña CORRECTA: decirle
+            // que su cuenta es de otro gimnasio no enseña nada a un atacante.
+            // Con «contraseña incorrecta» la persona probaba claves contra un
+            // problema que no era suyo, y luego intentaba registrarse.
+            ? MENSAJE_CUENTA_DE_OTRO_GIMNASIO
+            // Sin gimnasio: el mismo texto que una contraseña incorrecta.
+            : mensajeDeErrorDeAcceso(undefined),
     };
   }
 
@@ -155,7 +173,7 @@ export async function registrarse(
 
   const supabase = await createSupabaseServerClient();
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -166,7 +184,7 @@ export async function registrarse(
       // El dominio sale de SITE_URL, que en Vercel se deduce solo. El gimnasio
       // viaja como parámetro para devolver al socio a la página de acceso del
       // suyo, y la ruta de retorno lo valida contra el registro antes de usarlo.
-      emailRedirectTo: `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}`,
+      emailRedirectTo: retornoDelCorreo(slug),
 
       // Estos metadatos los consume el disparador `app.handle_new_auth_user`,
       // que valida el slug contra la tabla `tenants` y asigna SIEMPRE el rol
@@ -181,13 +199,57 @@ export async function registrarse(
     return { mensaje: mensajeDeErrorDeAcceso(error.code, 'registro') };
   }
 
-  // No se distingue entre «cuenta creada» y «ese correo ya existía»: Supabase
-  // devuelve éxito en ambos casos a propósito, para no filtrar qué correos
-  // están registrados. El mensaje es el mismo.
+  // V4.2 · «YA REGISTRADO» SE DICE. Antes el mensaje era el mismo en los dos
+  // casos para no revelar qué correos existen, pero con el correo ya
+  // registrado Supabase NO envía nada: la persona esperaba un correo que no
+  // llegaba y concluía que el registro estaba roto. Es la misma respuesta que
+  // esta app ya da cuando Supabase devuelve `user_already_exists`, así que no
+  // abre una fuga nueva; los intentos seguidos los frena el límite de Auth.
+  if (resultadoDelAlta(data.user?.identities) === 'ya-registrado') {
+    return { mensaje: MENSAJE_CORREO_YA_REGISTRADO };
+  }
+
   return {
     exito:
-      'Listo. Si el correo es nuevo, te enviamos un enlace para confirmarlo. ' +
-      'Revisa tu bandeja de entrada.',
+      `Listo. Te enviamos un enlace de confirmación a ${email}. ` +
+      'Si no lo ves en unos minutos, revisa la carpeta de spam o promociones.',
+    correoPendiente: email,
+  };
+}
+
+/**
+ * Reenvía el enlace de confirmación de un alta pendiente.
+ *
+ * La respuesta es la misma exista o no una cuenta pendiente con ese correo:
+ * aquí sí se puede ser neutro sin engañar, porque la persona acaba de ver el
+ * mensaje del alta y sabe qué correo espera.
+ */
+export async function reenviarConfirmacion(
+  _estadoPrevio: EstadoFormulario,
+  form: FormData,
+): Promise<EstadoFormulario> {
+  const slug = await resolverTenant(form.get('tenantSlug'));
+  if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
+  if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
+
+  const email = texto(form, 'email').trim().toLowerCase();
+  if (!correoValido(email)) return { mensaje: 'Ese correo no tiene un formato válido.' };
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: retornoDelCorreo(slug) },
+  });
+
+  if (error) {
+    return { mensaje: mensajeDeErrorDeAcceso(error.code, 'registro'), correoPendiente: email };
+  }
+  return {
+    exito:
+      `Te volvimos a enviar el enlace a ${email}. ` +
+      'Revisa también spam o promociones; si pides otro enseguida, el anterior deja de valer.',
+    correoPendiente: email,
   };
 }
 

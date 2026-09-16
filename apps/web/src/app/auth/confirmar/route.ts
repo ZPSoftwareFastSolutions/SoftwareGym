@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
    * reparte a cada quien a su espacio según sus permisos. Si algo falló, el
    * destino sigue siendo el acceso, que es lo correcto.
    */
-  const paginaDeAcceso = (marca: '1' | '0') => {
+  const paginaDeAcceso = (marca: '1' | '0' | 'fragmento') => {
     const url = new URL(slug ? `/${slug}/acceso` : '/', origin);
     url.searchParams.set('confirmado', marca);
     return url;
@@ -105,6 +105,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(tipo === 'recovery' ? paginaDeAcceso('1') : paginaDePanel());
   }
 
-  // Sin parámetros no hay nada que verificar: alguien llegó aquí a mano.
-  return NextResponse.redirect(fallo);
+  // Sin parámetros en la consulta. Es lo que devuelve un enlace REENVIADO:
+  // `resend` no usa PKCE y Supabase pone el resultado en el fragmento
+  // (`#access_token=…` o `#error=…`), que nunca llega al servidor. El correo
+  // ya quedó confirmado —o no— en Supabase antes de redirigir aquí.
+  //
+  // Se manda al acceso SIN fragmento en la URL: el navegador conserva el
+  // original al seguir la redirección, y el formulario lo lee en cliente y lo
+  // borra de la barra. Quien llegó aquí a mano, sin fragmento, ve el acceso
+  // sin ningún aviso.
+  return NextResponse.redirect(paginaDeAcceso('fragmento'));
 }
