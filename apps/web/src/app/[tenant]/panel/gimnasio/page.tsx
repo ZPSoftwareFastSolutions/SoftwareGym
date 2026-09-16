@@ -14,16 +14,25 @@
  * V3.0 · GLOBAL Y POR SEDE. Con multisucursal, quien tiene alcance global
  * (`branches.all`) elige entre la vista GLOBAL —todo el gimnasio y una tarjeta
  * por sede— y la vista de UNA sede. Quien trabaja por asignación ve siempre su
- * sede de trabajo, con el mostrador arriba. Lo que es del gimnasio y no de una
- * sede (socios, membresías, ingresos) se rotula así en las dos vistas: un
- * socio no pertenece a una sede.
+ * sede de trabajo. Lo que es del gimnasio y no de una sede (socios, membresías,
+ * ingresos) se rotula así en las dos vistas: un socio no pertenece a una sede.
+ *
+ * V4.2 · UN ORDEN POR PUESTO, NO UNA PANTALLA POR PUESTO (§9, §10, §21). La
+ * página muestra LO MISMO a recepción y a gerencia —lo que cambia es qué va
+ * arriba—, porque la alternativa sería duplicar el dashboard y que las dos
+ * copias se fueran separando con cada arreglo. Arriba del todo, las acciones
+ * frecuentes; debajo, cuatro bloques (operación, dinero, socios, sucursales)
+ * ordenados por `ordenDelTablero`. Nadie pierde una sección por mirar desde
+ * otro puesto: recepción empieza por el mostrador y gerencia por el dinero.
  */
 
 import type { Metadata } from 'next';
+import { Fragment, type ReactNode } from 'react';
 import Link from 'next/link';
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
-import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
+import { PERMISO, espacioDeTrabajo, tienePermiso } from '@core/domain/operations/workspace';
+import { accionesRapidas, enfoqueDeTablero, ordenDelTablero, type BloqueDeTablero } from '@core/domain/operations/tablero';
 import { variacion, type PuntoDeSerie } from '@core/domain/operations/dashboard';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { CONTEO_DE_SOCIOS_VACIO } from '@core/domain/operations/members';
@@ -31,24 +40,31 @@ import { ETIQUETA_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import { estadoDeQr, NOMBRE_DE_MODO_DE_QR } from '@core/domain/operations/cobro-qr';
 import { branchesRepository, membersRepository, paymentSettingsRepository, receiptsRepository } from '@infra/config/composition-root';
 import { TarjetaDeSucursal } from '@/presentation/patterns/TarjetaDeSucursal';
+import { AccionesRapidas } from '@/presentation/patterns/AccionesRapidas';
 import { Icon } from '@/presentation/icons/Icon';
 import { contextoDeSucursal } from '../_sucursal';
-import { CheckInPanel } from '@/presentation/patterns/CheckInPanel';
 import { BotonFicha, FichaDeSocioProvider } from '@/presentation/patterns/FichaDeSocio';
 import { BarChart } from '@/presentation/ui/BarChart';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { DonutChart } from '@/presentation/ui/DonutChart';
 import { EmptyState } from '@/presentation/ui/EmptyState';
-import { Modal } from '@/presentation/ui/Modal';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
-import { Button, LinkButton } from '@/presentation/ui/Button';
+import { LinkButton } from '@/presentation/ui/Button';
 import { exigirPermiso, fechaCorta, hora, importe } from '../_datos';
 
 export const metadata: Metadata = { title: 'Resumen del gimnasio', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** Título de cada bloque. Corto: es un rótulo, no una explicación. */
+const TITULO_DE_BLOQUE: Readonly<Record<BloqueDeTablero, string>> = {
+  operacion: 'Operación del día',
+  dinero: 'Dinero',
+  socios: 'Socios y membresías',
+  sucursales: 'Sucursales',
+};
 
 /** Modalidad y QR guardados, para la tarjeta de cobro de gerencia. */
 async function resumenDeCobroQr(slug: string) {
@@ -119,6 +135,16 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const puedeRegistrarAqui = puedeRegistrar && sedeDelMostrador !== null;
   const base = tenantHref(slug, 'panel/gimnasio');
 
+  // V4.2 · con qué mirada se abre la página. Sale de lo que la persona PUEDE,
+  // no del nombre de su rol: recepción y gerencia comparten espacio de trabajo.
+  const enfoque = enfoqueDeTablero(espacioDeTrabajo(perfil), perfil.permissions);
+  const acciones = accionesRapidas({
+    enfoque,
+    capacidades: features,
+    permisos: perfil.permissions,
+    puedeOperarEnSede: puedeRegistrarAqui,
+  });
+
   if (!kpis) {
     return (
       <section className="surface-card">
@@ -131,6 +157,15 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const hoy = kpis.hoy;
   const socios = tenantHref(slug, 'panel/socios');
   const asistencia = tenantHref(slug, 'panel/asistencia');
+
+  // V4.2 · cuántos PASES hubo hoy, que no es lo mismo que cuántas entradas.
+  // Se pide una página de una fila solo por su `count`: la base cuenta, no se
+  // traen filas. Va después del `Promise.all` porque necesita la fecha del
+  // gimnasio, que sale de los propios indicadores.
+  const conAccesos = features.enableAttendance === true && puede(PERMISO.verAsistencia);
+  const pasesDeHoy = conAccesos
+    ? (await repo.historialDePases({ desde: hoy, hasta: hoy, ...(sedeVista ? { sucursal: sedeVista.id } : {}) }, 1, 1)).total
+    : 0;
 
   // Enlace de una tarjeta: a la lista filtrada de socios si el gimnasio tiene
   // gestión de socios; si no, al reporte equivalente; si tampoco, a la sección
@@ -160,170 +195,33 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const qrVigentes = ajustes ? ajustes.qrs.filter((qr) => estadoDeQr(qr, null, hoy) === 'vigente').length : 0;
   const qrVencidos = ajustes ? ajustes.qrs.length - qrVigentes : 0;
 
-  return (
-    <FichaDeSocioProvider slug={slug} rutaDeFicha={gestionSocios ? socios : undefined}>
-      <div className="flex flex-col gap-6">
-        {multisede && sede.alcanceGlobal && sede.sucursales.some((s) => s.isActive) && (
-          <nav aria-label="Vista del resumen" className="flex flex-wrap items-center gap-2" data-print="hide">
-            <span className="me-1 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-muted">Vista</span>
-            {[{ id: '', name: 'Global' }, ...sede.sucursales.filter((s) => s.isActive).map((s) => ({ id: s.id, name: s.name }))].map((opcion) => {
-              const activa = (sedeVista?.id ?? '') === opcion.id;
-              return (
-                <Link
-                  key={opcion.id || 'global'}
-                  href={opcion.id ? `${base}?vista=${opcion.id}` : base}
-                  aria-current={activa ? 'page' : undefined}
-                  className={
-                    activa
-                      ? 'inline-flex h-11 items-center gap-2 rounded-full border border-action bg-action px-4 text-[0.86rem] font-semibold text-on-action'
-                      : 'inline-flex h-11 items-center gap-2 rounded-full border border-line bg-raised px-4 text-[0.86rem] font-medium text-muted transition-colors hover:border-action hover:text-ink'
-                  }
-                >
-                  <Icon name={opcion.id ? 'pin' : 'layers'} size={15} />
-                  {opcion.name}
-                </Link>
-              );
-            })}
-          </nav>
-        )}
-
-        {multisede && sedeVista && puedeRegistrarAqui && sedeDelMostrador && (
-          <section className="surface-card flex flex-wrap items-center justify-between gap-5 border-action/40 p-6 sm:p-7" aria-labelledby="titulo-mostrador">
-            <div className="min-w-0">
-              <p className="text-[0.74rem] font-semibold uppercase tracking-[0.14em] text-muted">{tenant.name} · sucursal actual</p>
-              <h2 id="titulo-mostrador" className="mt-1 flex items-center gap-2 t-h2 leading-tight">
-                <Icon name="pin" size={24} className="text-action" />
-                {sedeVista.name}
-              </h2>
-              <p className="mt-1.5 text-[0.88rem] text-muted">
-                {entradasHoy} {entradasHoy === 1 ? 'entrada' : 'entradas'} hoy en esta sede · {entradasSemana} en 7 días
-              </p>
-            </div>
-            <Modal
-              titulo={`Registrar entrada · ${sedeDelMostrador.name}`}
-              descripcion="Con la cámara o con el lector. Se registra solo al leer el QR."
-              anchoMaximo="md"
-              montarSoloAbierto
-              disparador={
-                <Button variant="primary" size="lg" icon="qr" iconPosition="start" glow className="w-full sm:w-auto">
-                  Escanear QR
-                </Button>
-              }
-            >
-              <CheckInPanel slug={slug} sucursal={sedeDelMostrador} mostrarSucursal empezarConCamara />
-            </Modal>
-          </section>
-        )}
-
-        {vistaGlobal && porSede.length > 0 && (
-          <section aria-labelledby="titulo-sedes" className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 id="titulo-sedes" className="t-h3">Sucursales</h2>
-                <p className="mt-1 text-[0.86rem] text-muted">
-                  «Socios 30 d» cuenta a quien entrenó en esa sede: un socio que va a las dos cuenta en las dos.
-                  {sinSedeHoy > 0 && ` Hoy hay ${sinSedeHoy} entradas sin sucursal registrada.`}
-                </p>
-              </div>
-              {puede(PERMISO.gestionarSucursales) && (
-                <LinkButton href={tenantHref(slug, 'panel/sucursales')} variant="ghost" size="sm" icon="arrowRight">
-                  Administrar sucursales
-                </LinkButton>
-              )}
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {porSede
-                .filter((s) => s.isActive)
-                .map((s) => (
-                  <TarjetaDeSucursal key={s.id} sucursal={s} total30d={total30dSedes} href={`${base}?vista=${s.id}`} accion="Ver esta sede" actual={sede.actual?.id === s.id} />
-                ))}
-            </div>
-          </section>
-        )}
-
+  const bloques: Readonly<Record<BloqueDeTablero, ReactNode>> = {
+    operacion: (
+      <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {puedeRegistrarAqui ? (
-            <Modal
-              titulo={multisede && sedeDelMostrador ? `Registrar entrada · ${sedeDelMostrador.name}` : 'Registrar entrada'}
-              descripcion="Con la cámara o con el lector. Se registra solo al leer el QR."
-              anchoMaximo="md"
-              montarSoloAbierto
-              disparador={
-                <StatCard
-                  boton
-                  etiqueta={sedeVista ? `Mostrador · ${sedeVista.name}` : 'Mostrador'}
-                  valor={`${entradasHoy}`}
-                  icono="camera"
-                  tono="accion"
-                  comparacion={multisede && sedeDelMostrador ? `entradas hoy · registra en ${sedeDelMostrador.name}` : 'entradas hoy · toca para registrar'}
-                  accion="Registrar entrada"
-                />
-              }
-            >
-              <CheckInPanel slug={slug} sucursal={sedeDelMostrador} mostrarSucursal={multisede} empezarConCamara />
-            </Modal>
-          ) : (
-            <StatCard
-              href={`${asistencia}?desde=${hoy}&hasta=${hoy}${sedeVista ? `&sucursal=${sedeVista.id}` : ''}`}
-              etiqueta={sedeVista ? `Entradas hoy · ${sedeVista.name}` : 'Entradas hoy'}
-              valor={`${entradasHoy}`}
-              icono="calendar"
-              tono="accion"
-              comparacion={`${entradasSemana} en 7 días`}
-              accion="Ver entradas"
-            />
-          )}
           <StatCard
-            href={aSocios('estado=active', 'clientes?estado=active', '#membresias')}
-            etiqueta={multisede ? 'Socios activos · gimnasio' : 'Socios activos'}
-            valor={`${kpis.sociosActivos}`}
-            icono="group"
-            comparacion={
-              indicadoresDeVista
-                ? `${indicadoresDeVista.socios30d} entrenaron en ${indicadoresDeVista.name} en 30 días`
-                : `${kpis.sociosActivosMes} entrenaron este mes`
-            }
-            accion="Ver socios"
+            href={`${asistencia}?desde=${hoy}&hasta=${hoy}${sedeVista ? `&sucursal=${sedeVista.id}` : ''}`}
+            etiqueta={sedeVista ? `Entradas hoy · ${sedeVista.name}` : 'Entradas hoy'}
+            valor={`${entradasHoy}`}
+            icono="calendar"
+            tono="accion"
+            comparacion={`${entradasSemana} en 7 días`}
+            accion="Ver entradas"
           />
-          <StatCard
-            href={aSocios('estado=expiring_soon', 'vencimientos', '#vencimientos')}
-            etiqueta="Por vencer"
-            valor={`${kpis.membresiasPorVencer}`}
-            icono="clock"
-            tono={kpis.membresiasPorVencer > 0 ? 'alerta' : 'neutro'}
-            comparacion={`${kpis.membresiasVencidas} ya vencidas`}
-            subirEsMalo
-            accion="A quién llamar"
-          />
-          {puedeVerReportes ? (
+          {conAccesos && (
             <StatCard
-              href={`${tenantHref(slug, 'panel/reportes/pagos')}?preset=mes`}
-              etiqueta="Ingresos del mes"
-              valor={importe(kpis.ingresosMes, moneda)}
-              icono="wallet"
-              variacion={variacion(kpis.ingresosMes, kpis.ingresosMesAnterior)}
-              comparacion="frente al mes anterior"
-              accion="Ver pagos"
-            />
-          ) : (
-            <StatCard href={aSocios('estado=active', 'membresias', '#membresias')} etiqueta="Membresías activas" valor={`${kpis.membresiasActivas}`} icono="shield" comparacion={`de ${totalMembresias} registradas`} accion="Ver socios" />
-          )}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {conComprobantes && (
-            <StatCard
-              href={`${tenantHref(slug, 'panel/comprobantes')}?estado=pendiente&preset=todo`}
-              etiqueta="Comprobantes por revisar"
-              valor={`${pendientes}`}
-              icono="receipt"
-              tono={pendientes > 0 ? 'alerta' : 'neutro'}
-              comparacion={pendientes > 0 ? 'pagos QR esperando aprobación' : 'todo revisado'}
-              accion="Revisar"
+              href={`${tenantHref(slug, 'panel/accesos')}?desde=${hoy}&hasta=${hoy}${sedeVista ? `&sucursal=${sedeVista.id}` : ''}`}
+              etiqueta="Ingresos de hoy"
+              valor={`${pasesDeHoy}`}
+              icono="key"
+              // Los dos números son correctos y distintos a propósito: un socio
+              // que entró tres veces cuenta UNA entrada y TRES ingresos.
+              comparacion={`pasos por la puerta · ${entradasHoy} socios distintos`}
+              accion="Ver ingresos"
             />
           )}
-          {gestionSocios && puede(PERMISO.crearSocios) && (
-            <StatCard href={`${socios}/nuevo`} etiqueta="Nuevo socio" valor="+" icono="plus" tono="accion" comparacion={`${sinMembresia} sin membresía todavía`} accion="Registrar socio" />
+          {features.enableClasses && puede(PERMISO.verClases) && (
+            <StatCard href={tenantHref(slug, 'panel/clases')} etiqueta="Clases" valor="Agenda" icono="clock" comparacion="hoy y la semana, por sede" accion="Ver agenda" />
           )}
           {gestionSocios && (
             <StatCard
@@ -337,38 +235,13 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
               accion="Ver quiénes"
             />
           )}
-          {gestionSocios && (
-            <StatCard
-              href={`${socios}?vista=cumple`}
-              etiqueta="Cumplen este mes"
-              valor={`${conteo.cumplenMes}`}
-              icono="cake"
-              comparacion={cumpleaneros.slice(0, 2).map((f) => f.firstName).join(', ') || 'nadie este mes'}
-              accion="Ver cumpleaños"
-            />
-          )}
-          {ajustes !== null && (
-            <StatCard
-              href={tenantHref(slug, 'panel/cobros')}
-              etiqueta="QR de cobro"
-              valor={ajustes.qrs.length === 0 ? 'Sin QR' : qrVigentes === 0 ? 'Vencido' : 'Publicado'}
-              icono="qr"
-              tono={qrVigentes === 0 || qrVencidos > 0 ? 'alerta' : 'accion'}
-              comparacion={
-                ajustes.qrs.length === 0
-                  ? 'súbelo para activar «Pagar con QR»'
-                  : `${NOMBRE_DE_MODO_DE_QR[ajustes.modo]} · ${qrVigentes} vigente${qrVigentes === 1 ? '' : 's'}${qrVencidos > 0 ? ` · ${qrVencidos} vencido${qrVencidos === 1 ? '' : 's'}` : ''}`
-              }
-              accion="Configurar"
-            />
-          )}
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-asistencia">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 id="titulo-asistencia" className="t-h3">Entradas de los últimos 30 días{sedeVista ? ` · ${sedeVista.name}` : ''}</h2>
+                <h3 id="titulo-asistencia" className="t-h3">Entradas de los últimos 30 días{sedeVista ? ` · ${sedeVista.name}` : ''}</h3>
                 <p className="mt-1.5 text-[0.86rem] text-muted">
                   {sedeVista ? 'Solo las registradas en esta sede. ' : multisede ? 'Todas las sedes, incluido el histórico sin sucursal. ' : ''}
                   La barra de la derecha es hoy.
@@ -383,72 +256,12 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
             <BarChart titulo="Entradas por día en los últimos 30 días" puntos={puntosDeAsistencia} unidad="entradas" alto={190} className="mt-6" />
           </section>
 
-          <section id="membresias" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-membresias">
-            <h2 id="titulo-membresias" className="t-h3">Estado de las membresías</h2>
-            <DonutChart
-              titulo="Reparto de membresías por estado"
-              className="mt-6"
-              centroValor={`${totalMembresias}`}
-              centroEtiqueta="membresías"
-              segmentos={[
-                { etiqueta: 'Activas', valor: kpis.membresiasActivas, color: 'var(--t-action)' },
-                { etiqueta: 'Por vencer', valor: kpis.membresiasPorVencer, color: 'var(--t-structural)' },
-                { etiqueta: 'Vencidas', valor: kpis.membresiasVencidas, color: 'color-mix(in srgb, var(--t-muted) 60%, transparent)' },
-              ]}
-            />
-            {gestionSocios && (
-              <div className="mt-5 flex flex-wrap gap-2">
-                <LinkButton href={`${socios}?estado=active`} variant="secondary" size="sm">Activas</LinkButton>
-                <LinkButton href={`${socios}?estado=expiring_soon`} variant="secondary" size="sm">Por vencer</LinkButton>
-                <LinkButton href={`${socios}?estado=expired`} variant="secondary" size="sm">Vencidas</LinkButton>
-              </div>
-            )}
-          </section>
-        </div>
-
-        {puedeVerReportes && (
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ingresos">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 id="titulo-ingresos" className="t-h3">Ingresos por mes</h2>
-                <p className="mt-1.5 text-[0.86rem] text-muted">Incluye los cobros aprobados desde comprobantes QR.</p>
-              </div>
-              <LinkButton href={`${tenantHref(slug, 'panel/reportes/ingresos-por-plan')}?preset=mes`} variant="ghost" size="sm" icon="arrowRight">
-                Por plan
-              </LinkButton>
-            </div>
-            <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-6" />
-          </section>
-        )}
-
-        <div className="grid gap-6 xl:grid-cols-2">
-          <section id="vencimientos" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-vencimientos">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h2 id="titulo-vencimientos" className="t-h3">A punto de vencer</h2>
-              {porVencerPronto.length > 0 && <Badge tone="structural">{porVencerPronto.length} para llamar</Badge>}
-            </div>
-            <p className="mt-1.5 text-[0.86rem] text-muted">Los próximos diez días. Toca un socio para ver su ficha y su teléfono.</p>
-            <DataTable
-              titulo="Membresías que vencen en los próximos diez días"
-              className="mt-5"
-              columnas={[
-                { clave: 'socio', titulo: 'Socio', celda: (fila) => <BotonFicha customerId={fila.customerId}>{fila.customerName}</BotonFicha> },
-                { clave: 'plan', titulo: 'Plan', secundaria: true, celda: (fila) => fila.planName ?? '—' },
-                { clave: 'vence', titulo: 'Vence', celda: (fila) => fechaCorta(fila.endDate) },
-                { clave: 'dias', titulo: 'Días', numerica: true, celda: (fila) => fila.daysRemaining },
-              ]}
-              filas={porVencerPronto.slice(0, 8)}
-              claveDeFila={(fila) => fila.membershipId}
-              vacio={<EmptyState icono="check" titulo="Nadie vence en los próximos diez días" />}
-            />
-          </section>
-
           <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ultimas">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h2 id="titulo-ultimas" className="t-h3">Últimas entradas{sedeVista ? ` · ${sedeVista.name}` : ''}</h2>
+              <h3 id="titulo-ultimas" className="t-h3">Últimas entradas{sedeVista ? ` · ${sedeVista.name}` : ''}</h3>
               {features.enableAttendance && (
                 <LinkButton href={asistencia} variant="ghost" size="sm" icon="arrowRight">
-                  Control de asistencia
+                  Control
                 </LinkButton>
               )}
             </div>
@@ -475,6 +288,248 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
             />
           </section>
         </div>
+      </>
+    ),
+
+    dinero: (
+      <>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {puedeVerReportes ? (
+            <StatCard
+              href={`${tenantHref(slug, 'panel/reportes/pagos')}?preset=mes`}
+              etiqueta="Ingresos del mes"
+              valor={importe(kpis.ingresosMes, moneda)}
+              icono="wallet"
+              tono="accion"
+              variacion={variacion(kpis.ingresosMes, kpis.ingresosMesAnterior)}
+              comparacion="frente al mes anterior"
+              accion="Ver pagos"
+            />
+          ) : (
+            <StatCard href={aSocios('estado=active', 'membresias', '#membresias')} etiqueta="Membresías activas" valor={`${kpis.membresiasActivas}`} icono="shield" comparacion={`de ${totalMembresias} registradas`} accion="Ver socios" />
+          )}
+          {conComprobantes && (
+            <StatCard
+              href={`${tenantHref(slug, 'panel/comprobantes')}?estado=pendiente&preset=todo`}
+              etiqueta="Comprobantes por revisar"
+              valor={`${pendientes}`}
+              icono="receipt"
+              tono={pendientes > 0 ? 'alerta' : 'neutro'}
+              comparacion={pendientes > 0 ? 'pagos QR esperando aprobación' : 'todo revisado'}
+              accion="Revisar"
+            />
+          )}
+          {puedeVerReportes && (
+            <StatCard
+              href={`${tenantHref(slug, 'panel/reportes/ingresos-por-plan')}?preset=mes`}
+              etiqueta="Mes anterior"
+              valor={importe(kpis.ingresosMesAnterior, moneda)}
+              icono="chart"
+              comparacion="para comparar con lo que va del mes"
+              accion="Ingresos por plan"
+            />
+          )}
+          {ajustes !== null && (
+            <StatCard
+              href={tenantHref(slug, 'panel/cobros')}
+              etiqueta="QR de cobro"
+              valor={ajustes.qrs.length === 0 ? 'Sin QR' : qrVigentes === 0 ? 'Vencido' : 'Publicado'}
+              icono="qr"
+              tono={qrVigentes === 0 || qrVencidos > 0 ? 'alerta' : 'accion'}
+              comparacion={
+                ajustes.qrs.length === 0
+                  ? 'súbelo para activar «Pagar con QR»'
+                  : `${NOMBRE_DE_MODO_DE_QR[ajustes.modo]} · ${qrVigentes} vigente${qrVigentes === 1 ? '' : 's'}${qrVencidos > 0 ? ` · ${qrVencidos} vencido${qrVencidos === 1 ? '' : 's'}` : ''}`
+              }
+              accion="Configurar"
+            />
+          )}
+        </div>
+
+        {puedeVerReportes && (
+          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ingresos">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 id="titulo-ingresos" className="t-h3">Ingresos por mes</h3>
+                <p className="mt-1.5 text-[0.86rem] text-muted">Incluye los cobros aprobados desde comprobantes QR.</p>
+              </div>
+              <LinkButton href={`${tenantHref(slug, 'panel/reportes/ingresos-por-plan')}?preset=mes`} variant="ghost" size="sm" icon="arrowRight">
+                Por plan
+              </LinkButton>
+            </div>
+            <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-6" />
+          </section>
+        )}
+      </>
+    ),
+
+    socios: (
+      <>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            href={aSocios('estado=active', 'clientes?estado=active', '#membresias')}
+            etiqueta={multisede ? 'Socios activos · gimnasio' : 'Socios activos'}
+            valor={`${kpis.sociosActivos}`}
+            icono="group"
+            comparacion={
+              indicadoresDeVista
+                ? `${indicadoresDeVista.socios30d} entrenaron en ${indicadoresDeVista.name} en 30 días`
+                : `${kpis.sociosActivosMes} entrenaron este mes`
+            }
+            accion="Ver socios"
+          />
+          <StatCard
+            href={aSocios('estado=expiring_soon', 'vencimientos', '#vencimientos')}
+            etiqueta="Por vencer"
+            valor={`${kpis.membresiasPorVencer}`}
+            icono="clock"
+            tono={kpis.membresiasPorVencer > 0 ? 'alerta' : 'neutro'}
+            comparacion={`${kpis.membresiasVencidas} ya vencidas`}
+            subirEsMalo
+            accion="A quién llamar"
+          />
+          {gestionSocios && puede(PERMISO.crearSocios) && (
+            <StatCard href={`${socios}/nuevo`} etiqueta="Nuevo socio" valor="+" icono="plus" tono="accion" comparacion={`${sinMembresia} sin membresía todavía`} accion="Registrar socio" />
+          )}
+          {gestionSocios && (
+            <StatCard
+              href={`${socios}?vista=cumple`}
+              etiqueta="Cumplen este mes"
+              valor={`${conteo.cumplenMes}`}
+              icono="cake"
+              comparacion={cumpleaneros.slice(0, 2).map((f) => f.firstName).join(', ') || 'nadie este mes'}
+              accion="Ver cumpleaños"
+            />
+          )}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+          <section id="membresias" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-membresias">
+            <h3 id="titulo-membresias" className="t-h3">Estado de las membresías</h3>
+            <DonutChart
+              titulo="Reparto de membresías por estado"
+              className="mt-6"
+              centroValor={`${totalMembresias}`}
+              centroEtiqueta="membresías"
+              segmentos={[
+                { etiqueta: 'Activas', valor: kpis.membresiasActivas, color: 'var(--t-action)' },
+                { etiqueta: 'Por vencer', valor: kpis.membresiasPorVencer, color: 'var(--t-structural)' },
+                { etiqueta: 'Vencidas', valor: kpis.membresiasVencidas, color: 'color-mix(in srgb, var(--t-muted) 60%, transparent)' },
+              ]}
+            />
+            {gestionSocios && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                <LinkButton href={`${socios}?estado=active`} variant="secondary" size="sm">Activas</LinkButton>
+                <LinkButton href={`${socios}?estado=expiring_soon`} variant="secondary" size="sm">Por vencer</LinkButton>
+                <LinkButton href={`${socios}?estado=expired`} variant="secondary" size="sm">Vencidas</LinkButton>
+              </div>
+            )}
+          </section>
+
+          <section id="vencimientos" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-vencimientos">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h3 id="titulo-vencimientos" className="t-h3">A punto de vencer</h3>
+              {porVencerPronto.length > 0 && <Badge tone="structural">{porVencerPronto.length} para llamar</Badge>}
+            </div>
+            <p className="mt-1.5 text-[0.86rem] text-muted">Los próximos diez días. Toca un socio para ver su ficha y su teléfono.</p>
+            <DataTable
+              titulo="Membresías que vencen en los próximos diez días"
+              className="mt-5"
+              columnas={[
+                { clave: 'socio', titulo: 'Socio', celda: (fila) => <BotonFicha customerId={fila.customerId}>{fila.customerName}</BotonFicha> },
+                { clave: 'plan', titulo: 'Plan', secundaria: true, celda: (fila) => fila.planName ?? '—' },
+                { clave: 'vence', titulo: 'Vence', celda: (fila) => fechaCorta(fila.endDate) },
+                { clave: 'dias', titulo: 'Días', numerica: true, celda: (fila) => fila.daysRemaining },
+              ]}
+              filas={porVencerPronto.slice(0, 8)}
+              claveDeFila={(fila) => fila.membershipId}
+              vacio={<EmptyState icono="check" titulo="Nadie vence en los próximos diez días" />}
+            />
+          </section>
+        </div>
+      </>
+    ),
+
+    sucursales:
+      vistaGlobal && porSede.length > 0 ? (
+        <>
+          <p className="-mt-2 text-[0.86rem] text-muted">
+            «Socios 30 d» cuenta a quien entrenó en esa sede: un socio que va a las dos cuenta en las dos.
+            {sinSedeHoy > 0 && ` Hoy hay ${sinSedeHoy} entradas sin sucursal registrada.`}
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {porSede
+              .filter((s) => s.isActive)
+              .map((s) => (
+                <TarjetaDeSucursal key={s.id} sucursal={s} total30d={total30dSedes} href={`${base}?vista=${s.id}`} accion="Ver esta sede" actual={sede.actual?.id === s.id} />
+              ))}
+          </div>
+          {puede(PERMISO.gestionarSucursales) && (
+            <div>
+              <LinkButton href={tenantHref(slug, 'panel/sucursales')} variant="ghost" size="sm" icon="arrowRight">
+                Administrar sucursales
+              </LinkButton>
+            </div>
+          )}
+        </>
+      ) : null,
+  };
+
+  return (
+    <FichaDeSocioProvider slug={slug} rutaDeFicha={gestionSocios ? socios : undefined}>
+      <div className="flex flex-col gap-8">
+        {multisede && sede.alcanceGlobal && sede.sucursales.some((s) => s.isActive) && (
+          <nav aria-label="Vista del resumen" className="flex flex-wrap items-center gap-2" data-print="hide">
+            <span className="me-1 text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-muted">Vista</span>
+            {[{ id: '', name: 'Global' }, ...sede.sucursales.filter((s) => s.isActive).map((s) => ({ id: s.id, name: s.name }))].map((opcion) => {
+              const activa = (sedeVista?.id ?? '') === opcion.id;
+              return (
+                <Link
+                  key={opcion.id || 'global'}
+                  href={opcion.id ? `${base}?vista=${opcion.id}` : base}
+                  aria-current={activa ? 'page' : undefined}
+                  className={
+                    activa
+                      ? 'inline-flex h-11 items-center gap-2 rounded-full border border-action bg-action px-4 text-[0.86rem] font-semibold text-on-action'
+                      : 'inline-flex h-11 items-center gap-2 rounded-full border border-line bg-raised px-4 text-[0.86rem] font-medium text-muted transition-colors hover:border-action hover:text-ink'
+                  }
+                >
+                  <Icon name={opcion.id ? 'pin' : 'layers'} size={15} />
+                  {opcion.name}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+
+        {sedeVista && (
+          <p className="-mb-4 flex items-center gap-1.5 text-[0.84rem] text-muted">
+            <Icon name="pin" size={15} className="text-action" />
+            Estás viendo <span className="font-semibold text-ink">{sedeVista.name}</span>
+            {sedeDelMostrador && sedeDelMostrador.id === sedeVista.id ? ' · el mostrador registra aquí' : ''}
+          </p>
+        )}
+
+        <AccionesRapidas
+          slug={slug}
+          acciones={acciones}
+          sucursalDelMostrador={puedeRegistrarAqui ? sedeDelMostrador : null}
+          mostrarSucursal={multisede}
+          {...(conComprobantes ? { comprobantesPendientes: pendientes } : {})}
+        />
+
+        {ordenDelTablero(enfoque).map((bloque) => {
+          const contenido = bloques[bloque];
+          if (contenido === null) return null;
+          return (
+            <section key={bloque} aria-labelledby={`bloque-${bloque}`} className="flex flex-col gap-4">
+              <h2 id={`bloque-${bloque}`} className="t-h3">
+                {TITULO_DE_BLOQUE[bloque]}
+              </h2>
+              <Fragment>{contenido}</Fragment>
+            </section>
+          );
+        })}
       </div>
     </FichaDeSocioProvider>
   );

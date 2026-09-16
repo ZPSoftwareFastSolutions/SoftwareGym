@@ -95,6 +95,28 @@ export function diasCerradosDelHorario(
     .filter((indice): indice is number => typeof indice === 'number');
 }
 
+/**
+ * La fila del horario que le toca a una FECHA (V4.2).
+ *
+ * El panel del socio necesita decir «hoy abrimos de 06:00 a 22:00», y para eso
+ * hay que casar una fecha con el nombre del día que escribió el gimnasio en su
+ * configuración. Esa traducción ya vivía aquí (`INDICE_DE_DIA`) para la racha:
+ * repetirla en la pantalla sería tener dos tablas de días que pueden discrepar.
+ *
+ * Devuelve `null` si el horario no nombra ese día, que es lo que pasa cuando la
+ * configuración está a medias. Quien llama decide qué enseñar; aquí no se
+ * inventa un horario.
+ */
+export function diaDelHorario<T extends { readonly day: string }>(
+  semana: readonly T[],
+  fechaIso: string,
+): T | null {
+  const fecha = aFecha(fechaIso);
+  if (fecha === null) return null;
+  const indice = fecha.getUTCDay();
+  return semana.find((dia) => INDICE_DE_DIA[dia.day.trim().toLowerCase()] === indice) ?? null;
+}
+
 export function calcularRacha(
   fechas: readonly string[],
   hoy: string,

@@ -16,11 +16,12 @@ import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { construirNotificaciones } from '@core/domain/operations/notifications';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
-import { calcularRacha, diasCerradosDelHorario } from '@core/domain/operations/streak';
+import { calcularRacha, diaDelHorario, diasCerradosDelHorario } from '@core/domain/operations/streak';
 import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
-import { clasesDelPlan, sumarDias } from '@core/domain/operations/classes';
+import { clasesDelPlan, horaDeFin, sumarDias } from '@core/domain/operations/classes';
+import { estaInscrito, estadoDeClaseDelSocio } from '@core/domain/operations/agenda-del-socio';
 import { tituloDeRutina } from '@core/domain/operations/training';
 import {
   AJUSTES_RECOMENDADOS,
@@ -34,7 +35,7 @@ import {
 } from '@core/domain/operations/reservations';
 import { horaEnZona } from '@/lib/formato';
 import { classesRepository, membersRepository, receiptsRepository, reservationsRepository, trainingRepository } from '@infra/config/composition-root';
-import { FilaDeSesion } from '@/presentation/patterns/AgendaDeClases';
+import { MiAgendaDeClases, type FilaDeAgendaDelSocio } from '@/presentation/patterns/MiAgendaDeClases';
 import { BotonDeReserva, type EstadoDeReservaDeSesion } from '@/presentation/patterns/ReservaForms';
 import { matrizQr } from '@infra/operations/qr';
 import { NotificationsPanel } from '@/presentation/patterns/NotificationsPanel';
@@ -147,6 +148,33 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
       limiteAlcanzado: (estadoDeReservas?.activas ?? 0) >= ajustes.maxActive,
     };
   };
+  // §15 · la situación de cada sesión se decide UNA vez, en el dominio, y la
+  // pantalla solo la pinta. Antes había que mirar tres datos a la vez (estado
+  // de la sesión, reserva propia y ocupación) en cada sitio que la mostraba.
+  const filasDeAgenda: FilaDeAgendaDelSocio[] = misSesiones.map((s) => {
+    const ocupacion = { estado: s.estado, miReservaEstado: s.miReservaEstado, ocupados: s.ocupados, capacity: s.capacity };
+    const estado = estadoDeClaseDelSocio(ocupacion, {
+      incluidaEnSuPlan: misClases.some((c) => c.id === s.classId),
+      conReservas,
+      ventana: ventanaDeReserva(s, ajustes, ahora).estado,
+    });
+    return {
+      id: s.id,
+      sessionDate: s.sessionDate,
+      startTime: s.startTime,
+      horaFin: horaDeFin(s.startTime, s.durationMinutes),
+      nombre: s.title ?? s.className,
+      sucursal: multisede ? s.branchName : null,
+      instructor: s.trainerName,
+      esEvento: s.kind === 'evento',
+      motivoDeCancelacion: s.cancelReason,
+      estado,
+      ocupacion,
+      ...(conReservas && s.estado !== 'cancelada' ? { accion: <BotonDeReserva slug={slug} e={estadoDeReservaDe(s)} /> } : {}),
+    };
+  });
+  const inscripciones = filasDeAgenda.filter((f) => estaInscrito(f.estado));
+
   const proximasReservas = misReservas.filter((r) => (r.status === 'reservada' || r.status === 'en_espera') && r.estadoEfectivo !== 'no_asistio' && !r.sessionCancelled);
   const historialDeReservas = misReservas.filter((r) => !proximasReservas.includes(r)).reverse().slice(0, 8);
 
@@ -157,6 +185,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
 
   const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId, avisosDeReservas) : [];
   const racha = calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
+  const horarioDeHoy = diaDelHorario(tenant.hours.week, hoy);
   const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
   // La racha y el conteo salen de las FECHAS, sin mirar la sede: ir a una sede un
   // día y a otra al siguiente son dos días seguidos.
@@ -402,6 +431,45 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
             </section>
           </div>
 
+          {/* §6 · «Horarios» está en la lista de lo que el socio necesita a
+              diario, justo después de su membresía y su QR. Se enseña la semana
+              entera con HOY destacado: saber a qué hora cierran hoy es la
+              pregunta real; el resto de la semana es para planificar. */}
+          {tenant.hours.week.length > 0 && (
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-horario-socio">
+              <h2 id="titulo-horario-socio" className="flex items-center gap-2 t-h3">
+                <Icon name="clock" size={18} className="text-action" />
+                Horario del gimnasio
+              </h2>
+              <p className="mt-1.5 text-[0.86rem] text-muted">
+                {horarioDeHoy === null
+                  ? 'Consulta en recepción el horario de hoy.'
+                  : horarioDeHoy.closed
+                    ? `Hoy (${horarioDeHoy.day.toLowerCase()}) el gimnasio no abre. Los días cerrados no cortan tu racha.`
+                    : `Hoy (${horarioDeHoy.day.toLowerCase()}) abrimos de ${horarioDeHoy.open} a ${horarioDeHoy.close}.`}
+              </p>
+              <ul className="mt-5 grid gap-1.5 sm:grid-cols-2">
+                {tenant.hours.week.map((dia) => {
+                  const esHoy = horarioDeHoy !== null && dia.day === horarioDeHoy.day;
+                  return (
+                    <li
+                      key={dia.day}
+                      className={
+                        esHoy
+                          ? 'flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] border border-action/50 bg-action/8 px-3 py-2 text-[0.86rem] text-ink'
+                          : 'flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] px-3 py-2 text-[0.86rem] text-muted'
+                      }
+                    >
+                      <span className={esHoy ? 'font-semibold text-ink' : ''}>{dia.day}</span>
+                      <span>{dia.closed ? 'Cerrado' : `${dia.open} – ${dia.close}`}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {tenant.hours.holidayNote && <p className="mt-4 text-[0.8rem] text-muted">{tenant.hours.holidayNote}</p>}
+            </section>
+          )}
+
           <div className="grid gap-6 lg:grid-cols-2">
             <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-constancia">
               <h2 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
@@ -499,20 +567,19 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                 </p>
               )}
 
-              {misSesiones.length > 0 ? (
-                <ul className="mt-5 flex flex-col gap-2">
-                  {misSesiones.map((s) => (
-                    <li key={s.id}>
-                      <FilaDeSesion
-                        sesion={s}
-                        mostrarFecha
-                        mostrarSede={multisede}
-                        destacada={s.estado === 'en_curso' || s.miReservaEstado === 'reservada'}
-                        accion={conReservas && s.estado !== 'cancelada' ? <BotonDeReserva slug={slug} e={estadoDeReservaDe(s)} /> : undefined}
-                      />
-                    </li>
-                  ))}
-                </ul>
+              {inscripciones.length > 0 && (
+                <p className="mt-4 flex flex-wrap items-center gap-2 rounded-[var(--t-radius-md)] border border-action/40 bg-action/8 px-4 py-3 text-[0.88rem] text-ink">
+                  <Icon name="check" size={16} className="text-action" />
+                  <span>
+                    Estás anotado en <strong>{inscripciones.length}</strong>{' '}
+                    {inscripciones.length === 1 ? 'clase' : 'clases'}:{' '}
+                    {inscripciones.map((f) => `${f.nombre} (${f.startTime})`).join(' · ')}
+                  </span>
+                </p>
+              )}
+
+              {filasDeAgenda.length > 0 ? (
+                <MiAgendaDeClases className="mt-5" filas={filasDeAgenda} hoy={hoy} mostrarSede={multisede} />
               ) : (
                 misClases.length > 0 && <EmptyState className="mt-5" icono="calendar" titulo={`No hay sesiones de tus clases en los próximos ${diasVisibles} días`} />
               )}

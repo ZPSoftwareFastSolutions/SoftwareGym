@@ -20,22 +20,28 @@ import Link from 'next/link';
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { NOMBRE_DE_GRUPO, agruparEntradas } from '@/lib/navegacion';
-import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
-import { variacion } from '@core/domain/operations/dashboard';
+import { PERMISO, espacioDeTrabajo, tienePermiso } from '@core/domain/operations/workspace';
+import { accionesRapidas, enfoqueDeTablero } from '@core/domain/operations/tablero';
+import { variacion, type PuntoDeSerie } from '@core/domain/operations/dashboard';
 import { CONTEO_DE_SOCIOS_VACIO } from '@core/domain/operations/members';
 import { describirEvento } from '@core/domain/operations/staff';
 import { membersRepository, receiptsRepository, staffRepository } from '@infra/config/composition-root';
+import { AccionesRapidas } from '@/presentation/patterns/AccionesRapidas';
+import { BarChart } from '@/presentation/ui/BarChart';
 import { Badge } from '@/presentation/ui/Badge';
 import { EmptyState } from '@/presentation/ui/EmptyState';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { LinkButton } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
 import { momentoEnZona } from '@/lib/formato';
+import { contextoDeSucursal } from '../_sucursal';
 import { exigirPermiso, importe } from '../_datos';
 import { entradasDelPanel } from '../_navegacion';
 
 export const metadata: Metadata = { title: 'Administración', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
+
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 export default async function AdministracionPage({ params }: TenantPageParams) {
   const tenant = await loadTenantPage(params, 'memberLogin');
@@ -47,14 +53,37 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
   const conComprobantes = features.enablePayments === true && puede(PERMISO.verPagos);
   const personal = await staffRepository();
 
-  const [kpis, conteo, resumen, actividad, pendientes, modulos] = await Promise.all([
+  const sede = await contextoDeSucursal(perfil);
+  const puedeVerReportes = features.enableReports === true && puede(PERMISO.verReportes);
+
+  const [kpis, conteo, resumen, actividad, pendientes, modulos, ingresos] = await Promise.all([
     repo.indicadores(slug),
     conSocios ? (await membersRepository()).conteos() : Promise.resolve(CONTEO_DE_SOCIOS_VACIO),
     personal.resumen(),
     puede(PERMISO.verAuditoria) ? personal.actividad(8) : Promise.resolve([]),
     conComprobantes ? (await receiptsRepository()).contarPendientes() : Promise.resolve(0),
     entradasDelPanel(tenant, perfil),
+    puedeVerReportes ? repo.ingresosMensuales() : Promise.resolve([]),
   ]);
+
+  // §11 y §13 · lo que Administración usa a diario, arriba del todo, y el
+  // dinero antes que la configuración. Qué botones hay lo decide el dominio
+  // con las capacidades contratadas y los permisos reales de la cuenta.
+  const acciones = accionesRapidas({
+    enfoque: enfoqueDeTablero(espacioDeTrabajo(perfil), perfil.permissions),
+    capacidades: features,
+    permisos: perfil.permissions,
+    puedeOperarEnSede: features.enableAttendance === true && puede(PERMISO.registrarAsistencia) && sede.actual !== null,
+  });
+
+  const puntosDeIngreso: PuntoDeSerie[] = ingresos.map((punto) => {
+    const mes = MESES[Number(punto.mes.slice(5, 7)) - 1] ?? punto.mes.slice(5, 7);
+    return {
+      etiqueta: mes,
+      valor: punto.total,
+      detalle: `${mes} ${punto.mes.slice(0, 4)}: ${importe(punto.total, kpis?.currency ?? 'BOB')} en ${punto.cobros} cobros`,
+    };
+  });
 
   const grupos = agruparEntradas(modulos.filter((m) => m.grupo !== 'inicio'));
   const socios = tenantHref(slug, 'panel/socios');
@@ -82,6 +111,14 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
           </LinkButton>
         </div>
       </section>
+
+      <AccionesRapidas
+        slug={slug}
+        acciones={acciones}
+        sucursalDelMostrador={sede.actual}
+        mostrarSucursal={features.enableMultiBranch === true}
+        {...(conComprobantes ? { comprobantesPendientes: pendientes } : {})}
+      />
 
       {kpis ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -132,6 +169,24 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
       ) : (
         <section className="surface-card">
           <EmptyState icono="shield" titulo="Todavía no hay datos de este gimnasio" descripcion="En cuanto se registren socios, membresías y entradas, el resumen se llena solo." />
+        </section>
+      )}
+
+      {puedeVerReportes && (
+        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ingresos-admin">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 id="titulo-ingresos-admin" className="t-h3">Ingresos por mes</h2>
+              <p className="mt-1.5 text-[0.86rem] text-muted">
+                Cobros aprobados, incluidos los que entraron por comprobante de QR. El detalle, con sus filtros y su
+                tabla paginada, está en los reportes: aquí va la forma de la curva, no el listado.
+              </p>
+            </div>
+            <LinkButton href={`${tenantHref(slug, 'panel/reportes/pagos')}?preset=mes`} variant="ghost" size="sm" icon="arrowRight">
+              Ver pagos
+            </LinkButton>
+          </div>
+          <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-6" />
         </section>
       )}
 
