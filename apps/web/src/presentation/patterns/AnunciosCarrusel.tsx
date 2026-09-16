@@ -32,8 +32,17 @@ import { ArtFrame } from '../ui/ArtFrame';
 import { Badge } from '../ui/Badge';
 import { Dialogo } from '../ui/Modal';
 
+/**
+ * V4.2 · `fila` es el índice de siempre: tarjetas de panfleto (4:5) en hilera.
+ * `destacado` es para cuando los anuncios SON la portada: tarjetas más anchas,
+ * arte apaisado y titular grande, de modo que el primero ocupa casi toda la
+ * columna y el siguiente asoma para decir que hay más.
+ */
+export type PresentacionDeAnuncios = 'fila' | 'destacado';
+
 interface AnunciosCarruselProps {
   readonly anuncios: readonly AnuncioPublico[];
+  readonly presentacion?: PresentacionDeAnuncios;
 }
 
 /** Fecha legible del anuncio. Sin hora: un panfleto se fecha por día. */
@@ -43,7 +52,8 @@ function fechaLegible(iso: string): string {
   return fecha.toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export function AnunciosCarrusel({ anuncios }: AnunciosCarruselProps) {
+export function AnunciosCarrusel({ anuncios, presentacion = 'fila' }: AnunciosCarruselProps) {
+  const destacado = presentacion === 'destacado';
   const pista = useRef<HTMLUListElement>(null);
   const [abierto, setAbierto] = useState<AnuncioPublico | null>(null);
   const [alInicio, setAlInicio] = useState(true);
@@ -111,7 +121,10 @@ export function AnunciosCarrusel({ anuncios }: AnunciosCarruselProps) {
         {anuncios.map((anuncio, indice) => (
           <li
             key={anuncio.id}
-            className="w-[min(20rem,82vw)] shrink-0 snap-start sm:w-[22rem]"
+            className={cn(
+              'shrink-0 snap-start',
+              destacado ? 'w-[88%] sm:w-[85%]' : 'w-[min(20rem,82vw)] sm:w-[22rem]',
+            )}
           >
             <button
               type="button"
@@ -126,16 +139,16 @@ export function AnunciosCarrusel({ anuncios }: AnunciosCarruselProps) {
                 {...(anuncio.imageUrl ? { src: anuncio.imageUrl } : {})}
                 alt={anuncio.imageAlt ?? ''}
                 icon="sparkle"
-                ratio="4 / 5"
+                ratio={destacado ? '16 / 10' : '4 / 5'}
                 className="w-full"
               />
-              <div className="p-5">
+              <div className={destacado ? 'p-6 sm:p-7' : 'p-5'}>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="action">{NOMBRE_DE_TIPO_DE_ANUNCIO[anuncio.kind]}</Badge>
                   <span className="text-[0.75rem] text-muted">{fechaLegible(anuncio.publishedAt)}</span>
                 </div>
-                <h3 className="t-h3 mt-3 text-[1.05rem] leading-snug">{anuncio.title}</h3>
-                <p className="mt-2 text-[0.88rem] leading-relaxed text-muted">
+                <h3 className={cn('mt-3 leading-snug', destacado ? 't-h2' : 't-h3 text-[1.05rem]')}>{anuncio.title}</h3>
+                <p className={cn('mt-2 leading-relaxed text-muted', destacado ? 'text-[0.98rem]' : 'text-[0.88rem]')}>
                   {resumenDeTarjeta(anuncio)}
                 </p>
                 <span className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-action">

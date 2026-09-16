@@ -26,6 +26,7 @@ import type {
 } from '../catalog/catalog';
 import type { TenantBranding } from './branding';
 import type { FeatureFlags } from './feature-flags';
+import type { ComposicionDePortada } from './home-layout';
 
 export interface SocialLinks {
   readonly instagram?: string;
@@ -227,6 +228,12 @@ export interface TenantConfig {
   readonly features: FeatureFlags;
   readonly seo: SeoConfig;
   readonly content: TenantContent;
+  /**
+   * V4.2 · Cómo se compone el inicio: estilo de portada, orden de las secciones
+   * y presentación de los planes. Ausente = la composición clásica, que es la
+   * que tenía la página antes de existir este campo.
+   */
+  readonly home?: Partial<ComposicionDePortada>;
   /** Metadatos de aprovisionamiento. Informativos en V1. */
   readonly provisioning: {
     readonly plan: 'starter' | 'professional' | 'enterprise';

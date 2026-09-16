@@ -30,7 +30,7 @@ export function WhatsAppFab({ contact, name }: WhatsAppFabProps) {
       className={[
         'group fixed bottom-5 end-5 z-40',
         'grid h-14 w-14 place-items-center rounded-full',
-        'bg-action text-on-action shadow-[0_10px_36px_-10px_var(--t-action)]',
+        'bg-action text-on-action shadow-[0_10px_calc(36px*var(--t-glow-strength))_-10px_var(--t-action)]',
         'transition-transform duration-200 hover:scale-105 active:scale-95',
       ].join(' ')}
     >

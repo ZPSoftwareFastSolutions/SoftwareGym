@@ -123,6 +123,25 @@ const INSTALACIONES_POR_SEDE: readonly FacilityItem[] = SEDES.flatMap((code) =>
   })),
 );
 
+/**
+ * «Así se ve por dentro» (encargo V4.1 §5). Las mismas seis áreas y sus mismos
+ * textos: nada nuevo que afirmar sobre el gimnasio. Sin `src` todavía, así que
+ * cada pieza se dibuja con la composición generativa de la marca (`ArtFrame`),
+ * que es la decisión del producto para cuando faltan fotos: ni stock ajeno ni
+ * marcos vacíos. PENDIENTE (G14): el día que lleguen las fotografías se rellena
+ * `src` y el mosaico no cambia de forma.
+ */
+const GALERIA_POR_DENTRO = AREAS_DE_LA_PLANTILLA.map((area, indice) => ({
+  id: `por-dentro-${area.id}`,
+  title: area.name,
+  // Sin pie: la descripción de cada área ya está justo encima, en
+  // «Instalaciones». Repetirla palabra por palabra sería relleno.
+  caption: '',
+  // Ritmo del mosaico en tres columnas, sin huecos: 2+1 · 1+2 · 2+1.
+  span: (indice === 0 || indice === 3 || indice === 4 ? 2 : 1) as 1 | 2,
+  seed: 41 + indice * 17,
+}));
+
 export const goldsGymPremiumTenant: TenantConfig = {
   slug: 'golds-gym-premium',
   name: "Gold's Gym Premium",
@@ -158,18 +177,26 @@ export const goldsGymPremiumTenant: TenantConfig = {
       border: '#2B2B30',
       accent: '#D8D8D8',
     },
+    /**
+     * V4.2 · IDENTIDAD PROPIA, no la de otro gimnasio con otro color. Hasta
+     * aquí GOLD usaba la misma condensada en mayúsculas, la misma retícula de
+     * fondo y el mismo brillo neón que Mítico, y se leía como la misma marca.
+     * Ahora: titulares en serif (Fraunces, ya cargada por la plataforma: no suma
+     * peso), en caja normal y apretados, superficies planas, sin retícula y sin
+     * brillo. El dorado se lee como metal, no como neón.
+     */
     typography: {
-      display: 'var(--font-display-condensed), "Arial Narrow", sans-serif',
+      display: 'var(--font-display-serif), Georgia, serif',
       body: 'var(--font-body-sans), system-ui, sans-serif',
-      scale: 'balanced',
-      uppercaseHeadings: true,
-      headingTracking: '0.03em',
+      scale: 'editorial',
+      uppercaseHeadings: false,
+      headingTracking: '-0.015em',
     },
     shape: {
       corners: 'sharp',
-      surfaceStyle: 'elevated',
-      glowIntensity: 1,
-      showGrid: true,
+      surfaceStyle: 'flat',
+      glowIntensity: 0,
+      showGrid: false,
     },
   },
 
@@ -250,8 +277,9 @@ export const goldsGymPremiumTenant: TenantConfig = {
     // ejercicios y rutinas. Apagados, sus rutas responden 404; no es que estén
     // escondidas.
 
-    // Sin material fotográfico todavía: la galería se enciende cuando llegue.
-    showGallery: false,
+    // «Así se ve por dentro» con la composición de marca mientras no haya fotos
+    // (ver `GALERIA_POR_DENTRO`). Con fotos, se rellena `src` y nada más cambia.
+    showGallery: true,
     // El folleto no trae equipo, testimonios ni preguntas frecuentes.
     showTeam: false,
     showTestimonials: false,
@@ -283,6 +311,19 @@ export const goldsGymPremiumTenant: TenantConfig = {
     plan: 'professional',
     activeSince: '2026-09-15',
     status: 'trial',
+  },
+
+  /**
+   * V4.2 · La portada que pidió el encargo (V4.1 §6 y §17): identidad, anuncios,
+   * planes y tarifas, horarios, instalaciones por sucursal, «Así se ve por
+   * dentro» y contacto. Sin marquesina ni servicios: la trayectoria y lo
+   * institucional no son el eje. Es la capacidad `home` de la plataforma; no hay
+   * ninguna portada «de GOLD» en el código.
+   */
+  home: {
+    estilo: 'anuncios',
+    planes: 'tarifario',
+    secciones: ['planes', 'horarios', 'instalaciones', 'por-dentro', 'sucursales', 'cierre'],
   },
 
   content: {
@@ -529,7 +570,7 @@ export const goldsGymPremiumTenant: TenantConfig = {
     facilities: INSTALACIONES_POR_SEDE,
 
     // PENDIENTE: fotografías del gimnasio. `showGallery` está apagada.
-    gallery: [],
+    gallery: GALERIA_POR_DENTRO,
     team: [],
     testimonials: [],
     faq: [],

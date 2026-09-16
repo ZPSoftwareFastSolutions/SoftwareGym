@@ -15,7 +15,8 @@ import { Icon } from '../icons/Icon';
 import { Badge } from '../ui/Badge';
 import { LinkButton } from '../ui/Button';
 
-const PERIOD_LABEL: Record<MembershipPlan['period'], string> = {
+/** Exportada para el tarifario en filas (V4.2): la misma etiqueta en las dos presentaciones. */
+export const PERIOD_LABEL: Record<MembershipPlan['period'], string> = {
   diario: 'por día',
   quincenal: 'por 15 días',
   mensual: 'por mes',

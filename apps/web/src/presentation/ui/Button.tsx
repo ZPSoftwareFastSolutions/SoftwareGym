@@ -62,7 +62,10 @@ function composeClasses({
     SIZES[size],
     'rounded-[var(--t-radius-md)]',
     fullWidth && 'w-full',
-    glow && variant === 'primary' && 'shadow-[0_0_28px_-6px_var(--t-action)]',
+    // V4.2 · el brillo obedece a `shape.glowIntensity` de la marca: con 1 es el
+    // de siempre y con 0 desaparece. Antes estaba fijo y una marca sin neón lo
+    // seguía teniendo en sus botones.
+    glow && variant === 'primary' && 'shadow-[0_0_calc(28px*var(--t-glow-strength))_calc(-6px*var(--t-glow-strength))_var(--t-action)]',
     className,
   );
 }

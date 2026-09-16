@@ -93,7 +93,7 @@ export function RachaCalendario({ racha, compacto = false, className }: RachaCal
                       className={cn(
                         'block rounded-[5px]',
                         compacto ? 'h-4 w-4' : 'h-6 w-6 sm:h-7 sm:w-7',
-                        dia.asistio && 'bg-action shadow-[0_0_10px_-3px_var(--t-action)]',
+                        dia.asistio && 'bg-action shadow-[0_0_calc(10px*var(--t-glow-strength))_-3px_var(--t-action)]',
                         !dia.asistio && dia.cerrado && 'bg-[repeating-linear-gradient(45deg,var(--t-line)_0_2px,transparent_2px_5px)]',
                         !dia.asistio && !dia.cerrado && !dia.futuro && 'bg-raised',
                         dia.futuro && 'border border-dashed border-line/60 bg-transparent',

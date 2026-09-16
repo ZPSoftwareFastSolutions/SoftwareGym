@@ -73,7 +73,7 @@ export function HeroSection({ hero, slug, sedes = [] }: HeroSectionProps) {
                       href={tenantHref(slug, 'sucursales')}
                       className="inline-flex min-h-11 items-center gap-2 rounded-full border border-action/40 bg-action/10 px-4 text-[0.9rem] font-semibold text-ink transition-colors hover:border-action hover:bg-action hover:text-on-action"
                     >
-                      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-action shadow-[0_0_10px_var(--t-action)]" />
+                      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-action shadow-[0_0_calc(10px*var(--t-glow-strength))_var(--t-action)]" />
                       {sede}
                     </a>
                   </li>

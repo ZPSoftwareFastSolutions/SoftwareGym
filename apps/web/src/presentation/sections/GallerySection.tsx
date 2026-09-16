@@ -46,7 +46,8 @@ export function GallerySection({
                     'h-full',
                   )}
                 />
-                <p className="mt-2.5 text-[0.82rem] text-muted">{item.caption}</p>
+                {/* Sin pie, no se pinta un párrafo vacío que deje margen de más. */}
+                {item.caption !== '' && <p className="mt-2.5 text-[0.82rem] text-muted">{item.caption}</p>}
               </Reveal>
             </li>
           ))}

@@ -12,6 +12,7 @@
 
 import { parseCssColor, parseTenantSlug } from '@core/domain/shared/branding.types';
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
+import { erroresDeComposicion } from '@core/domain/tenant/home-layout';
 
 export class InvalidTenantConfigError extends Error {
   constructor(slug: string, issues: readonly string[]) {
@@ -230,6 +231,9 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
       }
     }
   }
+
+  // V4.2 · Una portada mal compuesta rompe el BUILD, no la página del público.
+  issues.push(...erroresDeComposicion(tenant.home));
 
   return issues;
 }
