@@ -18,6 +18,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   FiltroDeAsistencia,
+  LecturaDePerfil,
   OperationsRepositoryPort,
   SerieDiaria,
   SerieMensual,
@@ -139,14 +140,28 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
   constructor(private readonly supabase: SupabaseClient) {}
 
   async perfil(): Promise<PerfilOperativo | null> {
-    const { data } = await this.supabase
+    const lectura = await this.perfilDetallado();
+    return lectura.estado === 'ok' ? lectura.perfil : null;
+  }
+
+  /**
+   * V4.2 · El `error` de PostgREST ya NO se descarta.
+   *
+   * Antes esta consulta solo miraba `data`: una caída de red, un `statement
+   * timeout` o un 5xx quedaban indistinguibles de «esta cuenta no tiene perfil»,
+   * y `exigirPerfil` mandaba al login a alguien con la sesión perfectamente
+   * válida. Ahora el fallo se nombra y cada quien decide qué hacer con él.
+   */
+  async perfilDetallado(): Promise<LecturaDePerfil> {
+    const { data, error } = await this.supabase
       .from('v_my_profile')
       .select('id, tenant_id, full_name, email, tenant_slug, tenant_name, customer_id, roles, permissions')
       .maybeSingle();
 
-    if (!data) return null;
+    if (error) return { estado: 'indisponible' };
+    if (!data) return { estado: 'sin-perfil' };
 
-    return {
+    const perfil: PerfilOperativo = {
       appUserId: String(data.id),
       tenantId: texto(data.tenant_id),
       fullName: texto(data.full_name) ?? 'Cuenta',
@@ -162,6 +177,8 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
         ? data.permissions.filter((p: unknown) => typeof p === 'string')
         : [],
     };
+
+    return { estado: 'ok', perfil };
   }
 
   async hoyDelGimnasio(tenantSlug: string): Promise<string> {

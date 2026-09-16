@@ -64,9 +64,27 @@ export interface FiltroDeAsistencia {
   readonly customerId?: string;
 }
 
+/**
+ * Lectura del perfil con el MOTIVO cuando no hay uno (V4.2).
+ *
+ * `perfil()` devolvía `null` tanto si la cuenta no tiene ficha operativa como
+ * si la consulta falló, y quien llamaba mandaba al formulario de acceso en los
+ * dos casos. Confundir «no existe» con «no se pudo leer» convierte una
+ * incidencia de red en un cierre de sesión.
+ */
+export type LecturaDePerfil =
+  | { readonly estado: 'ok'; readonly perfil: PerfilOperativo }
+  /** Hay sesión, pero esa cuenta no tiene fila operativa: no es un error. */
+  | { readonly estado: 'sin-perfil' }
+  /** La consulta falló. La sesión NO se toca. */
+  | { readonly estado: 'indisponible' };
+
 export interface OperationsRepositoryPort {
   /** Perfil de quien tiene la sesión abierta, o `null` si no hay ninguna. */
   perfil(): Promise<PerfilOperativo | null>;
+
+  /** Como `perfil()`, pero distingue «no hay» de «no se pudo leer». */
+  perfilDetallado(): Promise<LecturaDePerfil>;
 
   /**
    * Fecha de HOY en la zona horaria del gimnasio, en formato `YYYY-MM-DD`.

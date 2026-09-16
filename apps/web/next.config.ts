@@ -85,6 +85,21 @@ const nextConfig: NextConfig = {
 
   experimental: {
     optimizePackageImports: [],
+
+    /**
+     * V4.2 · Habilita `forbidden()` y `unauthorized()` de `next/navigation`.
+     *
+     * Son la ÚNICA forma de que una página del panel responda un 403 real. Sin
+     * esto solo quedaban `notFound()` (404, que miente: el recurso existe) o
+     * una redirección silenciosa al propio espacio, que es lo que había y lo
+     * que desconcertaba: pulsas un enlace y «no pasa nada».
+     *
+     * Lección de V4 que aplica aquí: hay que MEDIR el código de estado con
+     * `curl` sobre el dominio tras desplegar. Un `loading.tsx` convirtió en su
+     * día los 307/404 en 200 sin que nadie lo notara leyendo el código.
+     */
+    authInterrupts: true,
+
     serverActions: {
       // Las fotos de comprobantes se reducen en el navegador antes de subir
       // (~200-600 KB), pero una foto que no se pudo reducir no debe romper
