@@ -317,7 +317,11 @@ function DatosDeContacto({
       <div className="flex items-start gap-3">
         <dt className="sr-only">Dirección</dt>
         <Icon name="pin" size={18} className="mt-0.5 shrink-0 text-action" />
-        <dd className="text-ink">{sucursal.address ?? `${contact.city}, ${contact.country}`}</dd>
+        {/* Sin dirección cargada se cae a la del gimnasio; sin ciudad
+            declarada, tampoco se escribe la coma suelta. */}
+        <dd className="text-ink">
+          {sucursal.address ?? [contact.city, contact.country].filter((parte) => parte !== '').join(', ')}
+        </dd>
       </div>
       <div className="flex items-start gap-3">
         <dt className="sr-only">Horario</dt>

@@ -8,7 +8,8 @@
 
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { cobroDeTenant } from '@/lib/cobro';
-import { publicBranchesRepository } from '@infra/config/composition-root';
+import { publicAnnouncementsRepository, publicBranchesRepository } from '@infra/config/composition-root';
+import { AnnouncementsSection } from '@/presentation/sections/AnnouncementsSection';
 import { BranchesSection } from '@/presentation/sections/BranchesSection';
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { FaqSection } from '@/presentation/sections/FaqSection';
@@ -31,10 +32,20 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
   const cobro = cobroDeTenant(tenant);
   const { content, features, slug, contact } = tenant;
   const sucursales = features.enableMultiBranch ? await (await publicBranchesRepository()).sucursalesPublicas(slug) : [];
+  const anuncios = features.enableAnnouncements
+    ? await (await publicAnnouncementsRepository()).anunciosPublicos(slug)
+    : [];
 
   return (
     <>
       <HeroSection hero={content.hero} slug={slug} sedes={sucursales.map((s) => s.name)} />
+
+      {/* V4.1 · Lo primero bajo la portada, cuando el gimnasio comunica por
+          anuncios: lo que está pasando esta semana envejece, y quien vuelve al
+          sitio vuelve por eso. La sección no se dibuja sin anuncios publicados,
+          así que el gimnasio que no usa la capacidad conserva su inicio. No hay
+          condicional por cliente: lo decide la capacidad contratada. */}
+      <AnnouncementsSection anuncios={anuncios} />
 
       <MarqueeStrip
         items={[

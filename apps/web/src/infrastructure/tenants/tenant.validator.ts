@@ -62,7 +62,11 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('contact.whatsapp debe ser solo dígitos en formato internacional (sin + ni espacios).');
   }
 
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(tenant.contact.email)) {
+  // Vacío es válido y significa «este gimnasio no publica correo»: la vitrina
+  // omite la línea, igual que una red social sin URL se muestra inerte en vez
+  // de rota. Lo que no se admite es un correo escrito a medias, que sí sería un
+  // enlace `mailto:` que no lleva a ninguna parte.
+  if (tenant.contact.email !== '' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(tenant.contact.email)) {
     issues.push(`contact.email no tiene formato válido: "${tenant.contact.email}".`);
   }
 
@@ -175,6 +179,24 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     if (branches.benefits.length > 4) {
       issues.push(`content.branches.benefits: máximo cuatro beneficios (tiene ${branches.benefits.length}).`);
     }
+  }
+
+  // V4.1 · Reparto de instalaciones por sede. Un código mal escrito no rompe
+  // nada: el área cae al grupo general y nadie se entera de que iba a una sede
+  // concreta. Por eso se comprueba aquí, con el mismo patrón que `branches.code`.
+  for (const facility of tenant.content.facilities) {
+    if (facility.branchCode !== undefined && !/^[A-Z0-9]{2,12}$/.test(facility.branchCode)) {
+      issues.push(
+        `content.facilities "${facility.id}": branchCode "${facility.branchCode}" no tiene el formato de branches.code (A-Z, 0-9, 2 a 12).`,
+      );
+    }
+  }
+
+  // Repartir por sede exige que el gimnasio tenga la capacidad multisede: sin
+  // ella la vitrina no lee las sedes de la base y el reparto sería invisible.
+  const reparteInstalaciones = tenant.content.facilities.some((f) => f.branchCode !== undefined);
+  if (reparteInstalaciones && !tenant.features.enableMultiBranch) {
+    issues.push('Hay instalaciones con branchCode pero la capacidad enableMultiBranch está apagada: el reparto por sede no se vería.');
   }
 
   const navSucursales = tenant.navigation.find((n) => n.segment === 'sucursales');

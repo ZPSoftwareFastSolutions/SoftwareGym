@@ -158,3 +158,18 @@ Pruebas por rol, promoción de la espera, bloqueo y justificación, cancelación
 
 Pruebas (huella antes/después, rendimiento con volumen, jerarquía, aislamiento, último administrador, rutinas):
 [`docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql`](../../docs/runbooks/pruebas-rls-v4-administracion-y-rendimiento.sql).
+
+## V4.1 · Anuncios del gimnasio y alta de GOLD'S GYM PREMIUM (2026-09-15)
+
+> Escritas primero como archivo y **aplicadas el 2026-09-15 con autorización del
+> usuario**, por MCP `apply_migration` con el mismo nombre, en este orden. Las dos
+> son idempotentes (`on conflict do nothing` / `if not exists`): volver a
+> aplicarlas no duplica nada.
+
+| Archivo | Qué introduce |
+|---|---|
+| `20260915120000_v4_1_anuncios_del_gimnasio.sql` | **Capacidad genérica del producto** (flag `enableAnnouncements`), no de un cliente. Permiso `content.manage` (Administración y Gerencia; recepción no publica). Tabla `announcements` con RLS y `tenant_id`: título, resumen para la tarjeta, contenido completo, arte, tipo (lista cerrada de 7), enlace validado `https?://`, prioridad, `is_active`, `published_at` y `expires_at`. `tenant_slug` por disparador (`app.preparar_anuncio`, que además normaliza y protege la autoría) y auditoría `announcement.created`/`updated` (`app.auditar_anuncio`). Políticas con el contexto en `(select …)`: el gimnasio lee los suyos, **el anónimo solo lo activo, ya publicado y no vencido**, y escribe quien tiene `content.manage`. Sin política de DELETE: un anuncio se retira, no se borra. Grants por columna (el anónimo no lee autoría ni tiempos). Bucket público `anuncios` (3 MB, jpeg/png/webp) con políticas por ruta del gimnasio. Vista `v_announcements_public` |
+| `20260915120100_v4_1_alta_de_golds_gym_premium.sql` | **Alta de cliente, sin una línea de esquema**: es el checklist de alta del producto sobre el modelo que ya existía. Tenant `golds-gym-premium`; 4 sucursales (`LAVITA` principal con su dirección, `GARITA`, `CRUCEVILLAS`, `MIRAFLORES`); 7 planes con los `code` del archivo del tenant (Normal 250, Mañanero 186, Ejecutivo 170, Aeróbicos 150, 3 Meses 520, 6 Meses 1.000, Anual 1.900); 15 clases publicadas con `access_mode = 'planes'`; 47 filas de `class_plans` **solo donde el folleto es explícito**; 60 horarios semanales. Lo que el folleto no dice queda NULL o sin declarar, nunca inventado (ver la cabecera del archivo: direcciones de tres sedes, sede real de cada clase, cupos, qué incluyen los planes largos, mensualidad de Karate) |
+
+Pruebas por rol, aislamiento entre gimnasios y filtro de la vitrina anónima:
+[`docs/runbooks/pruebas-rls-v4.1-anuncios.sql`](../../docs/runbooks/pruebas-rls-v4.1-anuncios.sql).

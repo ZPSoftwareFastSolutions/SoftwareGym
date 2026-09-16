@@ -16,9 +16,14 @@
 
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
 import { auroraFitTenant } from '@tenants/aurora-fit.tenant';
+import { goldsGymPremiumTenant } from '@tenants/golds-gym-premium.tenant';
 import { miticoTenant } from '@tenants/mitico.tenant';
 
-export const TENANT_REGISTRY: readonly TenantConfig[] = [miticoTenant, auroraFitTenant];
+export const TENANT_REGISTRY: readonly TenantConfig[] = [
+  miticoTenant,
+  auroraFitTenant,
+  goldsGymPremiumTenant,
+];
 
 /**
  * Tenant servido en la raíz del dominio cuando no se puede resolver por host.

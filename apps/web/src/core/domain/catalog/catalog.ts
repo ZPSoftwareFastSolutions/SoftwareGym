@@ -138,6 +138,17 @@ export interface FacilityItem {
   readonly area: string;
   readonly icon: IconKey;
   readonly stats: readonly { readonly label: string; readonly value: string }[];
+  /**
+   * V4.1 · `branches.code` de la sede a la que pertenece esta área.
+   *
+   * El mismo puente que ya unen los planes (`code`) y la vitrina de sucursales
+   * (`BranchShowcase.code`): la sede vive en la base y su texto comercial en el
+   * archivo. Un gimnasio de UNA sede —o uno cuyas sedes tienen las mismas
+   * áreas— no lo declara y la sección se comporta igual que siempre, en una
+   * sola lista. Cuando hay áreas atribuidas a sedes distintas, la sección se
+   * presenta por pestañas.
+   */
+  readonly branchCode?: string;
 }
 
 export interface GalleryItem {

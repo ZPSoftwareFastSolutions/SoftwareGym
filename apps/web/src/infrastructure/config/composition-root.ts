@@ -13,6 +13,10 @@
  */
 
 import type {
+  AnnouncementsRepositoryPort,
+  PublicAnnouncementsPort,
+} from '@core/application/ports/announcements-repository.port';
+import type {
   BranchesRepositoryPort,
   PublicBranchesPort,
 } from '@core/application/ports/branches-repository.port';
@@ -140,6 +144,27 @@ export async function exercisesRepository(): Promise<ExercisesRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseExercisesRepository } = await import('../operations/supabase-exercises.repository');
   return new SupabaseExercisesRepository(await createSupabaseServerClient());
+}
+
+/** Anuncios del gimnasio (V4.1), con la sesión de quien pregunta. */
+export async function announcementsRepository(): Promise<AnnouncementsRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseAnnouncementsRepository } = await import(
+    '../operations/supabase-announcements.repository'
+  );
+  return new SupabaseAnnouncementsRepository(await createSupabaseServerClient());
+}
+
+/**
+ * Anuncios para la vitrina ESTÁTICA. Cliente anónimo sin cookies, como las
+ * sedes y las clases: RLS solo le deja ver lo activo, publicado y vigente.
+ */
+export async function publicAnnouncementsRepository(): Promise<PublicAnnouncementsPort> {
+  const { createSupabasePublicClient } = await import('../auth/supabase.public');
+  const { SupabasePublicAnnouncementsRepository } = await import(
+    '../operations/supabase-announcements.repository'
+  );
+  return new SupabasePublicAnnouncementsRepository(createSupabasePublicClient());
 }
 
 /**

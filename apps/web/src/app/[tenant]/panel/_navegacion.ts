@@ -123,6 +123,12 @@ export async function entradasDelPanel(
     entradas.push({ href: tenantHref(slug, 'panel/cobros'), etiqueta: 'Cobro QR', icono: 'qr', grupo: 'gestion' });
   }
 
+  // V4.1: anuncios de la vitrina. Es gestión del sitio, no operación del día:
+  // va en el mismo grupo que el cobro y las sedes.
+  if (esPersonal && features.enableAnnouncements && puede(PERMISO.gestionarContenido)) {
+    entradas.push({ href: tenantHref(slug, 'panel/anuncios'), etiqueta: 'Anuncios', icono: 'sparkle', grupo: 'gestion' });
+  }
+
   // V4: personal y roles. Lo ve quien lee cuentas del gimnasio; qué puede tocar
   // lo decide la jerarquía de roles en la base.
   if (esPersonal && puede(PERMISO.verUsuarios)) {

@@ -154,6 +154,9 @@ export const PERMISO = {
   tomarAsistenciaDeClase: 'classes.attend',
   /** Reglas comerciales de los planes (V3.1: si incluyen entrenador). */
   gestionarPlanes: 'plans.manage',
+  // --- V4.1 · anuncios del sitio ---
+  /** Publicar y editar los anuncios de la vitrina. Administración y gerencia. */
+  gestionarContenido: 'content.manage',
 } as const;
 
 export type CodigoDePermiso = (typeof PERMISO)[keyof typeof PERMISO];

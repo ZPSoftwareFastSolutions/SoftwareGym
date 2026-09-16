@@ -62,6 +62,18 @@ export interface FeatureFlags {
    * contratar el catálogo sin gestionar entrenadores, y al revés.
    */
   readonly enableExercises: boolean;
+
+  // --- V4.1 ---
+  /**
+   * Anuncios del gimnasio en la vitrina: carrusel en el inicio con su detalle,
+   * y `/panel/anuncios` para publicarlos.
+   *
+   * Es una forma de comunicar, no una obligación: un gimnasio que vende por su
+   * trayectoria no la enciende y su inicio queda exactamente como hoy. Uno que
+   * comunica por panfletos —clases nuevas, eventos, promociones— la enciende y
+   * el carrusel pasa a ser lo primero que se lee bajo la portada.
+   */
+  readonly enableAnnouncements: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -92,6 +104,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   enableMultiBranch: false,
   enableMemberManagement: false,
   enableExercises: false,
+  enableAnnouncements: false,
 };
 
 export type FeatureFlagKey = keyof FeatureFlags;

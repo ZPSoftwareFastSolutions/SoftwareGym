@@ -113,21 +113,26 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
                   {contact.phone}
                 </a>
               </li>
-              <li>
-                <a
-                  href={mailtoHref(contact.email)}
-                  className="inline-flex min-h-9 items-start gap-2.5 break-all text-muted transition-colors hover:text-action"
-                >
-                  <Icon name="mail" size={17} className="mt-0.5 shrink-0 text-action" />
-                  {contact.email}
-                </a>
-              </li>
+              {/* Un gimnasio que todavía no publica correo no muestra la línea:
+                  un `mailto:` vacío abre el cliente de correo sin destinatario. */}
+              {contact.email !== '' && (
+                <li>
+                  <a
+                    href={mailtoHref(contact.email)}
+                    className="inline-flex min-h-9 items-start gap-2.5 break-all text-muted transition-colors hover:text-action"
+                  >
+                    <Icon name="mail" size={17} className="mt-0.5 shrink-0 text-action" />
+                    {contact.email}
+                  </a>
+                </li>
+              )}
               <li className="flex items-start gap-2.5 text-muted">
                 <Icon name="pin" size={17} className="mt-0.5 shrink-0 text-action" />
                 <span>
                   {contact.addressLine}
                   <br />
-                  {contact.city}, {contact.country}
+                  {/* Sin ciudad declarada no se escribe la coma suelta. */}
+                  {[contact.city, contact.country].filter((parte) => parte !== '').join(', ')}
                 </span>
               </li>
             </ul>
