@@ -2082,6 +2082,11 @@ Los 5 anuncios salen en la portada (prioridad: mayor `sort_order` primero) y el 
 - **Anuncios:** `tagline`, `tags`, `tags_label`, `footnote` (migración y panel) y título con dato acentuado tras el último
   « · » (`tituloConAcento`). Tarjeta destacada con insignia carmesí, etiquetas y fila al pie.
 - **Cabecera:** la navegación completa aparece desde `xl` (1280 px); entre 1024 y 1279 se pisaba en Mítico y en GOLD.
+- **Desplegado** (`91311c8`, `99ba225`, `9fdb76e` · `dpl_7HDn24t99FPWKRqycYRDGwmqC3f4`). **Trampa de Vercel:** el primer
+  despliegue sirvió el HTML nuevo con la hoja de estilos ANTERIOR (caché del build: sin `.t-script`, `.t-accent` vieja).
+  Se detectó comparando la captura de producción con la local y buscando las reglas en el CSS servido. Tras cambiar
+  `globals.css`, desplegar con `npx vercel deploy --prod --yes --force` y comprobar una regla nueva en el `.css` servido.
+- **Nombres de clase propios:** nunca con prefijo de utilidad de Tailwind (`fill-action` chocaba con `fill-*` de SVG).
 - **Contraste medido:** el carmesí `#D62828` da 3,9:1 sobre el fondo: solo texto ≥ 24 px (lemas a 1,5 rem) o fondo de
   insignia con texto blanco (5,0:1).
 - **No se inventó:** el póster «Miss y Mister GOLDS · 7mo aniversario» y sus categorías de la maqueta no se publicaron
