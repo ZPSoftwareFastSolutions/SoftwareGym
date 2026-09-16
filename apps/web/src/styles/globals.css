@@ -34,6 +34,7 @@
   --color-structural: var(--t-structural);
   --color-structural-deep: var(--t-structural-deep);
   --color-accent: var(--t-accent);
+  --color-highlight: var(--t-highlight);
 
   --radius-sm: var(--t-radius-sm);
   --radius-md: var(--t-radius-md);
@@ -42,6 +43,7 @@
 
   --font-display: var(--t-font-display);
   --font-body: var(--t-font-body);
+  --font-script: var(--t-font-script);
 }
 
 /* ---------------------------------------------------------------------------
@@ -65,6 +67,11 @@
   --t-structural-deep: #1e5128;
   --t-structural-rgb: 56 118 29;
   --t-accent: #c1c1c1;
+  --t-highlight: #39ff14;
+  --t-aura-secondary: #38761d;
+  --t-action-fill: none;
+  --t-accent-fill: none;
+  --t-accent-ink: #39ff14;
 
   --t-radius-sm: 4px;
   --t-radius-md: 6px;
@@ -75,6 +82,12 @@
   --t-font-body: var(--font-body-sans), system-ui, sans-serif;
   --t-heading-transform: uppercase;
   --t-heading-tracking: 0.02em;
+  --t-font-script: var(--font-body-sans), system-ui, sans-serif;
+  --t-label-transform: none;
+  --t-label-tracking: normal;
+  --t-nav-size: 0.86rem;
+  --t-nav-pad: 0.875rem;
+  --t-submark-tracking: 0.32em;
 
   --t-size-display: clamp(2.8rem, 1.6rem + 5.4vw, 6rem);
   --t-size-h1: clamp(2.3rem, 1.5rem + 3.6vw, 4rem);
@@ -276,6 +289,47 @@ ol {
 .t-accent {
   color: var(--t-action);
   text-shadow: var(--t-glow);
+  /* V4.2 · Acabado metálico: el degradado se recorta a la letra. Con acabado
+     sólido el relleno es `none` y la tinta es el color de acción: idéntico a
+     antes. */
+  background-image: var(--t-accent-fill);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--t-accent-ink);
+}
+
+/* V4.2 · Lema con la familia de acento de la marca y su color de energía. */
+.t-script {
+  font-family: var(--t-font-script);
+  color: var(--t-highlight);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+/* V4.2 · Rótulo con una raya a cada lado («— CUATRO SUCURSALES —»). */
+.t-eyebrow--flanked::after {
+  content: '';
+  width: 1.6rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.75;
+  flex: none;
+}
+
+/* V4.2 · Navegación y botones siguen `branding.typography.labelCase`. En capa
+   `components` a propósito: una utilidad de `tracking-*` puesta en el propio
+   elemento sigue mandando sobre el espaciado de la marca. */
+@layer components {
+  .t-label {
+    text-transform: var(--t-label-transform);
+    letter-spacing: var(--t-label-tracking);
+  }
+
+  .fill-action {
+    background-image: var(--t-action-fill);
+  }
 }
 
 /* ===========================================================================
@@ -351,7 +405,7 @@ ol {
   height: 36rem;
   bottom: -18rem;
   inset-inline-end: -10rem;
-  background: radial-gradient(circle, var(--t-structural) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--t-aura-secondary) 0%, transparent 70%);
 }
 
 .bg-noise {

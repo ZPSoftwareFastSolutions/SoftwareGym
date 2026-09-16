@@ -43,8 +43,9 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
   // únicamente la forma de una `font-family` legítima: nombres, comillas,
   // comas y `var(--token)`. Cualquier `;`, `{` o `url(` queda fuera.
   const FONT_STACK_PATTERN = /^[\w\s,'"()\-.]*$/;
-  for (const key of ['display', 'body'] as const) {
+  for (const key of ['display', 'body', 'script'] as const) {
     const stack = tenant.branding.typography[key];
+    if (stack === undefined) continue;
     if (!FONT_STACK_PATTERN.test(stack) || stack.includes('url(')) {
       issues.push(`branding.typography.${key} contiene caracteres no permitidos.`);
     }

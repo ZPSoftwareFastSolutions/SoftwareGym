@@ -194,3 +194,14 @@ Pruebas por rol, tope diario, alcance de sede, guarda de la foto y autorización
 > tableros por puesto, las clases del socio y el correo de confirmación se apoyan enteros en lo que ya existe
 > (`v_access_passes`, `class_session_admissions`, las vistas agregadas de V4 y los metadatos del alta). La batería
 > V4.2 los cubre tal cual está: si se vuelve a tocar la base, hay que volver a pasarla.
+
+### V4.2 · Rediseño de GOLD y correo (2026-09-16, aplicadas con autorización del usuario)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260916150000_v4_2_anuncios_con_lema_etiquetas_y_nota.sql` | `announcements` gana `tagline`, `tags` (≤ 12, cada una 1-40, vía `app.etiquetas_de_anuncio_validas`), `tags_label` y `footnote`, con sus grants por columna; `v_announcements_public` las expone al final. Opcionales: los anuncios existentes no cambian |
+| `20260916160000_v4_2_enlace_de_anuncio_con_check_valido.sql` | **Defecto de V4.1:** el CHECK de `link_url` usaba `{3,500}` y PostgreSQL no admite repeticiones > 255, así que CUALQUIER enlace fallaba con 2201B. Misma regla escrita de forma válida |
+
+Verificado con sesión simulada (revertido): Administración de GOLD escribe los campos nuevos, una etiqueta con espacios
+en el borde → 23514, Recepción → 0 filas, el anónimo lee las columnas nuevas; `javascript:`, espacios y enlaces > 500
+→ 23514. Advisors: solo el aviso aceptado de contraseñas filtradas.

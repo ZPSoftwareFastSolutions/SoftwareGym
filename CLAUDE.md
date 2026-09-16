@@ -2062,6 +2062,32 @@ recepción opera en 2 de 4 sedes; cada socio ve solo su ficha (GO-001 con Plan A
 Los 5 anuncios salen en la portada (prioridad: mayor `sort_order` primero) y el detalle abre con el texto completo.
 **La prioridad de los anuncios es DESCENDENTE**: el primer intento los sembró al revés.
 
+**Correo de alta y rediseño de GOLD (2026-09-16).**
+- **«El correo de confirmación no llega».** Medido en `auth_logs`: los intentos fallidos eran `user_repeated_signup` de un
+  correo con cuenta CONFIRMADA en Mítico desde el 09/09. Con confirmación activa Supabase responde éxito y NO envía nada
+  (60 ms frente a 1,6 s de un alta real, cuyo correo sí llegó). Las cuentas son una por correo para toda la plataforma y
+  `app_users.auth_user_id` es único: una persona no puede ser socia de dos gimnasios con el mismo correo (decisión de
+  arquitectura, no cambiada). Arreglo `91311c8`: `identities: []` → mensaje honesto; contraseña correcta de otro gimnasio →
+  se deniega diciendo por qué (`otro-gimnasio`); «Reenviar el correo» tras un alta, con la vuelta del enlace reenviado
+  (sin PKCE, resultado en el fragmento) leída en el navegador y borrada de la barra.
+- **Configuración de Supabase pendiente (paso humano, el asistente no tiene acceso a Auth):** `gold-gym-psi.vercel.app`
+  NO está en Redirect URLs. Medido con un token inválido en `/auth/v1/verify`: el `redirect_to` de GOLD se descarta y se
+  usa la Site URL (`gym-platform-alpha.vercel.app/`). La cuenta se confirma igual, pero la persona aterriza en otro sitio.
+  Añadir `https://gold-gym-psi.vercel.app/**` en Authentication → URL Configuration.
+- **Rediseño «Titanium Gold Championship»** (maqueta y DESIGN.md del cliente), todo como capacidad de marca:
+  `palette.highlight` (color de energía), `typography.script` y `labelCase`, `shape.accentFinish: 'metallic'`
+  (degradado recortado a la letra en `.t-accent` y `fill-action` en el botón principal), `logo.wordmarkAccent`,
+  `hero.motto/branchesLabel/announcementsLabel`. Sin declarar, cada token reproduce el CSS anterior: Mítico mide los mismos
+  10 081 px. Fuentes Oswald, Montserrat y Permanent Marker con `preload: false` (solo baja quien las usa).
+- **Anuncios:** `tagline`, `tags`, `tags_label`, `footnote` (migración y panel) y título con dato acentuado tras el último
+  « · » (`tituloConAcento`). Tarjeta destacada con insignia carmesí, etiquetas y fila al pie.
+- **Cabecera:** la navegación completa aparece desde `xl` (1280 px); entre 1024 y 1279 se pisaba en Mítico y en GOLD.
+- **Contraste medido:** el carmesí `#D62828` da 3,9:1 sobre el fondo: solo texto ≥ 24 px (lemas a 1,5 rem) o fondo de
+  insignia con texto blanco (5,0:1).
+- **No se inventó:** el póster «Miss y Mister GOLDS · 7mo aniversario» y sus categorías de la maqueta no se publicaron
+  (no hay imagen ni datos del evento); se cargan desde `/panel/anuncios` cuando el cliente los entregue. Tampoco
+  «máquinas de última generación» ni «10+».
+
 **Pendiente:**
 1. ~~Desplegar y medir los códigos de estado~~ **hecho** (ver arriba).
 1b. **Ejecutar el script de cuentas de prueba de GOLD** y, con ellas, probar el login cruzado: una cuenta de Mítico en

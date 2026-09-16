@@ -20,7 +20,9 @@ import {
   anunciosVisibles,
   estadoDeAnuncio,
   ordenarAnuncios,
+  etiquetasDeTexto,
   resumenDeTarjeta,
+  tituloConAcento,
   validarAnuncio,
   type Anuncio,
   type DatosDeAnuncio,
@@ -49,6 +51,10 @@ function anuncio(parcial: Partial<Anuncio> = {}): Anuncio {
     isActive: true,
     publishedAt: '2026-09-10T10:00:00.000Z',
     expiresAt: null,
+    tagline: null,
+    tags: [],
+    tagsLabel: null,
+    footnote: null,
     ...parcial,
   };
 }
@@ -118,6 +124,10 @@ describe('V4.1 · validación del anuncio', () => {
       isActive: true,
       publishedAt: '2026-09-15T10:00:00.000Z',
       expiresAt: null,
+      tagline: null,
+      tags: [],
+      tagsLabel: null,
+      footnote: null,
       ...parcial,
     };
   }
@@ -241,5 +251,59 @@ describe('V4.1 · instalaciones por sucursal', () => {
   it('la pestaña dice cuántas áreas tiene, en singular y en plural', () => {
     assert.equal(describirGrupo({ code: 'A', name: 'A', facilities: [area('x')] }), '1 área');
     assert.equal(describirGrupo({ code: 'A', name: 'A', facilities: [area('x'), area('y')] }), '2 áreas');
+  });
+});
+
+describe('V4.2 · lema, etiquetas y nota de la tarjeta destacada', () => {
+  const base = {
+    title: 'Plan Aeróbicos',
+    summary: null,
+    body: null,
+    imagePath: null,
+    imageAlt: null,
+    kind: 'promocion' as const,
+    linkUrl: null,
+    linkLabel: null,
+    sortOrder: 0,
+    isActive: true,
+    publishedAt: '2026-09-15T10:00:00.000Z',
+    expiresAt: null,
+    tagline: null,
+    tags: [] as readonly string[],
+    tagsLabel: null,
+    footnote: null,
+  };
+
+  it('las etiquetas se escriben separadas por comas y se limpian', () => {
+    assert.deepEqual(etiquetasDeTexto(' Ubound ,  Baile   Fitness,, yoga, Yoga '), ['Ubound', 'Baile Fitness', 'yoga']);
+    assert.deepEqual(etiquetasDeTexto(''), []);
+  });
+
+  it('sin campos nuevos el anuncio sigue siendo válido', () => {
+    assert.deepEqual(validarAnuncio(base), {});
+  });
+
+  it('respeta los mismos límites que la base', () => {
+    const errores = validarAnuncio({
+      ...base,
+      tagline: 'x'.repeat(121),
+      tags: Array.from({ length: 13 }, (_, i) => `e${i}`),
+      tagsLabel: 'x'.repeat(61),
+      footnote: 'x'.repeat(61),
+    });
+    assert.deepEqual(Object.keys(errores).sort(), ['footnote', 'tagline', 'tags', 'tagsLabel']);
+    assert.ok(validarAnuncio({ ...base, tags: ['x'.repeat(41)] }).tags);
+  });
+});
+
+describe('V4.2 · título con dato acentuado', () => {
+  it('lo que va tras el último « · » es el acento', () => {
+    assert.deepEqual(tituloConAcento('Plan Aeróbicos · Bs. 150'), { base: 'Plan Aeróbicos', acento: 'Bs. 150' });
+    assert.deepEqual(tituloConAcento('A · B · C'), { base: 'A · B', acento: 'C' });
+  });
+
+  it('sin separador o con una mitad vacía, el título va entero', () => {
+    assert.deepEqual(tituloConAcento('Horarios de atención'), { base: 'Horarios de atención', acento: null });
+    assert.deepEqual(tituloConAcento(' · Bs. 150'), { base: ' · Bs. 150', acento: null });
   });
 });

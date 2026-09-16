@@ -130,7 +130,10 @@ export function SiteHeader({
       <div className="shell flex h-full items-center justify-between gap-6">
         <Logo logo={logo} href={tenantHref(slug)} name={name} compact />
 
-        <nav aria-label="Navegación principal" className="hidden lg:block">
+        {/* Desde 1280 px y no desde 1024: entre medias, logo, siete a diez
+            entradas y los dos botones no caben en una fila y se pisaban (medido
+            en Mítico y en GOLD). Por debajo, el menú. */}
+        <nav aria-label="Navegación principal" className="hidden xl:block">
           <ul className="flex items-center gap-1">
             {navigation.map((item) => {
               const active = isActive(item.segment);
@@ -140,7 +143,7 @@ export function SiteHeader({
                     href={tenantHref(slug, item.segment)}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'relative inline-flex h-11 items-center whitespace-nowrap px-3.5 text-[0.86rem] font-medium',
+                      't-label relative inline-flex h-11 items-center whitespace-nowrap px-[var(--t-nav-pad)] text-[length:var(--t-nav-size)] font-medium',
                       'rounded-[var(--t-radius-sm)] transition-colors duration-200',
                       active ? 'text-action' : 'text-muted hover:text-ink',
                     )}
@@ -149,7 +152,7 @@ export function SiteHeader({
                     <span
                       aria-hidden="true"
                       className={cn(
-                        'absolute inset-x-3.5 bottom-1.5 h-px origin-left bg-action transition-transform duration-300',
+                        'absolute inset-x-[var(--t-nav-pad)] bottom-1.5 h-px origin-left bg-action transition-transform duration-300',
                         active ? 'scale-x-100' : 'scale-x-0',
                       )}
                     />
@@ -222,7 +225,7 @@ export function SiteHeader({
             aria-controls="menu-movil"
             aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
             className={cn(
-              'grid h-11 w-11 place-items-center lg:hidden',
+              'grid h-11 w-11 place-items-center xl:hidden',
               'rounded-[var(--t-radius-sm)] border border-line text-ink',
               'transition-colors hover:border-action hover:text-action',
             )}
@@ -238,7 +241,7 @@ export function SiteHeader({
         id="menu-movil"
         hidden={!menuOpen}
         className={cn(
-          'lg:hidden',
+          'xl:hidden',
           'fixed inset-x-0 border-b border-line bg-surface',
           'max-h-[calc(100dvh-var(--header-height))] overflow-y-auto',
         )}

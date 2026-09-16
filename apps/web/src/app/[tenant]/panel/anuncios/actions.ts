@@ -15,6 +15,7 @@
 import { revalidatePath } from 'next/cache';
 import {
   esTipoDeAnuncio,
+  etiquetasDeTexto,
   validarAnuncio,
   type DatosDeAnuncio,
 } from '@core/domain/operations/announcements';
@@ -70,6 +71,10 @@ export async function guardarAnuncio(_previo: EstadoDeFormulario, form: FormData
   const publishedAtCrudo = texto(form, 'publishedAt', 40);
   const expiresAtCrudo = texto(form, 'expiresAt', 40);
   const imageAlt = texto(form, 'imageAlt', 200);
+  const tagline = texto(form, 'tagline', 200);
+  const tagsCrudo = texto(form, 'tags', 800);
+  const tagsLabel = texto(form, 'tagsLabel', 100);
+  const footnote = texto(form, 'footnote', 100);
 
   // Lo enviado, para volver a pintarlo si la validación falla.
   const valores: Readonly<Record<string, string>> = {
@@ -83,6 +88,10 @@ export async function guardarAnuncio(_previo: EstadoDeFormulario, form: FormData
     publishedAt: publishedAtCrudo,
     expiresAt: expiresAtCrudo,
     imageAlt,
+    tagline,
+    tags: tagsCrudo,
+    tagsLabel,
+    footnote,
   };
 
   const repo = await announcementsRepository();
@@ -116,6 +125,10 @@ export async function guardarAnuncio(_previo: EstadoDeFormulario, form: FormData
     isActive: form.get('isActive') === 'on' || form.get('isActive') === 'true',
     publishedAt: publicado ?? new Date().toISOString(),
     expiresAt: momento(expiresAtCrudo, null),
+    tagline: nulo(tagline),
+    tags: etiquetasDeTexto(tagsCrudo),
+    tagsLabel: nulo(tagsLabel),
+    footnote: nulo(footnote),
   };
 
   const errores = validarAnuncio(datos);

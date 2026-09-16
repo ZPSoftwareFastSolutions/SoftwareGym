@@ -25,7 +25,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AnuncioPublico } from '@core/domain/operations/announcements';
-import { NOMBRE_DE_TIPO_DE_ANUNCIO, resumenDeTarjeta } from '@core/domain/operations/announcements';
+import { NOMBRE_DE_TIPO_DE_ANUNCIO, resumenDeTarjeta, tituloConAcento } from '@core/domain/operations/announcements';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { ArtFrame } from '../ui/ArtFrame';
@@ -145,20 +145,22 @@ export function AnunciosCarrusel({ anuncios, presentacion = 'fila' }: AnunciosCa
                 ratio={destacado ? '16 / 10' : '4 / 5'}
                 className="w-full"
               />
-              <div className={destacado ? 'p-6 sm:p-7' : 'p-5'}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="action">{NOMBRE_DE_TIPO_DE_ANUNCIO[anuncio.kind]}</Badge>
-                  <span className="text-[0.75rem] text-muted">{fechaLegible(anuncio.publishedAt)}</span>
+              {destacado ? (
+                <TarjetaDestacada anuncio={anuncio} />
+              ) : (
+                <div className="p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="action">{NOMBRE_DE_TIPO_DE_ANUNCIO[anuncio.kind]}</Badge>
+                    <span className="text-[0.75rem] text-muted">{fechaLegible(anuncio.publishedAt)}</span>
+                  </div>
+                  <h3 className="t-h3 mt-3 text-[1.05rem] leading-snug">{anuncio.title}</h3>
+                  <p className="mt-2 text-[0.88rem] leading-relaxed text-muted">{resumenDeTarjeta(anuncio)}</p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-action">
+                    Ver más
+                    <Icon name="arrowRight" size={15} />
+                  </span>
                 </div>
-                <h3 className={cn('mt-3 leading-snug', destacado ? 't-h2' : 't-h3 text-[1.05rem]')}>{anuncio.title}</h3>
-                <p className={cn('mt-2 leading-relaxed text-muted', destacado ? 'text-[0.98rem]' : 'text-[0.88rem]')}>
-                  {resumenDeTarjeta(anuncio)}
-                </p>
-                <span className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-action">
-                  Ver más
-                  <Icon name="arrowRight" size={15} />
-                </span>
-              </div>
+              )}
             </button>
           </li>
         ))}
@@ -173,6 +175,13 @@ export function AnunciosCarrusel({ anuncios, presentacion = 'fila' }: AnunciosCa
       >
         {detalle && (
           <div>
+            {(detalle.tagline || detalle.tags.length > 0) && (
+              <div className="mb-6">
+                {detalle.tagline && <p className="t-script text-[1.5rem]">{detalle.tagline}</p>}
+                {detalle.tags.length > 0 && <Etiquetas rotulo={detalle.tagsLabel} etiquetas={detalle.tags} />}
+              </div>
+            )}
+
             {detalle.imageUrl && (
               // El arte del panfleto a tamaño legible: es donde suele estar la
               // información (horarios, precios) que el resumen no repite.
@@ -219,6 +228,73 @@ export function AnunciosCarrusel({ anuncios, presentacion = 'fila' }: AnunciosCa
           </div>
         )}
       </Dialogo>
+    </div>
+  );
+}
+
+/** Lista corta de etiquetas con su rótulo. Texto plano: nada se interpreta como marcado. */
+function Etiquetas({ rotulo, etiquetas }: { readonly rotulo: string | null; readonly etiquetas: readonly string[] }) {
+  return (
+    <div className="mt-4">
+      {rotulo && <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-muted">{rotulo}</p>}
+      <ul className="mt-2 flex flex-wrap gap-1.5">
+        {etiquetas.map((etiqueta) => (
+          <li
+            key={etiqueta}
+            className="rounded-[var(--t-radius-sm)] border border-line bg-raised px-2 py-1 text-[0.66rem] font-semibold uppercase leading-none tracking-[0.08em] text-ink"
+          >
+            {etiqueta}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * V4.2 · Cuerpo de la tarjeta cuando los anuncios SON la portada: insignia con
+ * el color de energía de la marca, título con su dato acentuado, frase de
+ * impacto, etiquetas y una fila al pie con la llamada y la nota breve.
+ * Todo opcional salvo título y tipo: sin los campos nuevos es la tarjeta de antes.
+ */
+function TarjetaDestacada({ anuncio }: { readonly anuncio: AnuncioPublico }) {
+  const { base, acento } = tituloConAcento(anuncio.title);
+  return (
+    <div className="flex flex-1 flex-col p-6 sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge tone="highlight">{NOMBRE_DE_TIPO_DE_ANUNCIO[anuncio.kind]}</Badge>
+        <span className="text-[0.75rem] text-muted">{fechaLegible(anuncio.publishedAt)}</span>
+      </div>
+
+      {/* El separador se queda pegado al nombre (espacio duro) y el dato no se
+          parte: la línea nunca empieza con «·». */}
+      <h3 className="mt-4 text-[clamp(1.55rem,1.2rem+1.1vw,2.15rem)] leading-tight">
+        {base}
+        {acento && (
+          <>
+            <span aria-hidden="true" className="t-accent">{'\u00a0·'}</span>{' '}
+            <span className="t-accent whitespace-nowrap">{acento}</span>
+          </>
+        )}
+      </h3>
+
+      {anuncio.tagline && <p className="t-script mt-2 text-[1.5rem]">{anuncio.tagline}</p>}
+
+      <p className="mt-3 text-[0.92rem] leading-relaxed text-muted">{resumenDeTarjeta(anuncio)}</p>
+
+      {anuncio.tags.length > 0 && <Etiquetas rotulo={anuncio.tagsLabel} etiquetas={anuncio.tags} />}
+
+      {/* Empuja la fila del pie al fondo: las tarjetas de la pista se igualan en alto. */}
+      <div aria-hidden="true" className="min-h-5 flex-1" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+        <span className="t-label inline-flex items-center gap-1.5 text-[0.8rem] font-semibold text-action">
+          {anuncio.linkLabel ?? 'Ver más'}
+          <Icon name="arrowRight" size={15} />
+        </span>
+        {anuncio.footnote && (
+          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted">{anuncio.footnote}</span>
+        )}
+      </div>
     </div>
   );
 }

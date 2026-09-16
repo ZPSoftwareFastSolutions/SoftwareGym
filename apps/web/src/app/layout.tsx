@@ -13,7 +13,7 @@
 
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Bebas_Neue, Fraunces, Inter } from 'next/font/google';
+import { Bebas_Neue, Fraunces, Inter, Montserrat, Oswald, Permanent_Marker } from 'next/font/google';
 import '@/styles/globals.css';
 
 const bodySans = Inter({
@@ -34,6 +34,34 @@ const displaySerif = Fraunces({
   display: 'swap',
   axes: ['SOFT', 'WONK'],
   variable: '--font-display-serif',
+});
+
+/*
+ * V4.2 · Oswald, Montserrat y Permanent Marker. `preload: false` es lo que las
+ * hace gratis para quien no las usa: la regla @font-face existe para todos,
+ * pero el navegador solo descarga una fuente cuando algún texto la pide. Con
+ * precarga, cada gimnasio bajaría las familias de los demás.
+ */
+const displayOswald = Oswald({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-display-oswald',
+});
+
+const bodyMontserrat = Montserrat({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-body-montserrat',
+});
+
+const scriptMarker = Permanent_Marker({
+  subsets: ['latin'],
+  weight: '400',
+  display: 'swap',
+  preload: false,
+  variable: '--font-script-marker',
 });
 
 export const metadata: Metadata = {
@@ -60,7 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="es"
-      className={`${bodySans.variable} ${displayCondensed.variable} ${displaySerif.variable}`}
+      className={`${bodySans.variable} ${displayCondensed.variable} ${displaySerif.variable} ${displayOswald.variable} ${bodyMontserrat.variable} ${scriptMarker.variable}`}
     >
       <body>{children}</body>
     </html>

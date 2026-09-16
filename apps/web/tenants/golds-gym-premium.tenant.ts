@@ -153,50 +153,55 @@ export const goldsGymPremiumTenant: TenantConfig = {
   domains: [],
 
   /**
-   * Identidad visual: negro y dorado, derivados del nombre de la marca.
-   * PENDIENTE de confirmar contra el manual de marca del cliente. Los contrastes
-   * se eligieron para cumplir AA sobre el fondo oscuro.
+   * V4.2 · Sistema de diseño «Titanium Gold Championship», entregado por el
+   * cliente con su maqueta de portada (2026-09-16): oro de campeonato con
+   * acabado metálico sobre carbón, carmesí como color de energía, titulares
+   * Oswald en mayúsculas, cuerpo Montserrat y lemas a pincel (Permanent Marker).
+   * Radios contenidos: nada de píldoras en controles ni contenedores.
+   *
+   * Contraste medido (WCAG) sobre el fondo #0B0B0C: texto #EDEDED 16,8:1, gris
+   * #A0A0A5 7,6:1, oro #D4AF37 9,4:1. El carmesí #D62828 da 3,9:1: vale solo
+   * para texto GRANDE (los lemas) y como fondo de insignias con texto blanco
+   * (5,0:1); nunca para texto pequeño sobre el fondo.
    */
   branding: {
     mode: 'dark',
     logo: {
-      wordmark: "Gold's",
-      subMark: 'Gym Premium',
+      wordmark: "Gold's Gym",
+      wordmarkAccent: 'Gym',
+      subMark: 'Premium Fitness Club',
       monogram: 'G',
     },
     palette: {
-      primary: '#F2B824',
-      primaryStrong: '#D89C08',
-      structural: '#7A5C10',
-      structuralDeep: '#4A3708',
+      primary: '#D4AF37',
+      primaryStrong: '#B89025',
+      structural: '#9A7B38',
+      structuralDeep: '#5C481A',
       surface: '#0B0B0C',
-      surfaceRaised: '#131316',
-      surfaceCard: '#1A1A1E',
-      text: '#FFFFFF',
-      textMuted: '#A8A49B',
-      border: '#2B2B30',
-      accent: '#D8D8D8',
+      surfaceRaised: '#131315',
+      surfaceCard: '#141416',
+      text: '#EDEDED',
+      textMuted: '#A0A0A5',
+      border: '#2E2A1F',
+      // Luz del degradado metálico (champán).
+      accent: '#F3D068',
+      highlight: '#D62828',
     },
-    /**
-     * V4.2 · IDENTIDAD PROPIA, no la de otro gimnasio con otro color. Hasta
-     * aquí GOLD usaba la misma condensada en mayúsculas, la misma retícula de
-     * fondo y el mismo brillo neón que Mítico, y se leía como la misma marca.
-     * Ahora: titulares en serif (Fraunces, ya cargada por la plataforma: no suma
-     * peso), en caja normal y apretados, superficies planas, sin retícula y sin
-     * brillo. El dorado se lee como metal, no como neón.
-     */
     typography: {
-      display: 'var(--font-display-serif), Georgia, serif',
-      body: 'var(--font-body-sans), system-ui, sans-serif',
-      scale: 'editorial',
-      uppercaseHeadings: false,
-      headingTracking: '-0.015em',
+      display: 'var(--font-display-oswald), "Arial Narrow", sans-serif',
+      body: 'var(--font-body-montserrat), system-ui, sans-serif',
+      script: 'var(--font-script-marker), cursive',
+      scale: 'balanced',
+      uppercaseHeadings: true,
+      headingTracking: '0.02em',
+      labelCase: 'uppercase',
     },
     shape: {
-      corners: 'sharp',
+      corners: 'soft',
       surfaceStyle: 'flat',
       glowIntensity: 0,
       showGrid: false,
+      accentFinish: 'metallic',
     },
   },
 
@@ -328,9 +333,12 @@ export const goldsGymPremiumTenant: TenantConfig = {
 
   content: {
     hero: {
-      eyebrow: 'Cuatro sucursales',
-      title: 'Entrena en',
-      titleAccent: 'Gold',
+      eyebrow: 'Cuatro sucursales de élite',
+      title: 'Entrena',
+      titleAccent: 'en Gold',
+      motto: 'Disciplina · Fuerza · Pasión',
+      branchesLabel: 'Nuestras sedes oficiales',
+      announcementsLabel: 'Novedades y eventos',
       subtitle:
         'Máquinas, aeróbicos, spinning y más de treinta clases semanales. Elige tu plan y entrena de lunes a domingo en cualquiera de nuestras cuatro sucursales.',
       primaryCta: { label: 'Ver planes', segment: 'planes' },
@@ -338,8 +346,8 @@ export const goldsGymPremiumTenant: TenantConfig = {
       stats: [
         { value: '4', label: 'sucursales' },
         { value: '150', label: 'Bs desde' },
-        { value: '7', label: 'días por semana' },
-        { value: '10', label: 'clases de aeróbicos' },
+        { value: '7', label: 'días x semana' },
+        { value: '10', label: 'clases aeróbicas' },
       ],
     },
 

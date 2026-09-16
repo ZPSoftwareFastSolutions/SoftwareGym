@@ -47,6 +47,30 @@ export function esTipoDeAnuncio(valor: unknown): valor is TipoDeAnuncio {
 
 export const LARGO_MAXIMO_DE_TITULO = 160;
 export const LARGO_MAXIMO_DE_RESUMEN = 300;
+/** V4.2 · Mismos límites que los CHECK de la base. */
+export const LARGO_MAXIMO_DE_LEMA = 120;
+export const MAXIMO_DE_ETIQUETAS = 12;
+export const LARGO_MAXIMO_DE_ETIQUETA = 40;
+export const LARGO_MAXIMO_DE_ROTULO = 60;
+export const LARGO_MAXIMO_DE_NOTA = 60;
+
+/**
+ * V4.2 · Etiquetas escritas en un solo campo, separadas por comas. Se recortan,
+ * se descartan las vacías y las repetidas (sin distinguir mayúsculas) y se
+ * conserva el orden en que se escribieron, que es el orden en que se leen.
+ */
+export function etiquetasDeTexto(texto: string): readonly string[] {
+  const vistas = new Set<string>();
+  const etiquetas: string[] = [];
+  for (const cruda of texto.split(',')) {
+    const etiqueta = cruda.replace(/\s+/g, ' ').trim();
+    const clave = etiqueta.toLocaleLowerCase('es');
+    if (etiqueta === '' || vistas.has(clave)) continue;
+    vistas.add(clave);
+    etiquetas.push(etiqueta);
+  }
+  return etiquetas;
+}
 
 /** Un anuncio tal como lo ve el gimnasio en su panel. */
 export interface Anuncio {
@@ -65,6 +89,15 @@ export interface Anuncio {
   /** ISO. Antes de esta fecha el anuncio existe pero no se publica. */
   readonly publishedAt: string;
   readonly expiresAt: string | null;
+  /**
+   * V4.2 · Campos de la tarjeta destacada, todos opcionales: una frase de
+   * impacto bajo el título, una lista corta con su rótulo («Clases incluidas»)
+   * y una nota al pie («Cupos limitados»). Sin ellos, la tarjeta de siempre.
+   */
+  readonly tagline: string | null;
+  readonly tags: readonly string[];
+  readonly tagsLabel: string | null;
+  readonly footnote: string | null;
 }
 
 /**
@@ -82,6 +115,10 @@ export interface AnuncioPublico {
   readonly linkUrl: string | null;
   readonly linkLabel: string | null;
   readonly publishedAt: string;
+  readonly tagline: string | null;
+  readonly tags: readonly string[];
+  readonly tagsLabel: string | null;
+  readonly footnote: string | null;
 }
 
 export type EstadoDeAnuncio = 'publicado' | 'programado' | 'vencido' | 'retirado';
@@ -141,6 +178,10 @@ export interface DatosDeAnuncio {
   readonly isActive: boolean;
   readonly publishedAt: string;
   readonly expiresAt: string | null;
+  readonly tagline: string | null;
+  readonly tags: readonly string[];
+  readonly tagsLabel: string | null;
+  readonly footnote: string | null;
 }
 
 /**
@@ -162,6 +203,21 @@ export function validarAnuncio(datos: DatosDeAnuncio): Readonly<Record<string, s
   }
 
   if (!esTipoDeAnuncio(datos.kind)) errores.kind = 'Elige de qué es el anuncio.';
+
+  if (datos.tagline !== null && datos.tagline.trim().length > LARGO_MAXIMO_DE_LEMA) {
+    errores.tagline = `La frase no puede pasar de ${LARGO_MAXIMO_DE_LEMA} caracteres.`;
+  }
+  if (datos.tags.length > MAXIMO_DE_ETIQUETAS) {
+    errores.tags = `Como mucho ${MAXIMO_DE_ETIQUETAS} etiquetas.`;
+  } else if (datos.tags.some((t) => t.length > LARGO_MAXIMO_DE_ETIQUETA)) {
+    errores.tags = `Cada etiqueta puede tener hasta ${LARGO_MAXIMO_DE_ETIQUETA} caracteres.`;
+  }
+  if (datos.tagsLabel !== null && datos.tagsLabel.trim().length > LARGO_MAXIMO_DE_ROTULO) {
+    errores.tagsLabel = `El rótulo no puede pasar de ${LARGO_MAXIMO_DE_ROTULO} caracteres.`;
+  }
+  if (datos.footnote !== null && datos.footnote.trim().length > LARGO_MAXIMO_DE_NOTA) {
+    errores.footnote = `La nota no puede pasar de ${LARGO_MAXIMO_DE_NOTA} caracteres.`;
+  }
 
   // Solo http/https: un `javascript:` en un enlace de la vitrina es XSS, y la
   // base rechaza cualquier otra cosa con su CHECK.
@@ -186,6 +242,21 @@ export function validarAnuncio(datos: DatosDeAnuncio): Readonly<Record<string, s
   }
 
   return errores;
+}
+
+/**
+ * V4.2 · Título partido para la tarjeta destacada: lo que va tras el ÚLTIMO
+ * « · » se pinta con el acento («Plan Aeróbicos · Bs. 150»). Es la forma en que
+ * un panfleto separa el nombre del dato que vende, y no pide un campo más.
+ * Sin separador, o con una de las dos mitades vacía, el título va entero.
+ */
+export function tituloConAcento(titulo: string): { readonly base: string; readonly acento: string | null } {
+  const separador = ' · ';
+  const indice = titulo.lastIndexOf(separador);
+  if (indice < 0) return { base: titulo, acento: null };
+  const base = titulo.slice(0, indice).trim();
+  const acento = titulo.slice(indice + separador.length).trim();
+  return base === '' || acento === '' ? { base: titulo, acento: null } : { base, acento };
 }
 
 /**

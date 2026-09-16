@@ -17,6 +17,14 @@ export type ThemeMode = 'dark' | 'light';
 export type SurfaceStyle = 'flat' | 'glass' | 'elevated';
 export type CornerStyle = 'sharp' | 'soft' | 'rounded' | 'pill';
 export type TypographyScale = 'compact' | 'balanced' | 'editorial';
+/**
+ * V4.2 · Acabado del color de acento. `metallic` pinta titulares acentuados,
+ * cifras y el botón principal con un degradado del propio color de marca (oro,
+ * plata, cobre); `solid` es el color plano de siempre.
+ */
+export type AccentFinish = 'solid' | 'metallic';
+/** V4.2 · Navegación y botones en caja normal o en versalitas espaciadas. */
+export type LabelCase = 'normal' | 'uppercase';
 
 export interface BrandPalette {
   /** Color de acción principal: CTAs, foco, énfasis. */
@@ -41,6 +49,11 @@ export interface BrandPalette {
   readonly border: string;
   /** Acento de apoyo para gráficos y detalles. */
   readonly accent: string;
+  /**
+   * V4.2 · Color de energía, opcional: insignias de promoción, lemas y avisos
+   * de urgencia (el carmesí junto al dorado). Sin declarar, es el primario.
+   */
+  readonly highlight?: string;
 }
 
 export interface BrandTypography {
@@ -52,6 +65,10 @@ export interface BrandTypography {
   /** `uppercase` en títulos de sección: refuerza marcas deportivas. */
   readonly uppercaseHeadings: boolean;
   readonly headingTracking: string;
+  /** V4.2 · Familia de acento para lemas («Disciplina · Fuerza · Pasión»). Sin declarar, la del cuerpo. */
+  readonly script?: string;
+  /** V4.2 · Sin declarar, `normal`. */
+  readonly labelCase?: LabelCase;
 }
 
 export interface BrandShape {
@@ -61,6 +78,8 @@ export interface BrandShape {
   readonly glowIntensity: number;
   /** Muestra la retícula/grano de fondo característico del tema oscuro. */
   readonly showGrid: boolean;
+  /** V4.2 · Sin declarar, `solid`. */
+  readonly accentFinish?: AccentFinish;
 }
 
 export interface BrandLogo {
@@ -68,6 +87,8 @@ export interface BrandLogo {
   readonly wordmark: string;
   /** Palabra secundaria bajo el wordmark. */
   readonly subMark: string;
+  /** V4.2 · Parte del wordmark que se pinta con el acento («Gym» en «Gold's Gym»). */
+  readonly wordmarkAccent?: string;
   /** Monograma de 1–2 letras para el favicon y la marca compacta. */
   readonly monogram: string;
 }

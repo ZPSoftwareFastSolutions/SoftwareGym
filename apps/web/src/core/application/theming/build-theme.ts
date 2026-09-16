@@ -95,11 +95,23 @@ export function buildThemeVariables(branding: TenantBranding): string {
   const surface = safeColor(p.surface, '#0c0e0f');
   const text = safeColor(p.text, '#ffffff');
   const glow = branding.shape.glowIntensity;
+  const primaryStrong = safeColor(p.primaryStrong, primary);
+  const highlight = p.highlight ? safeColor(p.highlight, primary) : null;
+  const metallic = branding.shape.accentFinish === 'metallic';
+  const uppercaseLabels = branding.typography.labelCase === 'uppercase';
+  // Degradado del propio color de marca: luz (accent) → primario → sombra.
+  // Sin `metallic`, `none` y el color plano de siempre.
+  const metalFill = `linear-gradient(135deg, ${safeColor(p.accent, primary)} 0%, ${primary} 48%, ${primaryStrong} 100%)`;
 
   const declarations: Record<string, string> = {
     // --- Acción ---
     '--t-action': primary,
-    '--t-action-strong': safeColor(p.primaryStrong, primary),
+    '--t-action-strong': primaryStrong,
+    '--t-action-fill': metallic ? metalFill : 'none',
+    '--t-accent-fill': metallic ? metalFill : 'none',
+    '--t-accent-ink': metallic ? 'transparent' : primary,
+    '--t-highlight': highlight ?? primary,
+    '--t-aura-secondary': highlight ?? structural,
     '--t-action-rgb': toRgbChannels(primary),
     '--t-on-action': branding.mode === 'dark' ? surface : '#ffffff',
     '--t-focus': primary,
@@ -132,6 +144,14 @@ export function buildThemeVariables(branding: TenantBranding): string {
     '--t-font-body': branding.typography.body,
     '--t-heading-transform': branding.typography.uppercaseHeadings ? 'uppercase' : 'none',
     '--t-heading-tracking': branding.typography.headingTracking,
+    '--t-font-script': branding.typography.script ?? branding.typography.body,
+    '--t-label-transform': uppercaseLabels ? 'uppercase' : 'none',
+    '--t-label-tracking': uppercaseLabels ? '0.06em' : 'normal',
+    // En versalitas cada letra ocupa más: la navegación baja de cuerpo y de
+    // relleno para que la cabecera siga cabiendo en una fila.
+    '--t-nav-size': uppercaseLabels ? '0.74rem' : '0.86rem',
+    '--t-nav-pad': uppercaseLabels ? '0.6rem' : '0.875rem',
+    '--t-submark-tracking': uppercaseLabels ? '0.16em' : '0.32em',
 
     // --- Efectos ---
     '--t-glow-strength': String(glow),

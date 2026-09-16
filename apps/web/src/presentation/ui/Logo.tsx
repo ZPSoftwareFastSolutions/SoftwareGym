@@ -21,7 +21,16 @@ interface LogoProps {
   readonly compact?: boolean;
 }
 
+/** El fragmento acentuado del wordmark, si lo hay y aparece en él. */
+function partirWordmark(logo: BrandLogo): readonly [string, string, string] {
+  const acento = logo.wordmarkAccent?.trim();
+  const indice = acento ? logo.wordmark.lastIndexOf(acento) : -1;
+  if (!acento || indice < 0) return [logo.wordmark, '', ''];
+  return [logo.wordmark.slice(0, indice), acento, logo.wordmark.slice(indice + acento.length)];
+}
+
 export function Logo({ logo, href, name, compact = false }: LogoProps) {
+  const [antes, acento, despues] = partirWordmark(logo);
   return (
     <Link
       href={href}
@@ -56,9 +65,11 @@ export function Logo({ logo, href, name, compact = false }: LogoProps) {
             textTransform: 'var(--t-heading-transform)' as never,
           }}
         >
-          {logo.wordmark}
+          {antes}
+          {acento && <span className="t-accent">{acento}</span>}
+          {despues}
         </span>
-        <span className="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.32em] text-muted">
+        <span className="mt-0.5 whitespace-nowrap text-[0.6rem] font-semibold uppercase tracking-[var(--t-submark-tracking)] text-muted">
           {logo.subMark}
         </span>
       </span>

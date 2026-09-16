@@ -6,12 +6,14 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export type BadgeTone = 'action' | 'neutral' | 'structural';
+export type BadgeTone = 'action' | 'neutral' | 'structural' | 'highlight';
 
 const TONES: Record<BadgeTone, string> = {
   action: 'bg-action text-on-action',
   neutral: 'bg-card text-muted border border-line',
   structural: 'bg-structural text-white',
+  // V4.2 · Color de energía de la marca (promociones, eventos, urgencia).
+  highlight: 'bg-highlight text-white',
 };
 
 interface BadgeProps {

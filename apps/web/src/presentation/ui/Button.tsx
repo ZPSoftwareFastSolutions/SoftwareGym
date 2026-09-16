@@ -25,7 +25,9 @@ const BASE =
   'disabled:pointer-events-none disabled:opacity-45';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-action text-on-action hover:bg-action-strong',
+  // `fill-action`: con acabado metálico el botón lleva el degradado de la marca;
+  // con acabado sólido no pinta nada y queda el color de siempre.
+  primary: 'fill-action bg-action text-on-action hover:bg-action-strong',
   secondary: 'bg-card text-ink border border-line hover:border-action hover:text-action',
   outline: 'border border-action text-action hover:bg-action hover:text-on-action',
   ghost: 'text-ink/90 hover:text-action',
@@ -61,6 +63,7 @@ function composeClasses({
     VARIANTS[variant],
     SIZES[size],
     'rounded-[var(--t-radius-md)]',
+    't-label',
     fullWidth && 'w-full',
     // V4.2 · el brillo obedece a `shape.glowIntensity` de la marca: con 1 es el
     // de siempre y con 0 desaparece. Antes estaba fijo y una marca sin neón lo

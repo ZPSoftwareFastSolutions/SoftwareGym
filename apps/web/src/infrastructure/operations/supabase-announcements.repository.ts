@@ -31,7 +31,11 @@ const BUCKET = 'anuncios';
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const COLUMNAS =
-  'id, title, summary, body, image_path, image_alt, kind, link_url, link_label, sort_order, is_active, published_at, expires_at';
+  'id, title, summary, body, image_path, image_alt, kind, link_url, link_label, sort_order, is_active, published_at, expires_at, tagline, tags, tags_label, footnote';
+
+function etiquetas(valor: unknown): readonly string[] {
+  return Array.isArray(valor) ? valor.filter((e): e is string => typeof e === 'string' && e.trim() !== '') : [];
+}
 
 const EXTENSION: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
@@ -61,6 +65,10 @@ function aAnuncio(fila: Record<string, unknown>): Anuncio {
     isActive: fila.is_active === true,
     publishedAt: String(fila.published_at ?? ''),
     expiresAt: texto(fila.expires_at),
+    tagline: texto(fila.tagline),
+    tags: etiquetas(fila.tags),
+    tagsLabel: texto(fila.tags_label),
+    footnote: texto(fila.footnote),
   };
 }
 
@@ -78,6 +86,10 @@ function aFila(datos: DatosDeAnuncio) {
     is_active: datos.isActive,
     published_at: datos.publishedAt,
     expires_at: datos.expiresAt,
+    tagline: datos.tagline,
+    tags: [...datos.tags],
+    tags_label: datos.tagsLabel,
+    footnote: datos.footnote,
   };
 }
 
@@ -88,6 +100,10 @@ function mensajeDeError(error: { code?: string; message?: string } | null): stri
   if (detalle.includes('announcements_vigencia')) return 'El vencimiento tiene que ser posterior a la publicación.';
   if (detalle.includes('announcements_kind_check')) return 'Ese tipo de anuncio no existe.';
   if (detalle.includes('announcements_link_url_check')) return 'El enlace tiene que empezar por http:// o https://.';
+  if (detalle.includes('announcements_lema_corto')) return 'La frase no puede pasar de 120 caracteres.';
+  if (detalle.includes('announcements_etiquetas_validas')) return 'Hasta 12 etiquetas, de 40 caracteres cada una.';
+  if (detalle.includes('announcements_rotulo_de_etiquetas')) return 'El rótulo de las etiquetas no puede pasar de 60 caracteres.';
+  if (detalle.includes('announcements_nota_corta')) return 'La nota no puede pasar de 60 caracteres.';
   if (detalle.includes('23514')) return 'Algún dato no tiene el formato esperado. Revisa los campos.';
   if (error?.code === '42501') return 'Tu cuenta no puede publicar anuncios en este gimnasio.';
   return 'No se pudo guardar. Vuelve a intentarlo.';
@@ -192,7 +208,7 @@ export class SupabasePublicAnnouncementsRepository implements PublicAnnouncement
       // de qué está publicado vive en un solo sitio (la base), no aquí.
       const { data, error } = await this.supabase
         .from('v_announcements_public')
-        .select('id, title, summary, body, image_path, image_alt, kind, link_url, link_label, published_at')
+        .select('id, title, summary, body, image_path, image_alt, kind, link_url, link_label, published_at, tagline, tags, tags_label, footnote')
         .eq('tenant_slug', tenantSlug);
       if (error) return [];
 
@@ -212,6 +228,10 @@ export class SupabasePublicAnnouncementsRepository implements PublicAnnouncement
           linkUrl: anuncio.linkUrl,
           linkLabel: anuncio.linkLabel,
           publishedAt: anuncio.publishedAt,
+          tagline: anuncio.tagline,
+          tags: anuncio.tags,
+          tagsLabel: anuncio.tagsLabel,
+          footnote: anuncio.footnote,
         };
       });
     } catch {

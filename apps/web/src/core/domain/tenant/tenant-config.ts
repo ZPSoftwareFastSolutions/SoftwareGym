@@ -159,6 +159,12 @@ export interface HeroContent {
   readonly primaryCta: { readonly label: string; readonly segment: string };
   readonly secondaryCta: { readonly label: string; readonly segment: string };
   readonly stats: readonly StatItem[];
+  /** V4.2 · Lema bajo el titular, con la familia de acento de la marca. Opcional. */
+  readonly motto?: string;
+  /** V4.2 · Rótulo sobre las sedes de la portada de anuncios («Nuestras sedes»). Opcional. */
+  readonly branchesLabel?: string;
+  /** V4.2 · Rótulo de la columna de anuncios. Sin declarar, «Novedades». */
+  readonly announcementsLabel?: string;
 }
 
 export interface AboutContent {

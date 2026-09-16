@@ -125,6 +125,28 @@ export function AnuncioForm({ slug, anuncio }: AnuncioFormProps) {
       </Campo>
 
       <Campo
+        id="an-tagline"
+        etiqueta="Frase destacada"
+        error={errores.tagline}
+        ayuda="Opcional. Una línea de impacto bajo el título, con la letra de acento de la marca."
+      >
+        <input name="tagline" defaultValue={valor('tagline', anuncio?.tagline)} maxLength={120} className={CLASE_DE_CONTROL} />
+      </Campo>
+
+      <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <Campo id="an-tagsLabel" etiqueta="Rótulo de las etiquetas" error={errores.tagsLabel} ayuda="Por ejemplo: «Clases incluidas».">
+          <input name="tagsLabel" defaultValue={valor('tagsLabel', anuncio?.tagsLabel)} maxLength={60} className={CLASE_DE_CONTROL} />
+        </Campo>
+        <Campo id="an-tags" etiqueta="Etiquetas" error={errores.tags} ayuda="Separadas por comas. Hasta 12, de 40 caracteres cada una.">
+          <input name="tags" defaultValue={valor('tags', anuncio?.tags.join(', '))} className={CLASE_DE_CONTROL} />
+        </Campo>
+      </div>
+
+      <Campo id="an-footnote" etiqueta="Nota al pie" error={errores.footnote} ayuda="Opcional. Muy breve: «Cupos limitados».">
+        <input name="footnote" defaultValue={valor('footnote', anuncio?.footnote)} maxLength={60} className={CLASE_DE_CONTROL} />
+      </Campo>
+
+      <Campo
         id="an-body"
         etiqueta="Contenido completo"
         error={errores.body}
