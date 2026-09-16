@@ -229,7 +229,7 @@ propio en `presentation/icons/Icon.tsx`), de animación, `tailwind-merge`, de ZI
                         ▼
                Supabase  (proyecto dnclwawnjnzqqxgsuhpn · us-west-2)
                ├─ Auth ─────── cuentas; disparadores asignan tenant, rol y vínculo a la ficha
-               ├─ PostgreSQL ─ 41 tablas con RLS, 44 vistas security_invoker, 31 RPC invocador
+               ├─ PostgreSQL ─ 44 tablas con RLS, 46 vistas security_invoker, 31 RPC invocador
                │               (desde V4: 43 vistas y 31 RPC; políticas evaluadas una vez por consulta)
                └─ Storage ──── comprobantes (privado) · qr-pagos (público) · ejercicios (privado, URL firmada)
 ```
@@ -481,7 +481,7 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
 ### 4.1 Principios que sostienen el aislamiento
 
 1. **`tenant_id` en toda tabla de negocio** y como primera columna de sus índices.
-2. **RLS activo en las 41 tablas**, sin política = denegado. 136 políticas en
+2. **RLS activo en las 44 tablas**, sin política = denegado. 145 políticas en
    `public` + 10 en `storage`.
 3. **El tenant sale de la identidad:** `app.current_tenant_id()`,
    `app.current_customer_id()`, `app.current_app_user_id()`. Autorización:
@@ -529,7 +529,7 @@ PostgreSQL 17 · `us-west-2` · plan gratuito.
     administrador activo (disparador). El administrador es un rol de gimnasio: lo
     ata a SU gimnasio la misma condición de `tenant_id` que al resto.
 
-### 4.2 Tablas (41)
+### 4.2 Tablas (44)
 
 | Área | Tabla | Notas |
 |---|---|---|
@@ -574,7 +574,7 @@ Enums: `payment_method` (`cash, qr, transfer, card, other`), `attendance_method`
 (`manual, qr, kiosk`), `receipt_status`, `receipt_source`, estados de
 membresía/socio/tenant.
 
-### 4.3 Vistas (44, todas `security_invoker`)
+### 4.3 Vistas (46, todas `security_invoker`)
 
 `v_my_profile` (perfil + roles + permisos de quien entra) · `v_customer_overview`
 · `v_customer_detail` · `v_memberships` (estado efectivo) ·
@@ -755,7 +755,7 @@ justificar, reservar por encima de topes y bloqueo).
 
 ### 4.7 Migraciones
 
-**58 aplicadas** (`v2_0001` … `v4_1_alta_de_golds_gym_premium`), listadas
+**63 aplicadas** (`v2_0001` … `v4_2_autorizacion_de_clases_e_invitados`), listadas
 con su propósito en [`supabase/migrations/README.md`](supabase/migrations/README.md).
 Las 49 hasta V3.4 **viven solo en el servidor**: materializarlas requiere `npx supabase link` +
 `npx supabase db pull`, que pide la contraseña de la base (no disponible en la
@@ -1906,6 +1906,61 @@ despliegue sirve los tres gimnasios); `camera=(self)`, `X-Frame-Options: DENY`, 
    Miraflores; en qué sucursal se dicta cada clase (hoy todas en LAVITA); cupo de cada clase (hoy 30, marcador);
    qué incluyen los planes de 3, 6 y 12 meses; mensualidad de Karate; qué paquete incluye Strong y Body Pump;
    horario de Step y X-55; el cierre real del Plan Mañanero; correo, ciudad, redes y mapa; fotografías.
+
+## 13d. V4.2 · GOLD V1 — identidad, accesos y autorización de clases (rama `feat/goldgym-v1`)
+
+Encargo «GOLD'S GYM PREMIUM — V1». Se entregó por etapas; **las etapas 1 a 4 están cerradas y su base aplicada**.
+
+**Dos conflictos de fondo que NO se sobrescribieron en silencio**, y cómo se resolvieron con el usuario:
+
+1. **«3 accesos por día» contra el índice único de una entrada por día** (decisión 20). Quitarlo habría cambiado el
+   significado de «visita» para los tres gimnasios y roto racha, KPI y reportes. Se separaron los dos hechos:
+   `attendance_records` sigue siendo «vino este día» (intacta) y `access_passes` es «pasó por esta puerta». El tope
+   se cuenta sobre los pases. **Decisión del cliente: 3 para todos los socios en cualquier sede**, configurable en
+   `tenants.daily_access_limit`.
+2. **Acceso multisede por membresía contra «la membresía vale en todas las sedes»** (decisiones 19 y 24). Sigue
+   siendo el valor por defecto —ningún plan existente cambió, y la migración lo comprueba—, pero un plan puede
+   declarar `branch_scope`: `todas` · `sede_origen` · `listadas` (+ `membership_plan_branches`).
+
+**Lo entregado por etapas:**
+
+| Etapa | Qué | Commit |
+|---|---|---|
+| 1 | Sucursal **El Alto** (renombrado acotado a GOLD, con comprobación de que la Miraflores de Mítico queda intacta) y el login tras confirmar el correo | `cca427d` |
+| §19/§20 | Una operación fallida deja de cerrar la sesión; existe el **403** | `255ef35` |
+| 2 | **Foto de perfil** del socio y ventana de **identidad** al pasar el QR | `43be5c4` |
+| 3 | **Pases de acceso**, tope diario y alcance de sede por plan | `2efff8e` |
+| — | Corrección que encontró la batería + runbook V4.2 | `7f408e0` |
+| 4 | **Autorización nominal de clases e invitados** (`access_mode = 'autorizados'`) | `d36f2fa` |
+
+**Los bugs, con su causa medida en el código:**
+- **Login tras confirmar (§18):** la ruta SÍ creaba la sesión; redirigía siempre a `/<slug>/acceso`, el formulario de
+  login, y el usuario volvía a escribir sus credenciales creyendo que no había funcionado. Ahora entra a `/<slug>/panel`.
+- **Cierres de sesión inesperados (§19):** `getAuthenticatedUser()` devolvía `null` ante cualquier error, incluido uno
+  de red, y `perfil()` descartaba el `error` de PostgREST. Ahora `estadoDeSesion()` distingue `anonimo` de
+  `indisponible` usando las cookies como señal, y `perfilDetallado()` nombra el fallo.
+- **Redirecciones (§20):** cinco situaciones, cinco respuestas. Solo «sin sesión» va al acceso; «autenticado sin
+  permiso» es 403 real (`forbidden()` de Next 16, con `experimental.authInterrupts`); «no se pudo comprobar» es
+  `panel/error.tsx` con reintentar y las cookies intactas; capacidad no contratada sigue siendo 404.
+
+**Estado (2026-09-16): etapas 1-4 cerradas, 5 migraciones aplicadas y verificadas, SIN DESPLEGAR.**
+- Código: typecheck limpio · **218 pruebas** · build de 99 páginas · `npm audit` 0.
+- Base: batería V4.2 completa ([`docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql`](docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql)),
+  advisors solo con el aviso aceptado. **Una corrección la encontró la batería**: la guarda de la foto bloqueaba
+  también a quien no tiene sesión (migraciones y mantenimiento), porque `has_permission` es falso sin `auth.uid()`.
+- **Trampa nueva del runbook:** comprobar QUÉ ROLES tiene la cuenta con la que se prueba. La primera pasada dio tres
+  «fugas» que no lo eran: se estaba probando «el socio» con Juan Pérez, que es el administrador de Mítico desde V4.
+
+**Pendiente:**
+1. **Desplegar** y medir con `curl` los códigos de estado, incluido el **403 nuevo** (la lección del `loading.tsx` de
+   V4: el estado se mide sobre el dominio, no leyendo el código).
+2. **Etapa 4, interfaz:** la base admite invitados y admisiones nominales, pero falta la pantalla en
+   `/panel/clases/sesion/[id]` para crearlas. Hasta entonces `access_mode = 'autorizados'` no se puede activar desde
+   el panel (ninguna clase lo usa: la migración lo comprueba).
+3. **Etapa 5:** dashboards por rol (socio, recepción, gerencia, administración), historial de ingresos filtrable con
+   la vista `v_access_passes` y UX de reservas.
+4. **Etapa 6:** diseño del correo de confirmación con identidad de GOLD.
+5. Revisión humana con sesión de todo lo de esta rama.
 
 ---
 ## 14. Historial de versiones

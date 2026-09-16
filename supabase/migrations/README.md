@@ -173,3 +173,19 @@ Pruebas (huella antes/después, rendimiento con volumen, jerarquía, aislamiento
 
 Pruebas por rol, aislamiento entre gimnasios y filtro de la vitrina anónima:
 [`docs/runbooks/pruebas-rls-v4.1-anuncios.sql`](../../docs/runbooks/pruebas-rls-v4.1-anuncios.sql).
+
+## V4.2 · GOLD V1: identidad, accesos y autorización de clases (2026-09-16)
+
+> Escritas como archivo y **aplicadas el 2026-09-16 con autorización del usuario**.
+> La cuarta la encontró la batería, no la lectura del código.
+
+| Archivo | Qué introduce |
+|---|---|
+| `20260916100000_v4_2_gold_sucursal_el_alto.sql` | La sede de GOLD pasa de «Miraflores» a «El Alto» (código y nombre). El UPDATE va **filtrado por gimnasio** y la migración comprueba al terminar que la sede `MIRAFLORES` de Mítico —con 5 horarios, 30 sesiones y entradas— queda intacta: `branches.code` es único por gimnasio, no globalmente |
+| `20260916110000_v4_2_foto_de_perfil_del_socio.sql` | Bucket **privado** `avatares` (512 KB, webp/jpeg/png) servido con URL firmada; `app.customer_de_ruta` para que Storage saque el socio del segundo segmento; política `customers_update_self` **más** un disparador que compara la fila entera en JSON, porque los grants por columna no distinguen al socio de la recepcionista (los dos son `authenticated`). Usa `customers.photo_url`, que existía desde V2 sin uso |
+| `20260916120000_v4_2_pases_de_acceso_y_alcance_por_sede.sql` | `access_passes` (cada paso por una puerta, con sede, hora y número), `tenants.daily_access_limit` (3), `customers.home_branch_id`, `membership_plans.branch_scope` (`todas` por defecto: nada cambia) + `membership_plan_branches`, `app.puede_entrar_en_sucursal`, disparador con **bloqueo de la fila del socio antes de contar** y vista `v_access_passes`. **`attendance_records` no se toca**: sigue siendo una entrada por socio y día |
+| `20260916130000_v4_2_la_guarda_de_la_foto_solo_aplica_al_socio.sql` | **Corrige** (lo encontró la batería): la guarda de la foto bloqueaba también a quien no tiene sesión —migraciones, semillas, mantenimiento por SQL— porque `app.has_permission` se apoya en `auth.uid()`. Ahora solo aplica a quien edita su propia ficha |
+| `20260916140000_v4_2_autorizacion_de_clases_e_invitados.sql` | `access_mode` gana `autorizados` y aparece `class_session_admissions`: quién está autorizado a una sesión, sea **socio** (promoción) o **invitado sin ficha** (nombre, documento, teléfono), con un CHECK que obliga a elegir. `app.acceso_a_clase` responde `no_autorizado` sin admisión. **`class_attendances` no se toca**: sigue significando «un socio asistió» |
+
+Pruebas por rol, tope diario, alcance de sede, guarda de la foto y autorización de clases:
+[`docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql`](../../docs/runbooks/pruebas-rls-v4.2-identidad-y-accesos.sql).
