@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { registrarCheckIn, type EstadoDeCheckIn } from '@/app/[tenant]/panel/actions';
 import { IdentidadDeIngreso } from './IdentidadDeIngreso';
+import { describirPase } from '@core/domain/operations/attendance';
 
 const QrScanner = dynamic(() => import('./QrScanner').then((modulo) => modulo.QrScanner), {
   ssr: false,
@@ -213,6 +214,11 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
               {typeof resultado.diasRestantes === 'number' &&
                 ` · le quedan ${resultado.diasRestantes} ${resultado.diasRestantes === 1 ? 'día' : 'días'} de membresía`}
             </span>
+            {/* V4.2 · Cuántos accesos del día lleva. El gimnasio da varios y el
+                mostrador tiene que poder decirlo en voz alta. */}
+            <span className="mt-1 block text-[0.82rem] font-semibold text-action">
+              {describirPase(resultado.pase)}
+            </span>
           </span>
         </p>
       );
@@ -223,7 +229,31 @@ function Resultado({ resultado }: { readonly resultado: NonNullable<EstadoDeChec
           <span>
             <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
             <span className="text-[0.88rem] text-muted">
-              Ya tenía su entrada de hoy{resultado.sucursal ? ` en ${resultado.sucursal}` : ''}, a las {horaLocal(resultado.hora)}. No se registra dos veces el mismo día.
+              Ya tenía su entrada de hoy{resultado.sucursal ? ` en ${resultado.sucursal}` : ''}, a las {horaLocal(resultado.hora)}. Su visita de hoy ya estaba contada.
+            </span>
+          </span>
+        </p>
+      );
+    case 'sin-cupo-diario':
+      return (
+        <p className={cn(base, 'border-structural/50 bg-structural/10')}>
+          <Icon name="close" size={20} className="mt-0.5 shrink-0 text-structural" />
+          <span>
+            <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
+            <span className="text-[0.88rem] text-muted">
+              Ya usó sus {resultado.tope} accesos de hoy. Podrá entrar de nuevo mañana.
+            </span>
+          </span>
+        </p>
+      );
+    case 'sucursal-no-permitida':
+      return (
+        <p className={cn(base, 'border-structural/50 bg-structural/10')}>
+          <Icon name="pin" size={20} className="mt-0.5 shrink-0 text-structural" />
+          <span>
+            <strong className="block text-[1.05rem] text-ink">{resultado.socio}</strong>
+            <span className="text-[0.88rem] text-muted">
+              Su plan no incluye {resultado.sucursal}. Ofrécele un plan que valga en todas las sedes.
             </span>
           </span>
         </p>

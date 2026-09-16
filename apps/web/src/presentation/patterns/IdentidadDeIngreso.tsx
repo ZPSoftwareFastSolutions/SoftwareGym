@@ -24,7 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { IdentidadDeSocio, ResultadoDeCheckIn } from '@core/domain/operations/attendance';
-import { identidadDelResultado } from '@core/domain/operations/attendance';
+import { describirPase, elAccesoSeConcedio, identidadDelResultado } from '@core/domain/operations/attendance';
 import { inicialesDe } from '@core/domain/operations/avatars';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
@@ -40,13 +40,32 @@ interface IdentidadDeIngresoProps {
   readonly sucursal: string;
 }
 
-type Desenlace = 'autorizado' | 'repetido' | 'vencida';
+type Desenlace = 'autorizado' | 'repetido' | 'vencida' | 'sin-cupo' | 'sede';
 
-const ROTULO: Readonly<Record<Desenlace, { readonly texto: string; readonly icono: 'check' | 'clock' | 'alert' }>> = {
+const ROTULO: Readonly<
+  Record<Desenlace, { readonly texto: string; readonly icono: 'check' | 'clock' | 'alert' | 'close' | 'pin' }>
+> = {
   autorizado: { texto: 'ACCESO AUTORIZADO', icono: 'check' },
-  repetido: { texto: 'YA TENÍA SU ENTRADA DE HOY', icono: 'clock' },
+  repetido: { texto: 'ACCESO AUTORIZADO · YA VINO HOY', icono: 'clock' },
   vencida: { texto: 'ENTRÓ, PERO SU MEMBRESÍA VENCIÓ', icono: 'alert' },
+  'sin-cupo': { texto: 'ACCESO DENEGADO · SIN ACCESOS HOY', icono: 'close' },
+  sede: { texto: 'ACCESO DENEGADO · SEDE NO INCLUIDA', icono: 'pin' },
 };
+
+function desenlaceDe(resultado: ResultadoDeCheckIn): Desenlace {
+  switch (resultado.tipo) {
+    case 'registrado':
+      return 'autorizado';
+    case 'repetido':
+      return 'repetido';
+    case 'sin-cupo-diario':
+      return 'sin-cupo';
+    case 'sucursal-no-permitida':
+      return 'sede';
+    default:
+      return 'vencida';
+  }
+}
 
 export function IdentidadDeIngreso({ resultado, intento, sucursal }: IdentidadDeIngresoProps) {
   const [abierto, setAbierto] = useState(false);
@@ -72,10 +91,10 @@ export function IdentidadDeIngreso({ resultado, intento, sucursal }: IdentidadDe
 
   if (!identidad || !resultado) return null;
 
-  const desenlace: Desenlace =
-    resultado.tipo === 'registrado' ? 'autorizado' : resultado.tipo === 'repetido' ? 'repetido' : 'vencida';
+  const desenlace = desenlaceDe(resultado);
   const rotulo = ROTULO[desenlace];
   const dias = resultado.tipo === 'registrado' ? resultado.diasRestantes : null;
+  const concedido = elAccesoSeConcedio(resultado);
 
   return (
     <Dialogo
@@ -106,17 +125,29 @@ export function IdentidadDeIngreso({ resultado, intento, sucursal }: IdentidadDe
 
         <p
           className={cn(
-            'mt-6 flex items-center justify-center gap-2 rounded-[var(--t-radius-md)] px-4 py-3 text-[0.95rem] font-bold',
-            desenlace === 'autorizado' ? 'bg-action text-on-action' : 'border border-structural/60 text-structural',
+            'mt-6 flex items-center justify-center gap-2 rounded-[var(--t-radius-md)] px-4 py-3 text-center text-[0.95rem] font-bold',
+            concedido ? 'bg-action text-on-action' : 'border border-structural/60 text-structural',
           )}
         >
           <Icon name={rotulo.icono} size={18} />
           {rotulo.texto}
         </p>
 
-        {resultado.tipo === 'repetido' && (
+        {resultado.tipo === 'registrado' && (
+          <p className="mt-3 text-center text-[0.82rem] font-semibold text-action">
+            {describirPase(resultado.pase)}
+          </p>
+        )}
+
+        {resultado.tipo === 'sin-cupo-diario' && (
           <p className="mt-3 text-center text-[0.82rem] text-muted">
-            No se registra dos veces el mismo día.
+            Ya usó sus {resultado.tope} accesos de hoy. Podrá entrar de nuevo mañana.
+          </p>
+        )}
+
+        {resultado.tipo === 'sucursal-no-permitida' && (
+          <p className="mt-3 text-center text-[0.82rem] text-muted">
+            Su plan no incluye esta sede. Ofrécele uno que valga en todas.
           </p>
         )}
       </div>

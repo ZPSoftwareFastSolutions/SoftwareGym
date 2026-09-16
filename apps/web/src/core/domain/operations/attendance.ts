@@ -121,12 +121,51 @@ export interface IdentidadDeSocio {
   readonly racha: number;
 }
 
+/**
+ * Qué número de pase del día es éste (V4.2).
+ *
+ * El gimnasio da varios accesos diarios (GOLD pidió tres) y el mostrador
+ * necesita decirlo en voz alta: «segundo de tres». Los cuenta la BASE sobre
+ * `access_passes`, con la fila del socio bloqueada, no esta capa.
+ *
+ * Ojo con la diferencia que sostiene todo el diseño: un PASE es cada vez que
+ * alguien cruza una puerta; una ENTRADA (`attendance_records`) es «este socio
+ * vino este día», sigue siendo una por día y es de donde salen la racha, los
+ * KPI y los reportes.
+ */
+export interface PaseDelDia {
+  readonly numero: number;
+  readonly tope: number;
+  /** Los que le quedan DESPUÉS de éste. */
+  readonly restantes: number;
+}
+
+export function describirPase(pase: PaseDelDia): string {
+  if (pase.restantes <= 0) return `Acceso ${pase.numero} de ${pase.tope} · era el último de hoy`;
+  return `Acceso ${pase.numero} de ${pase.tope} · le quedan ${pase.restantes}`;
+}
+
 export type ResultadoDeCheckIn =
   | {
       readonly tipo: 'registrado';
       readonly socio: string;
       readonly hora: string;
       readonly diasRestantes: number | null;
+      readonly sucursal: string;
+      readonly identidad: IdentidadDeSocio;
+      readonly pase: PaseDelDia;
+    }
+  /** Ya gastó sus accesos del día. La puerta no se abre. */
+  | {
+      readonly tipo: 'sin-cupo-diario';
+      readonly socio: string;
+      readonly tope: number;
+      readonly identidad: IdentidadDeSocio;
+    }
+  /** Su plan no vale en esta sede (alcance `sede_origen` o `listadas`). */
+  | {
+      readonly tipo: 'sucursal-no-permitida';
+      readonly socio: string;
       readonly sucursal: string;
       readonly identidad: IdentidadDeSocio;
     }
@@ -149,9 +188,18 @@ export type ResultadoDeCheckIn =
 
 /** Si este resultado trae a alguien identificado (y, por tanto, hay modal que enseñar). */
 export function identidadDelResultado(resultado: ResultadoDeCheckIn): IdentidadDeSocio | null {
-  return resultado.tipo === 'registrado' || resultado.tipo === 'repetido' || resultado.tipo === 'sin-membresia'
-    ? resultado.identidad
-    : null;
+  return resultado.tipo === 'desconocido' || resultado.tipo === 'error' ? null : resultado.identidad;
+}
+
+/**
+ * Si la puerta se abrió.
+ *
+ * `sin-membresia` cuenta como abierta a propósito: quien llegó, llegó, y la
+ * entrada se registra igual (decisión 12). Lo que se le ofrece es la renovación,
+ * no la puerta cerrada.
+ */
+export function elAccesoSeConcedio(resultado: ResultadoDeCheckIn): boolean {
+  return resultado.tipo === 'registrado' || resultado.tipo === 'repetido' || resultado.tipo === 'sin-membresia';
 }
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'] as const;

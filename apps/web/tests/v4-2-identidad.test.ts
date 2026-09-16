@@ -20,7 +20,12 @@ import {
   TAMANO_MAXIMO_DE_AVATAR,
 } from '../src/core/domain/operations/avatars.ts';
 import { diasSeguidos } from '../src/core/domain/operations/streak.ts';
-import { identidadDelResultado, type ResultadoDeCheckIn } from '../src/core/domain/operations/attendance.ts';
+import {
+  describirPase,
+  elAccesoSeConcedio,
+  identidadDelResultado,
+  type ResultadoDeCheckIn,
+} from '../src/core/domain/operations/attendance.ts';
 
 describe('V4.2 · iniciales cuando no hay foto', () => {
   it('toma la primera y la última palabra', () => {
@@ -97,12 +102,15 @@ describe('V4.2 · días seguidos para el saludo del mostrador', () => {
 
 describe('V4.2 · qué resultados traen identidad', () => {
   const identidad = { nombre: 'Juan Pérez', codigo: 'MF-001', fotoUrl: null, racha: 4 };
+  const pase = { numero: 1, tope: 3, restantes: 2 };
 
-  it('los tres desenlaces con persona la traen', () => {
+  it('todos los desenlaces con persona la traen, también los que niegan el paso', () => {
     const casos: ResultadoDeCheckIn[] = [
-      { tipo: 'registrado', socio: 'Juan', hora: '', diasRestantes: 10, sucursal: 'Prado', identidad },
+      { tipo: 'registrado', socio: 'Juan', hora: '', diasRestantes: 10, sucursal: 'Prado', identidad, pase },
       { tipo: 'repetido', socio: 'Juan', hora: '', sucursal: 'Prado', identidad },
       { tipo: 'sin-membresia', socio: 'Juan', sucursal: 'Prado', identidad },
+      { tipo: 'sin-cupo-diario', socio: 'Juan', tope: 3, identidad },
+      { tipo: 'sucursal-no-permitida', socio: 'Juan', sucursal: 'El Alto', identidad },
     ];
     for (const caso of casos) assert.equal(identidadDelResultado(caso)?.codigo, 'MF-001');
   });
@@ -110,5 +118,24 @@ describe('V4.2 · qué resultados traen identidad', () => {
   it('un código desconocido NO identifica a nadie: no se abre ninguna ventana', () => {
     assert.equal(identidadDelResultado({ tipo: 'desconocido' }), null);
     assert.equal(identidadDelResultado({ tipo: 'error', mensaje: 'x' }), null);
+  });
+
+  it('distingue la puerta que se abrió de la que no', () => {
+    assert.ok(elAccesoSeConcedio({ tipo: 'registrado', socio: 'J', hora: '', diasRestantes: 1, sucursal: 'P', identidad, pase }));
+    // Sin membresía SÍ entra: quien llegó, llegó, y se le ofrece la renovación.
+    assert.ok(elAccesoSeConcedio({ tipo: 'sin-membresia', socio: 'J', sucursal: 'P', identidad }));
+    assert.ok(!elAccesoSeConcedio({ tipo: 'sin-cupo-diario', socio: 'J', tope: 3, identidad }));
+    assert.ok(!elAccesoSeConcedio({ tipo: 'sucursal-no-permitida', socio: 'J', sucursal: 'P', identidad }));
+    assert.ok(!elAccesoSeConcedio({ tipo: 'desconocido' }));
+  });
+});
+
+describe('V4.2 · cómo se anuncia el pase en el mostrador', () => {
+  it('dice cuántos le quedan', () => {
+    assert.equal(describirPase({ numero: 1, tope: 3, restantes: 2 }), 'Acceso 1 de 3 · le quedan 2');
+  });
+
+  it('avisa cuando era el último, que es lo que hay que decirle en voz alta', () => {
+    assert.match(describirPase({ numero: 3, tope: 3, restantes: 0 }), /último/);
   });
 });

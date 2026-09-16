@@ -31,6 +31,7 @@ import type {
 import { numero } from '@core/domain/operations/dashboard';
 import type {
   IdentidadDeSocio,
+  PaseDelDia,
   MetodoDeAsistencia,
   PatronDeAsistencia,
   RegistroDeAsistencia,
@@ -261,6 +262,23 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
 
     if (ruta !== null) await this.supabase.storage.from(BUCKET_AVATARES).remove([ruta]);
     return exito(null);
+  }
+
+  /** Tope de accesos diarios del gimnasio. Es CONFIGURACIÓN, no una constante del código. */
+  private async topeDeAccesosDiarios(tenantId: string): Promise<number> {
+    const { data } = await this.supabase
+      .from('tenants')
+      .select('daily_access_limit')
+      .eq('id', tenantId)
+      .maybeSingle();
+    return numero(data?.daily_access_limit, 3);
+  }
+
+  /** Qué número de pase del día fue éste y cuántos le quedan. */
+  private async detalleDelPase(tenantId: string, bruto: unknown): Promise<PaseDelDia> {
+    const tope = await this.topeDeAccesosDiarios(tenantId);
+    const n = numero(bruto, 1);
+    return { numero: n, tope, restantes: Math.max(tope - n, 0) };
   }
 
   /** Ruta guardada en la ficha del socio de la sesión, o `null`. */
@@ -558,9 +576,43 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       .maybeSingle();
 
     const ahora = new Date();
-    // Ni la hora ni la fecha ni la autoría viajan desde aquí: la base las pone
-    // (y no concede permiso para escribirlas). Lo que decide esta capa es la
-    // SEDE, y la base vuelve a comprobar que quien escanea puede operar en ella.
+
+    /**
+     * V4.2 · EL PASE PRIMERO, LA ENTRADA DEL DÍA DESPUÉS.
+     *
+     * El pase es lo que decide si la puerta se abre: su disparador comprueba el
+     * alcance de sede del plan y el tope diario con la fila del socio bloqueada.
+     * Si ese INSERT falla, no se ha tocado nada más.
+     *
+     * La entrada del día va después y es idempotente por su índice único: el
+     * segundo pase del día choca con 23505, y eso NO es un error sino
+     * exactamente lo que significa «ya vino hoy». Así la racha, los KPI y los
+     * reportes siguen contando DÍAS, no pasos por la puerta.
+     */
+    const { data: pase, error: errorDePase } = await this.supabase
+      .from('access_passes')
+      .insert({ tenant_id: tenantId, customer_id: customerId, branch_id: sucursal.id, method: 'qr' })
+      .select('pass_number')
+      .maybeSingle();
+
+    if (errorDePase) {
+      const detalle = String(errorDePase.code ?? '') + ' ' + String(errorDePase.message ?? '');
+
+      if (detalle.includes('limite_de_accesos_diarios')) {
+        return { tipo: 'sin-cupo-diario', socio: nombre, tope: await this.topeDeAccesosDiarios(tenantId), identidad };
+      }
+      if (detalle.includes('sucursal_fuera_del_plan')) {
+        return { tipo: 'sucursal-no-permitida', socio: nombre, sucursal: sucursal.name, identidad };
+      }
+      if (detalle.includes('sucursal_no_disponible') || detalle.includes('sucursal_requerida')) {
+        return { tipo: 'error', mensaje: 'La sucursal ' + sucursal.name + ' no está activa. Elige otra sede de trabajo.' };
+      }
+      if (errorDePase.code === '42501') {
+        return { tipo: 'error', mensaje: 'Tu cuenta no puede registrar entradas en ' + sucursal.name + '. Pide a gerencia que te asigne a esta sede.' };
+      }
+      return { tipo: 'error', mensaje: 'No se pudo registrar la entrada. Vuelve a intentarlo.' };
+    }
+
     const { error } = await this.supabase.from('attendance_records').insert({
       tenant_id: tenantId,
       customer_id: customerId,
@@ -614,6 +666,7 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
       diasRestantes: numero(membresia.days_remaining, 0),
       sucursal: sucursal.name,
       identidad,
+      pase: await this.detalleDelPase(tenantId, pase?.pass_number),
     };
   }
 
