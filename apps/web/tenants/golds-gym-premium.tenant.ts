@@ -232,10 +232,23 @@ export const goldsGymPremiumTenant: TenantConfig = {
     // Karate…) con su horario semanal por sede. También son datos de la base.
     enableClasses: true,
 
-    // PENDIENTE de contratación: el resto de módulos operativos (asistencia,
-    // cobros, gestión de socios, entrenadores, rutinas, reservas) quedan
-    // apagados hasta que el cliente los contrate. Apagados, sus rutas
-    // responden 404; no es que estén escondidas.
+    // V4.2 · La operación que pidió el encargo «GOLD'S GYM PREMIUM — V1»:
+    // control de acceso con QR y foto (§4, §8), recepción que escanea y da de
+    // alta (§9), pagos y comprobantes (§13), membresías, historial de ingresos
+    // (§12) y reservas (§16). Hasta V4.1 estaban apagadas «pendientes de
+    // contratación»; V1 es justamente esa contratación. Son las MISMAS
+    // capacidades que usa Mítico, no una variante de GOLD.
+    enableAttendance: true,
+    enableQrAttendance: true,
+    enableMemberManagement: true,
+    enablePayments: true,
+    enableNotifications: true,
+    enableReports: true,
+    enableReservations: true,
+
+    // Siguen apagados porque V1 no los pidió: entrenadores, catálogo de
+    // ejercicios y rutinas. Apagados, sus rutas responden 404; no es que estén
+    // escondidas.
 
     // Sin material fotográfico todavía: la galería se enciende cuando llegue.
     showGallery: false,

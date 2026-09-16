@@ -24,6 +24,7 @@ import {
   validarRegistro,
 } from '@core/application/auth/login.usecase';
 import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
+import { decidirLoginPorGimnasio, type CuentaAlIniciarSesion } from '@core/domain/operations/acceso-al-panel';
 import { tenantRepository } from '@infra/config/composition-root';
 import { createSupabaseServerClient } from '@infra/auth/supabase.server';
 import { isSupabaseConfigured } from '@infra/auth/supabase.config';
@@ -50,6 +51,28 @@ async function resolverTenant(slugCrudo: unknown): Promise<string | null> {
  */
 const ACCESO_NO_CONFIGURADO =
   'El acceso de socios no está disponible en este momento. Escríbenos por WhatsApp y lo resolvemos.';
+
+/**
+ * A qué gimnasio pertenece la cuenta que acaba de autenticarse, según la BASE.
+ *
+ * Se consulta con el MISMO cliente que hizo `signInWithPassword`, que ya lleva
+ * la sesión en memoria: así la lectura pasa por RLS como esa cuenta, y no
+ * depende de que las cookies recién escritas se relean en esta misma petición.
+ */
+async function cuentaRecienAutenticada(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<CuentaAlIniciarSesion> {
+  const { data, error } = await supabase.from('v_my_profile').select('tenant_slug, permissions').maybeSingle();
+  if (error) return { estado: 'indisponible' };
+  if (!data) return { estado: 'sin-cuenta' };
+  const fila = data as { tenant_slug: unknown; permissions: unknown };
+  const permisos = Array.isArray(fila.permissions) ? fila.permissions : [];
+  return {
+    estado: 'ok',
+    tenantSlug: typeof fila.tenant_slug === 'string' ? fila.tenant_slug : null,
+    esPlataforma: permisos.includes('tenants.manage'),
+  };
+}
 
 function texto(form: FormData, campo: string): string {
   const valor = form.get(campo);
@@ -78,6 +101,29 @@ export async function iniciarSesion(
     // «ese usuario no existe» convertiría el formulario en un comprobador de
     // qué correos están registrados en el gimnasio.
     return { mensaje: mensajeDeErrorDeAcceso(error.code) };
+  }
+
+  // V4.2 · LA PUERTA DE UN GIMNASIO SOLO ABRE A LOS SUYOS. Supabase Auth es
+  // uno para todos los gimnasios, así que la contraseña correcta de una cuenta
+  // de otro gimnasio pasaba este punto y abría sesión. Ahora se pregunta a la
+  // base a qué gimnasio pertenece y, si no es el de la ruta, la sesión que se
+  // acaba de crear se cierra antes de devolver nada.
+  const decision = decidirLoginPorGimnasio(await cuentaRecienAutenticada(supabase), slug);
+  if (decision !== 'permitir') {
+    // `local`: cierra SOLO esta sesión recién abierta. Con el alcance global se
+    // cerrarían también las sesiones legítimas que esa persona tenga abiertas
+    // en su propio gimnasio, en otro dispositivo.
+    await supabase.auth.signOut({ scope: 'local' });
+    marcarSesionCerrada(await cookies());
+    return {
+      mensaje:
+        decision === 'reintentar'
+          ? 'No pudimos comprobar tu cuenta en este momento. Vuelve a intentarlo.'
+          // EXACTAMENTE el mismo texto que una contraseña incorrecta. Decir
+          // «esta cuenta es de otro gimnasio» confirmaría que el correo existe,
+          // y el formulario se volvería un buscador de correos ajenos.
+          : mensajeDeErrorDeAcceso(undefined),
+    };
   }
 
   // La pista de la cabecera se escribe AQUÍ y no se deja al middleware.

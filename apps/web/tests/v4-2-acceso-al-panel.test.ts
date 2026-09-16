@@ -15,6 +15,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   conservaLaSesion,
+  decidirLoginPorGimnasio,
   exigeVolverAEntrar,
   respuestaDeAcceso,
   type SituacionDeAcceso,
@@ -78,5 +79,36 @@ describe('V4.2 · una respuesta por situación, y solo una lleva al login', () =
     // Cinco respuestas para seis situaciones: «sin-perfil» y «sin-permiso»
     // comparten el 403 a propósito, porque para quien mira son lo mismo.
     assert.equal(respuestas.size, 5);
+  });
+});
+
+describe('V4.2 · la puerta de un gimnasio solo abre a los suyos', () => {
+  const GOLD = 'golds-gym-premium';
+
+  it('una cuenta de GOLD entra por el login de GOLD', () => {
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: GOLD, esPlataforma: false }, GOLD), 'permitir');
+  });
+
+  it('credenciales CORRECTAS de Mítico en el login de GOLD: denegado', () => {
+    // El caso que pidió el cliente. La contraseña está bien; la puerta no es la suya.
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: 'mitico', esPlataforma: false }, GOLD), 'denegar');
+  });
+
+  it('y al revés: una cuenta de GOLD no entra por Mítico', () => {
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: GOLD, esPlataforma: false }, 'mitico'), 'denegar');
+  });
+
+  it('una cuenta sin gimnasio (y que no es plataforma) no entra por ninguno', () => {
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: null, esPlataforma: false }, GOLD), 'denegar');
+    assert.equal(decidirLoginPorGimnasio({ estado: 'sin-cuenta' }, GOLD), 'denegar');
+  });
+
+  it('la plataforma no pertenece a ningún gimnasio y entra por cualquiera', () => {
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: null, esPlataforma: true }, GOLD), 'permitir');
+    assert.equal(decidirLoginPorGimnasio({ estado: 'ok', tenantSlug: null, esPlataforma: true }, 'mitico'), 'permitir');
+  });
+
+  it('si no se pudo leer la cuenta no se adivina: ni se deja entrar ni se dice «incorrecto»', () => {
+    assert.equal(decidirLoginPorGimnasio({ estado: 'indisponible' }, GOLD), 'reintentar');
   });
 });

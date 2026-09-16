@@ -78,3 +78,42 @@ export function exigeVolverAEntrar(situacion: SituacionDeAcceso): boolean {
 export function conservaLaSesion(situacion: SituacionDeAcceso): boolean {
   return situacion !== 'anonimo';
 }
+
+/**
+ * Lo que la BASE dice de la cuenta que acaba de poner bien su contraseña.
+ *
+ * Se lee de `v_my_profile` (tabla `app_users`), NUNCA de `user_metadata`: los
+ * metadatos del usuario los puede reescribir el propio usuario con
+ * `auth.updateUser`, así que un `tenant_slug` de ahí no prueba nada.
+ */
+export type CuentaAlIniciarSesion =
+  | { readonly estado: 'ok'; readonly tenantSlug: string | null; readonly esPlataforma: boolean }
+  /** Existe en Auth pero no tiene cuenta operativa en ningún gimnasio. */
+  | { readonly estado: 'sin-cuenta' }
+  /** No se pudo leer. No se adivina en ninguna dirección. */
+  | { readonly estado: 'indisponible' };
+
+export type DecisionDeLogin = 'permitir' | 'denegar' | 'reintentar';
+
+/**
+ * Si una cuenta puede entrar por el formulario de acceso de ESTE gimnasio.
+ *
+ * EL HUECO QUE CIERRA (V4.2). Supabase Auth es uno solo para todos los
+ * gimnasios: aceptaba la contraseña de una cuenta de Mítico escrita en el
+ * formulario de GOLD, abría la sesión y el panel la mandaba después a
+ * `/mitico/panel`. No había fuga de datos —RLS no entrega nada ajeno—, pero se
+ * abría una sesión desde un gimnasio al que la cuenta no pertenece, y el
+ * formulario servía para averiguar qué correos existen en OTROS gimnasios.
+ *
+ * La plataforma sí entra por cualquier gimnasio: no pertenece a ninguno, y es
+ * así como llega a su panel desde hoy.
+ *
+ * Lo que decide `denegar` NO es la seguridad de los datos (eso sigue siendo
+ * RLS): es que la puerta de un gimnasio solo abra a los suyos.
+ */
+export function decidirLoginPorGimnasio(cuenta: CuentaAlIniciarSesion, slugDeLaRuta: string): DecisionDeLogin {
+  if (cuenta.estado === 'indisponible') return 'reintentar';
+  if (cuenta.estado === 'sin-cuenta') return 'denegar';
+  if (cuenta.esPlataforma) return 'permitir';
+  return cuenta.tenantSlug !== null && cuenta.tenantSlug === slugDeLaRuta ? 'permitir' : 'denegar';
+}
