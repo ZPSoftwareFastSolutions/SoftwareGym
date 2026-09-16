@@ -2055,7 +2055,12 @@ retícula y brillo que Mítico. Ahora:
 **Script de cuentas de prueba: la v1 no podía funcionar.** Escribía `auth.users.confirmed_at`, que en esta versión de
 Supabase es columna CALCULADA (`LEAST(email_confirmed_at, phone_confirmed_at)`); el INSERT fallaba, la transacción se
 revertía y no quedaba ninguna cuenta (también `auth.identities.email` es calculada). La v2 lo corrige y añade cinco
-anuncios con datos textuales del folleto. **A 2026-09-16 no se ha ejecutado:** 0 cuentas y 0 anuncios en GOLD.
+anuncios con datos textuales del folleto. **Ejecutada el 2026-09-16 con autorización expresa del usuario.** Verificado en
+la base, sin iniciar sesión: las 5 contraseñas coinciden con su hash bcrypt; cada cuenta resuelve a `golds-gym-premium`
+con su espacio (administracion · gimnasio · gimnasio · socio · socio); el personal ve los 2 socios de GOLD y 0 de Mítico;
+recepción opera en 2 de 4 sedes; cada socio ve solo su ficha (GO-001 con Plan Aeróbicos y QR; GO-002 sin membresía).
+Los 5 anuncios salen en la portada (prioridad: mayor `sort_order` primero) y el detalle abre con el texto completo.
+**La prioridad de los anuncios es DESCENDENTE**: el primer intento los sembró al revés.
 
 **Pendiente:**
 1. ~~Desplegar y medir los códigos de estado~~ **hecho** (ver arriba).
