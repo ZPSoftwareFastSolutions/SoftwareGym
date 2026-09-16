@@ -32,10 +32,10 @@ import { tenantRepository } from '@infra/config/composition-root';
  * parece de fiar— y termina donde quiera el atacante. Solo se acepta el slug
  * de un gimnasio existente, y la ruta se construye aquí.
  */
-async function destinoSeguro(slugCrudo: string | null): Promise<string> {
-  if (!slugCrudo) return '/';
+async function slugSeguro(slugCrudo: string | null): Promise<string | null> {
+  if (!slugCrudo) return null;
   const tenant = await getTenantBySlug(tenantRepository(), slugCrudo.trim().toLowerCase());
-  return tenant ? `/${tenant.slug}/acceso` : '/';
+  return tenant ? tenant.slug : null;
 }
 
 const TIPOS_VALIDOS: readonly EmailOtpType[] = [
@@ -50,11 +50,33 @@ const TIPOS_VALIDOS: readonly EmailOtpType[] = [
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
 
-  const base = await destinoSeguro(searchParams.get('gimnasio'));
-  const exito = new URL(base, origin);
-  const fallo = new URL(base, origin);
-  exito.searchParams.set('confirmado', '1');
-  fallo.searchParams.set('confirmado', '0');
+  const slug = await slugSeguro(searchParams.get('gimnasio'));
+
+  /**
+   * EL BUG QUE ARREGLA (V4.2). Esta ruta SÍ establecía la sesión —canjea el
+   * código y escribe las cookies—, pero redirigía SIEMPRE a `/<slug>/acceso`:
+   * el usuario terminaba de confirmar su correo y aparecía en el formulario de
+   * login, así que volvía a escribir sus credenciales creyendo que no había
+   * funcionado. La sesión ya estaba puesta; lo que fallaba era el destino.
+   *
+   * Ahora, confirmado el correo, se entra directo a `/<slug>/panel`, que
+   * reparte a cada quien a su espacio según sus permisos. Si algo falló, el
+   * destino sigue siendo el acceso, que es lo correcto.
+   */
+  const paginaDeAcceso = (marca: '1' | '0') => {
+    const url = new URL(slug ? `/${slug}/acceso` : '/', origin);
+    url.searchParams.set('confirmado', marca);
+    return url;
+  };
+
+  const paginaDePanel = () => {
+    if (!slug) return paginaDeAcceso('1');
+    const url = new URL(`/${slug}/panel`, origin);
+    url.searchParams.set('confirmado', '1');
+    return url;
+  };
+
+  const fallo = paginaDeAcceso('0');
 
   // Supabase puede devolver el error en la propia URL (enlace ya usado o
   // caducado). Se detecta antes de intentar canjear nada.
@@ -69,7 +91,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    return NextResponse.redirect(error ? fallo : exito);
+    return NextResponse.redirect(error ? fallo : paginaDePanel());
   }
 
   const tokenHash = searchParams.get('token_hash');
@@ -77,7 +99,10 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash && tipo && TIPOS_VALIDOS.includes(tipo)) {
     const { error } = await supabase.auth.verifyOtp({ type: tipo, token_hash: tokenHash });
-    return NextResponse.redirect(error ? fallo : exito);
+    if (error) return NextResponse.redirect(fallo);
+    // `recovery` es la excepción: quien viene a cambiar su contraseña no debe
+    // caer en el panel como si nada, sino en la pantalla de acceso.
+    return NextResponse.redirect(tipo === 'recovery' ? paginaDeAcceso('1') : paginaDePanel());
   }
 
   // Sin parámetros no hay nada que verificar: alguien llegó aquí a mano.

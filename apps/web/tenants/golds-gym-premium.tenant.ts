@@ -48,7 +48,7 @@ import { DEFAULT_FEATURE_FLAGS } from '@core/domain/tenant/feature-flags';
  * Códigos de las cuatro sucursales. Son los mismos `branches.code` de la base:
  * el puente entre el texto de vitrina de este archivo y los datos operativos.
  */
-const SEDES = ['LAVITA', 'GARITA', 'CRUCEVILLAS', 'MIRAFLORES'] as const;
+const SEDES = ['LAVITA', 'GARITA', 'CRUCEVILLAS', 'ELALTO'] as const;
 
 /**
  * Plantilla de áreas. El cliente todavía no entregó qué tiene cada sucursal,
@@ -581,9 +581,9 @@ export const goldsGymPremiumTenant: TenantConfig = {
           seed: 61,
         },
         {
-          code: 'MIRAFLORES',
+          code: 'ELALTO',
           tagline: 'Golden Gym',
-          description: 'Nuestra sucursal de Miraflores.',
+          description: 'Nuestra sucursal de El Alto.',
           // PENDIENTE: dirección y características propias de esta sede.
           highlights: [],
           seed: 83,
