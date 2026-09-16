@@ -64,6 +64,13 @@ export async function entradasDelPanel(
     entradas.push({ href: tenantHref(slug, 'panel/asistencia'), etiqueta: 'Asistencia', icono: 'calendar', grupo: 'dia' });
   }
 
+  // Ingresos (V4.2): el detalle de cada paso por la puerta, con su hora y su
+  // sede. Va junto a «Asistencia» porque responde la otra mitad de la misma
+  // pregunta —aquella cuenta días, ésta cuenta pases— y comparte su permiso.
+  if (features.enableAttendance && puede(PERMISO.verAsistencia)) {
+    entradas.push({ href: tenantHref(slug, 'panel/accesos'), etiqueta: 'Ingresos', icono: 'key', grupo: 'dia' });
+  }
+
   // Clases (V3.3): recepción y el instructor toman asistencia desde aquí; el
   // socio ve las suyas en su propio panel, no en esta agenda.
   if ((esPersonal || espacio === 'entrenador') && features.enableClasses && puede(PERMISO.verClases)) {

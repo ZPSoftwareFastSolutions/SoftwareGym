@@ -302,3 +302,49 @@ export function rachaDeDias(fechas: readonly string[], hoy: string): number {
 
   return racha;
 }
+
+/**
+ * Un paso por una puerta (V4.2).
+ *
+ * NO es una `RegistroDeAsistencia`. Aquella es «este socio vino este día» y hay
+ * una por socio y día; ésta es cada vez que alguien cruza un torno, con su hora
+ * y su sede. Un socio con tres pases en un día tiene UNA asistencia y TRES
+ * pases, y las dos cifras son correctas porque responden a preguntas distintas.
+ */
+export interface PaseDeAcceso {
+  readonly id: string;
+  readonly customerId: string;
+  readonly customerName: string;
+  readonly customerCode: string | null;
+  readonly branchId: string | null;
+  readonly branchName: string | null;
+  readonly passDate: string;
+  /** Hora local del gimnasio. */
+  readonly passedAt: string;
+  readonly passNumber: number;
+  readonly method: MetodoDeAsistencia;
+  /** `true` cuando fue en una sede distinta a la de origen del socio. */
+  readonly cruzado: boolean;
+}
+
+/** Qué tipo de acceso mostrar. Es el filtro que pidió el cliente (§12). */
+export type TipoDeAcceso = 'todos' | 'normal' | 'entre-sucursales';
+
+export const NOMBRE_DE_TIPO_DE_ACCESO: Readonly<Record<TipoDeAcceso, string>> = {
+  todos: 'Todos los accesos',
+  normal: 'En su sede de origen',
+  'entre-sucursales': 'En otra sucursal',
+};
+
+export function esTipoDeAcceso(valor: unknown): valor is TipoDeAcceso {
+  return valor === 'todos' || valor === 'normal' || valor === 'entre-sucursales';
+}
+
+export interface FiltroDePases {
+  readonly desde?: string;
+  readonly hasta?: string;
+  /** Código o nombre del socio. */
+  readonly busqueda?: string;
+  readonly sucursal?: string;
+  readonly tipo?: TipoDeAcceso;
+}

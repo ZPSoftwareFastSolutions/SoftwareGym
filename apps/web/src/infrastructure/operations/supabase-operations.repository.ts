@@ -38,6 +38,7 @@ import type {
   ResultadoDeCheckIn,
 } from '@core/domain/operations/attendance';
 import { diasSeguidos } from '@core/domain/operations/streak';
+import type { FiltroDePases, PaseDeAcceso } from '@core/domain/operations/attendance';
 import { rutaDeAvatar, type TipoDeAvatar } from '@core/domain/operations/avatars';
 import { exito, fallo, type ResultadoDeOperacion } from '@core/application/ports/resultado';
 import { acotarPorPagina, rangoDePagina, type Pagina } from '@core/domain/shared/paginacion';
@@ -262,6 +263,67 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
 
     if (ruta !== null) await this.supabase.storage.from(BUCKET_AVATARES).remove([ruta]);
     return exito(null);
+  }
+
+  /**
+   * Historial de pases, filtrado, ordenado y CORTADO EN LA BASE (V4.2).
+   *
+   * `range` + `count: exact`, como el resto de las listas desde V4: nunca se
+   * traen cientos de filas para esconderlas en el navegador. El total que
+   * devuelve es el de las filas que cumplen el filtro, no el de esta página.
+   */
+  async historialDePases(
+    filtro: FiltroDePases,
+    pagina: number,
+    porPagina: number,
+  ): Promise<Pagina<PaseDeAcceso>> {
+    const tamano = acotarPorPagina(porPagina);
+    const { desde, hasta } = rangoDePagina(pagina, tamano);
+
+    let consulta = this.supabase
+      .from('v_access_passes')
+      .select(
+        'id, customer_id, customer_code, customer_name, branch_id, branch_name, pass_date, passed_local, pass_number, method, cross_branch',
+        { count: 'exact' },
+      );
+
+    if (filtro.desde) consulta = consulta.gte('pass_date', filtro.desde);
+    if (filtro.hasta) consulta = consulta.lte('pass_date', filtro.hasta);
+    if (filtro.sucursal && PATRON_UUID.test(filtro.sucursal)) consulta = consulta.eq('branch_id', filtro.sucursal);
+    if (filtro.tipo === 'entre-sucursales') consulta = consulta.eq('cross_branch', true);
+    if (filtro.tipo === 'normal') consulta = consulta.eq('cross_branch', false);
+
+    // Se escapan comas y paréntesis: PostgREST separa las condiciones de un
+    // `or` por coma, y un socio buscado como «Pérez, Juan» partiría el filtro.
+    const seguro = (filtro.busqueda ?? '').replace(/[,()*]/g, ' ').trim();
+    if (seguro) consulta = consulta.or(`customer_name.ilike.%${seguro}%,customer_code.ilike.%${seguro}%`);
+
+    const { data, count, error } = await consulta
+      .order('passed_local', { ascending: false })
+      .range(desde, hasta);
+
+    // Un error NO es una lista vacía: decirlo así escondería el fallo detrás
+    // de una pantalla que parece correcta (lección del reporte de pagos de V2).
+    if (error) return { filas: [], total: 0, pagina, porPagina: tamano };
+
+    const filas: PaseDeAcceso[] = (data ?? []).map((cruda) => {
+      const fila = cruda as Record<string, unknown>;
+      return {
+        id: String(fila.id),
+        customerId: String(fila.customer_id),
+        customerName: texto(fila.customer_name) ?? 'Socio',
+        customerCode: texto(fila.customer_code),
+        branchId: texto(fila.branch_id),
+        branchName: texto(fila.branch_name),
+        passDate: texto(fila.pass_date) ?? '',
+        passedAt: String(fila.passed_local),
+        passNumber: numero(fila.pass_number, 1),
+        method: metodo(fila.method),
+        cruzado: fila.cross_branch === true,
+      };
+    });
+
+    return { filas, total: numero(count, filas.length), pagina, porPagina: tamano };
   }
 
   /** Tope de accesos diarios del gimnasio. Es CONFIGURACIÓN, no una constante del código. */

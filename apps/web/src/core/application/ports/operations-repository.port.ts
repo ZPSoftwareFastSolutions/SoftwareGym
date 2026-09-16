@@ -30,6 +30,8 @@ import type {
   VencimientoProximo,
 } from '../../domain/operations/dashboard';
 import type {
+  FiltroDePases,
+  PaseDeAcceso,
   PatronDeAsistencia,
   RegistroDeAsistencia,
   ResultadoDeCheckIn,
@@ -106,6 +108,16 @@ export interface OperationsRepositoryPort {
 
   /** La quita: del bucket y de la ficha. */
   quitarMiFoto(): Promise<ResultadoDeOperacion<null>>;
+
+  /**
+   * Historial de PASES de acceso (V4.2), paginado en la base.
+   *
+   * Distinto de `historialDeAsistencia`, y la diferencia importa: aquel es
+   * «quién vino qué día» (una fila por socio y día) y éste es «quién cruzó qué
+   * puerta y a qué hora», con varias filas por día. Los dos se leen, pero
+   * responden preguntas distintas.
+   */
+  historialDePases(filtro: FiltroDePases, pagina: number, porPagina: number): Promise<Pagina<PaseDeAcceso>>;
 
   /**
    * Fecha de HOY en la zona horaria del gimnasio, en formato `YYYY-MM-DD`.
