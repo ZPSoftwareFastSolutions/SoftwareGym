@@ -22,6 +22,7 @@ import type {
   ResultadoDeGeneracion,
 } from '@core/application/ports/classes-repository.port';
 import { exito, fallo, type ResultadoDeOperacion } from '@core/application/ports/resultado';
+import { mensajeDeErrorDeAdmision, type Admision, type DatosDeAdmision } from '@core/domain/operations/admissions';
 import { numero } from '@core/domain/operations/dashboard';
 import {
   esCategoriaDeClase,
@@ -499,6 +500,91 @@ export class SupabaseClassesRepository implements ClassesRepositoryPort {
         capacidad: numero(fila.capacidad),
       }))
       .filter((fila): fila is FranjaDeClases => esDiaIso(fila.dia));
+  }
+  /**
+   * Admisiones de una sesión (V4.2).
+   *
+   * RLS decide qué filas existen: gerencia y quien toma asistencia EN esa
+   * sesión las ven todas; un socio ve solo la suya. Aquí no hay ni un filtro
+   * de seguridad.
+   */
+  async admisiones(sessionId: string): Promise<readonly Admision[]> {
+    if (!PATRON_UUID.test(sessionId)) return [];
+    const { data } = await this.supabase
+      .from('v_class_session_admissions')
+      .select('id, session_id, customer_id, customer_code, nombre, es_invitado, guest_document, guest_phone, reason, checked_in_at, vino')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    return (data ?? []).map((cruda) => {
+      const fila = cruda as Record<string, unknown>;
+      return {
+        id: String(fila.id),
+        sessionId: String(fila.session_id),
+        customerId: texto(fila.customer_id),
+        customerCode: texto(fila.customer_code),
+        nombre: texto(fila.nombre) ?? 'Sin nombre',
+        esInvitado: fila.es_invitado === true,
+        documento: texto(fila.guest_document),
+        telefono: texto(fila.guest_phone),
+        motivo: texto(fila.reason),
+        llegadaEn: texto(fila.checked_in_at),
+        vino: fila.vino === true,
+      };
+    });
+  }
+
+  async admitir(tenantId: string, sessionId: string, datos: DatosDeAdmision): Promise<ResultadoDeOperacion<null>> {
+    if (!PATRON_UUID.test(sessionId)) return fallo('Esa sesión no existe.');
+
+    const esSocio = datos.customerId !== null && PATRON_UUID.test(datos.customerId);
+
+    // O socio o invitado: nunca los dos. La base lo vuelve a exigir con su
+    // CHECK, pero mandar los dos campos daría un 23514 que no explica nada.
+    const fila = esSocio
+      ? {
+          tenant_id: tenantId,
+          session_id: sessionId,
+          customer_id: datos.customerId,
+          reason: datos.motivo.trim() || null,
+        }
+      : {
+          tenant_id: tenantId,
+          session_id: sessionId,
+          guest_name: datos.nombre.trim(),
+          guest_document: datos.documento.trim() || null,
+          guest_phone: datos.telefono.trim() || null,
+          reason: datos.motivo.trim() || null,
+        };
+
+    const { error } = await this.supabase.from('class_session_admissions').insert(fila);
+    if (error) return fallo(mensajeDeErrorDeAdmision(String(error.code ?? '') + ' ' + String(error.message ?? '')));
+    return exito(null);
+  }
+
+  async marcarLlegadaDeAdmision(admissionId: string, vino: boolean): Promise<ResultadoDeOperacion<null>> {
+    if (!PATRON_UUID.test(admissionId)) return fallo('Esa autorización no existe.');
+    // `.select('id')` distingue «RLS lo bloqueó» (0 filas) de «se guardó».
+    const { data, error } = await this.supabase
+      .from('class_session_admissions')
+      .update({ checked_in_at: vino ? new Date().toISOString() : null })
+      .eq('id', admissionId)
+      .select('id');
+    if (error) return fallo(mensajeDeErrorDeAdmision(String(error.code ?? '') + ' ' + String(error.message ?? '')));
+    if (!data || data.length === 0) return fallo('Tu cuenta no puede cambiar esta autorización.');
+    return exito(null);
+  }
+
+  async quitarAdmision(admissionId: string): Promise<ResultadoDeOperacion<null>> {
+    if (!PATRON_UUID.test(admissionId)) return fallo('Esa autorización no existe.');
+    const { data, error } = await this.supabase
+      .from('class_session_admissions')
+      .delete()
+      .eq('id', admissionId)
+      .select('id');
+    if (error) return fallo(mensajeDeErrorDeAdmision(String(error.code ?? '') + ' ' + String(error.message ?? '')));
+    if (!data || data.length === 0) return fallo('Tu cuenta no puede retirar esta autorización.');
+    return exito(null);
   }
 }
 

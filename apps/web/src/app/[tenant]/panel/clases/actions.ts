@@ -21,6 +21,7 @@ import {
   type CandidatoDeClase,
 } from '@core/domain/operations/classes';
 import { PERMISO } from '@core/domain/operations/workspace';
+import { validarAdmision, type DatosDeAdmision } from '@core/domain/operations/admissions';
 import { classesRepository } from '@infra/config/composition-root';
 import { contextoDeAccion, texto, type EstadoDeFormulario } from '../_acciones';
 
@@ -285,4 +286,73 @@ export async function quitarAsistenciaDeClase(_previo: EstadoDeFormulario, form:
   if (!resultado.ok) return { mensaje: resultado.mensaje };
   revalidar(acceso.contexto.slug);
   return { exito: 'Asistencia quitada.' };
+}
+
+// ------------------------------------------------- admisiones e invitados (V4.2)
+
+/**
+ * Autoriza a una persona en una sesión: un SOCIO al que se deja entrar a una
+ * clase que su plan no cubre, o un INVITADO que no tiene ficha.
+ *
+ * Exige `classes.attend`, pero eso solo contesta pronto: quien decide es la
+ * base, que además comprueba que se pueda tomar asistencia EN ESA sesión
+ * (`app.puede_tomar_asistencia`) y que quede cupo. Un permiso dice QUÉ se puede
+ * hacer, no DÓNDE: la lección de V3.3.
+ */
+export async function autorizarEnSesion(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {
+  const acceso = await tomarAsistencia(form);
+  if (!acceso.ok) return { mensaje: acceso.mensaje };
+  const { perfil, slug } = acceso.contexto;
+  if (!perfil.tenantId) return { mensaje: 'Tu cuenta no pertenece a un gimnasio.' };
+
+  const socio = texto(form, 'customerId', 40).trim();
+  const datos: DatosDeAdmision = {
+    customerId: socio === '' ? null : socio,
+    nombre: texto(form, 'nombre', 150),
+    documento: texto(form, 'documento', 40),
+    telefono: texto(form, 'telefono', 40),
+    motivo: texto(form, 'motivo', 220),
+  };
+
+  const valores: Readonly<Record<string, string>> = {
+    nombre: datos.nombre,
+    documento: datos.documento,
+    telefono: datos.telefono,
+    motivo: datos.motivo,
+  };
+
+  const errores = validarAdmision(datos);
+  if (Object.keys(errores).length > 0) return { errores, valores, mensaje: 'Revisa los campos marcados.' };
+
+  const resultado = await (await classesRepository()).admitir(perfil.tenantId, texto(form, 'sessionId', 40), datos);
+  if (!resultado.ok) return { mensaje: resultado.mensaje, valores };
+
+  revalidar(slug);
+  return { exito: socio === '' ? 'Invitado autorizado.' : 'Socio autorizado.' };
+}
+
+export async function marcarLlegadaDeAdmision(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {
+  return cambiarLlegada(form, true);
+}
+
+export async function deshacerLlegadaDeAdmision(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {
+  return cambiarLlegada(form, false);
+}
+
+async function cambiarLlegada(form: FormData, vino: boolean): Promise<EstadoDeFormulario> {
+  const acceso = await tomarAsistencia(form);
+  if (!acceso.ok) return { mensaje: acceso.mensaje };
+  const resultado = await (await classesRepository()).marcarLlegadaDeAdmision(texto(form, 'admissionId', 40), vino);
+  if (!resultado.ok) return { mensaje: resultado.mensaje };
+  revalidar(acceso.contexto.slug);
+  return { exito: vino ? 'Marcado que llegó.' : 'Marca deshecha.' };
+}
+
+export async function quitarAdmision(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {
+  const acceso = await tomarAsistencia(form);
+  if (!acceso.ok) return { mensaje: acceso.mensaje };
+  const resultado = await (await classesRepository()).quitarAdmision(texto(form, 'admissionId', 40));
+  if (!resultado.ok) return { mensaje: resultado.mensaje };
+  revalidar(acceso.contexto.slug);
+  return { exito: 'Autorización retirada.' };
 }

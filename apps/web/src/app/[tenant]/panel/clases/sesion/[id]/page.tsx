@@ -34,7 +34,9 @@ import {
   type ReservaDeSesion,
 } from '@core/domain/operations/reservations';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
-import { branchesRepository, classesRepository, reservationsRepository, trainersRepository } from '@infra/config/composition-root';
+import type { Admision } from '@core/domain/operations/admissions';
+import { AdmisionForms } from '@/presentation/patterns/AdmisionForms';
+import { branchesRepository, classesRepository, membersRepository, reservationsRepository, trainersRepository } from '@infra/config/composition-root';
 import { AccionConEstado } from '@/presentation/patterns/AccionConEstado';
 import { BarraDeOcupacion } from '@/presentation/patterns/AgendaDeClases';
 import { CancelarSesionForm, SesionForm, TomarAsistenciaDeClase } from '@/presentation/patterns/ClaseForms';
@@ -72,11 +74,16 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
   const hoy = await repo.hoyDelGimnasio(slug);
   const ahora = `${hoy}T${horaEnZona(tenant.hours.timezone)}`;
   const personal = puedeTomarAsistencia || puedeGestionar;
-  const [asistentes, reservas, sedes, instructores] = await Promise.all([
+  const [asistentes, reservas, sedes, instructores, admisiones, sociosParaAutorizar] = await Promise.all([
     personal ? clasesRepo.asistentes(id) : Promise.resolve([] as readonly AsistenteDeClase[]),
     personal && conReservas ? (await reservationsRepository()).reservasDeSesion(id) : Promise.resolve([] as readonly ReservaDeSesion[]),
     puedeGestionar ? (await branchesRepository()).listar() : Promise.resolve([]),
     puedeGestionar && features.enableTrainers && tienePermiso(perfil, PERMISO.verEntrenadores) ? (await trainersRepository()).listar() : Promise.resolve([]),
+    // V4.2 · Quién está autorizado en esta sesión. RLS decide qué filas hay.
+    personal ? clasesRepo.admisiones(id) : Promise.resolve([] as readonly Admision[]),
+    // Los socios que se pueden autorizar. Se piden id, código y nombre
+    // (`opciones()`, V4), no fichas enteras: es un desplegable.
+    personal && features.enableMemberManagement ? (await membersRepository()).opciones() : Promise.resolve([]),
   ]);
 
   const cancelada = sesion.estado === 'cancelada';
@@ -295,6 +302,31 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
               }
             />
           </section>
+
+          {/* V4.2 · Personas autorizadas. Se muestra cuando la clase exige
+              autorización nominal (`autorizados`) o cuando ya hay alguien
+              autorizado: en una clase normal, una sección vacía solo estorba. */}
+          {personal && (sesion.accessMode === 'autorizados' || admisiones.length > 0) && (
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-admisiones">
+              <h2 id="titulo-admisiones" className="t-h3">
+                Personas autorizadas
+              </h2>
+              <p className="mt-1.5 text-[0.86rem] text-muted">
+                {sesion.accessMode === 'autorizados'
+                  ? 'Esta clase solo admite a quien esté autorizado aquí, sea socio o no. Nadie entra por tener membresía.'
+                  : 'Invitados y socios autorizados a esta sesión por encima de lo que permite su plan.'}
+              </p>
+              <div className="mt-6">
+                <AdmisionForms
+                  slug={slug}
+                  sessionId={sesion.id}
+                  admisiones={admisiones}
+                  socios={sociosParaAutorizar.map((s) => ({ id: s.id, nombre: s.fullName, codigo: s.code }))}
+                  sePuedeAutorizar={puedeTomarAsistencia && !cancelada && dentroDeVentana}
+                />
+              </div>
+            </section>
+          )}
         </div>
 
         <aside className="flex flex-col gap-6">

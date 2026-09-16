@@ -26,6 +26,7 @@ import type {
   ResumenDeClases,
   SesionDeClase,
 } from '../../domain/operations/classes';
+import type { Admision, DatosDeAdmision } from '../../domain/operations/admissions';
 import type { ResultadoDeOperacion } from './resultado';
 
 export interface FiltroDeSesiones {
@@ -77,6 +78,16 @@ export interface ClassesRepositoryPort {
   quitarAsistencia(attendanceId: string): Promise<ResultadoDeOperacion<null>>;
   /** Las clases a las que fue un socio. RLS reduce a las propias si quien pregunta es el socio. */
   clasesAsistidas(customerId: string, limite: number): Promise<readonly ClaseAsistida[]>;
+
+  // --- admisiones e invitados (V4.2) ---
+  /** Quién está autorizado a esta sesión, sea socio o invitado sin ficha. */
+  admisiones(sessionId: string): Promise<readonly Admision[]>;
+  /** `tenantId` sale del perfil de la sesión, nunca del formulario. */
+  admitir(tenantId: string, sessionId: string, datos: DatosDeAdmision): Promise<ResultadoDeOperacion<null>>;
+  /** Marca que la persona llegó, o deshace la marca. */
+  marcarLlegadaDeAdmision(admissionId: string, vino: boolean): Promise<ResultadoDeOperacion<null>>;
+  /** Retira la autorización. Solo antes de que llegue: después queda como registro. */
+  quitarAdmision(admissionId: string): Promise<ResultadoDeOperacion<null>>;
 
   // --- métricas (gerencia) ---
   resumen(): Promise<ResumenDeClases | null>;

@@ -193,7 +193,13 @@ export function ClaseForm({ slug, clase, instructores }: { readonly slug: string
         <input name="walkinSpots" inputMode="numeric" defaultValue={valores.walkinSpots} maxLength={3} className={CLASE_DE_CONTROL} />
       </Campo>
 
-      <Campo id="clase-acceso" etiqueta="Quién puede entrar" error={errores.accessMode} obligatorio ayuda="Con «solo los planes que la incluyen», márcalos después en la ficha de la clase.">
+      <Campo
+        id="clase-acceso"
+        etiqueta="Quién puede entrar"
+        error={errores.accessMode}
+        obligatorio
+        ayuda="Con «solo los planes que la incluyen», márcalos después en la ficha de la clase. Con «solo personas autorizadas» no entra nadie sin su autorización en cada sesión, sea socio o no: es lo que se usa en eventos y promociones con invitados."
+      >
         <select name="accessMode" defaultValue={valores.accessMode} className={CLASE_DE_CONTROL}>
           {(Object.keys(NOMBRE_DE_MODO_DE_ACCESO) as ModoDeAcceso[]).map((m) => (
             <option key={m} value={m}>

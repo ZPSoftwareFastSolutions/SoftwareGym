@@ -58,12 +58,22 @@ export const NOMBRE_DE_TIPO_DE_CLASE: Readonly<Record<TipoDeClase, string>> = {
   evento: 'Evento',
 };
 
-export type ModoDeAcceso = 'membresia' | 'planes' | 'abierta';
+/**
+ * Quién puede entrar a una clase.
+ *
+ * `autorizados` es de V4.2 y resuelve el hueco que dejaban los otros tres: en
+ * ellos el acceso lo decide SIEMPRE el plan, y `abierta` significaba «cualquiera
+ * que tenga ficha en el gimnasio». Con `autorizados` no entra nadie que no
+ * tenga su admisión nominal en esa sesión, tenga la membresía que tenga, y en
+ * cambio SÍ puede entrar alguien que ni siquiera es socio.
+ */
+export type ModoDeAcceso = 'membresia' | 'planes' | 'abierta' | 'autorizados';
 
 export const NOMBRE_DE_MODO_DE_ACCESO: Readonly<Record<ModoDeAcceso, string>> = {
   membresia: 'Cualquier membresía vigente',
   planes: 'Solo los planes que la incluyen',
   abierta: 'Abierta (sin membresía)',
+  autorizados: 'Solo personas autorizadas',
 };
 
 export type EstadoDeSesion = 'programada' | 'en_curso' | 'realizada' | 'cancelada';
