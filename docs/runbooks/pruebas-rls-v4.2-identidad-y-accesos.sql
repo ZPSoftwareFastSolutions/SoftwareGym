@@ -213,3 +213,26 @@ select polname from pg_policy p join pg_class c on c.oid=p.polrelid
 where c.relname in ('access_passes','membership_plan_branches')
   and (pg_get_expr(polqual, polrelid) like '%tenant_allows(%'
     or pg_get_expr(polwithcheck, polrelid) like '%tenant_allows(%');
+
+
+-- -----------------------------------------------------------------------------
+-- BLOQUE 3 · Autorización de clases e invitados (V4.2, etapa 4)
+-- -----------------------------------------------------------------------------
+-- RESULTADO 2026-09-16:
+--   sin_admision=no_autorizado      ← LA PRUEBA QUE IMPORTA: un socio con
+--                                     membresía vigente NO entra a una clase
+--                                     «autorizados» sin su admisión nominal
+--   invitado=ok                     (un no socio, sin ficha, puede ser admitido)
+--   invitado_duplicado=bloqueado(23505)  (mismo documento, normalizado)
+--   socio_e_invitado=bloqueado(23514)    (o socio o invitado, nunca los dos)
+--   fija_llegada=bloqueado(42501)        (checked_in_at no se concede al crear)
+--   admite_socio=ok
+--   socio_ve=1                      (ve SU admisión, no la del invitado)
+--   socio_autoriza=bloqueado(42501)
+--   anon_ve=bloqueado(42501)
+--   con_admision=ok                 (con la admisión puesta, pasa)
+--
+-- NOTA DE MÉTODO: `app.acceso_a_clase` es un ayudante DEFINER de disparadores y
+-- no está concedido a `authenticated`. Se evalúa como superusuario, no dentro
+-- de la sesión simulada; llamarla con `set role authenticated` da 42501 y eso
+-- NO es un hallazgo, es la prueba mal escrita.
