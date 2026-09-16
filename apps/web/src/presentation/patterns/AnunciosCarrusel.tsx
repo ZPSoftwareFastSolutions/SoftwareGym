@@ -130,7 +130,10 @@ export function AnunciosCarrusel({ anuncios, presentacion = 'fila' }: AnunciosCa
               type="button"
               onClick={() => setAbierto(anuncio)}
               className={cn(
-                'surface-card group h-full w-full overflow-hidden text-start transition-transform',
+                // `flex flex-col`: un <button> centra su contenido en vertical, y
+                // como las tarjetas de la fila se igualan en alto, la más corta
+                // quedaba con franjas vacías arriba y abajo del arte.
+                'surface-card group flex h-full w-full flex-col overflow-hidden text-start transition-transform',
                 'hover:-translate-y-1 focus-visible:-translate-y-1 motion-reduce:transform-none',
               )}
             >
