@@ -128,6 +128,12 @@ html {
 body {
   margin: 0;
   background-color: var(--t-surface);
+  background-image: 
+    linear-gradient(to bottom, rgba(12, 14, 15, 0.8) 0%, rgba(12, 14, 15, 0.6) 50%, rgba(12, 14, 15, 0.8) 100%),
+    url('/epic_bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: var(--t-ink);
   font-family: var(--t-font-body);
   font-size: 16px;
@@ -283,12 +289,26 @@ ol {
    ======================================================================== */
 
 .surface-card {
-  background: color-mix(in srgb, var(--t-card) calc(var(--t-card-alpha) * 100%), transparent);
-  backdrop-filter: blur(var(--t-blur));
-  -webkit-backdrop-filter: blur(var(--t-blur));
-  border: 1px solid var(--t-line);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--t-card) calc(var(--t-card-alpha) * 110%), transparent) 0%, color-mix(in srgb, var(--t-card) calc(var(--t-card-alpha) * 80%), transparent) 100%);
+  backdrop-filter: blur(calc(var(--t-blur) * 1.5));
+  -webkit-backdrop-filter: blur(calc(var(--t-blur) * 1.5));
+  border: 1px solid color-mix(in srgb, var(--t-line) 80%, var(--t-action) 10%);
   border-radius: var(--t-radius-lg);
-  box-shadow: var(--t-elevation);
+  box-shadow: 
+    var(--t-elevation), 
+    inset 0 1px 1px rgb(255 255 255 / 0.05),
+    inset 0 -1px 1px rgb(0 0 0 / 0.3);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease;
+}
+
+.surface-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 
+    var(--t-elevation), 
+    0 12px 24px -10px rgb(0 0 0 / 0.5),
+    0 0 20px rgb(var(--t-action-rgb) / 0.15),
+    inset 0 1px 1px rgb(255 255 255 / 0.1);
+  border-color: color-mix(in srgb, var(--t-line) 40%, var(--t-action) 40%);
 }
 
 .surface-raised {
@@ -334,8 +354,9 @@ ol {
   content: '';
   position: absolute;
   border-radius: 999px;
-  filter: blur(100px);
-  opacity: 0.2;
+  filter: blur(120px);
+  opacity: 0.35;
+  animation: pulse-aura 10s ease-in-out infinite alternate;
 }
 
 .bg-aura::before {
@@ -406,8 +427,68 @@ ol {
   }
 }
 
+@keyframes pulse-aura {
+  0% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scale(1.1) translate(2%, 2%);
+    opacity: 0.45;
+  }
+}
+
 .animate-marquee {
   animation: marquee-x 38s linear infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes gradient-x {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.text-gradient-dynamic {
+  background: linear-gradient(to right, var(--t-action), var(--t-action-strong), var(--t-structural), var(--t-action));
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: gradient-x 4s linear infinite;
+  text-shadow: none; /* overrides default accent shadow */
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.2) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2.5s infinite;
+  pointer-events: none;
 }
 
 /* Bloqueo del fondo mientras hay una ventana modal abierta.

@@ -37,7 +37,10 @@ export function HeroSection({ hero, slug, sedes = [] }: HeroSectionProps) {
 
           <h1 id="hero-title" className="t-display mt-7">
             {hero.title}{' '}
-            <span className="t-accent">{hero.titleAccent}</span>
+            <span className="t-accent inline-block relative text-gradient-dynamic drop-shadow-[0_0_15px_var(--color-action)]">
+              <span className="absolute inset-0 blur-[30px] opacity-70 bg-[var(--color-action)] mix-blend-screen animate-pulse" aria-hidden="true"></span>
+              <span className="relative z-10">{hero.titleAccent}</span>
+            </span>
           </h1>
 
           <p className="t-lead mt-7 max-w-2xl">{hero.subtitle}</p>

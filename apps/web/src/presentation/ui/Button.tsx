@@ -25,10 +25,10 @@ const BASE =
   'disabled:pointer-events-none disabled:opacity-45';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-action text-on-action hover:bg-action-strong',
-  secondary: 'bg-card text-ink border border-line hover:border-action hover:text-action',
-  outline: 'border border-action text-action hover:bg-action hover:text-on-action',
-  ghost: 'text-ink/90 hover:text-action',
+  primary: 'bg-action text-on-action hover:bg-action-strong hover:scale-105 hover:shadow-[0_0_30px_rgba(57,255,20,0.8)] border border-transparent',
+  secondary: 'bg-card text-ink border border-line hover:border-action hover:text-action hover:shadow-[0_0_15px_rgba(57,255,20,0.2)] hover:scale-[1.02]',
+  outline: 'border border-action text-action hover:bg-action hover:text-on-action hover:shadow-[0_0_20px_rgba(57,255,20,0.5)] hover:scale-105',
+  ghost: 'text-ink/90 hover:text-action hover:scale-[1.02]',
 };
 
 /** El área táctil mínima es 44 px de alto en `md` y `lg` (WCAG 2.2 + HIG). */

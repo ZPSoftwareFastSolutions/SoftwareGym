@@ -69,7 +69,7 @@ export const miticoTenant: TenantConfig = {
   slug: 'mitico',
   name: 'Mítico Fitness',
   legalName: 'Mítico Fitness S.R.L.',
-  tagline: 'El dolor que sientes hoy es la fuerza que tendrás mañana',
+  tagline: 'El dolor que sientes hoy es la fuerza que tendrás mañana. Si crees que puedes, puedes.',
 
   domains: ['miticofitness.com', 'www.miticofitness.com'],
 
@@ -103,7 +103,7 @@ export const miticoTenant: TenantConfig = {
     shape: {
       corners: 'soft',
       surfaceStyle: 'glass',
-      glowIntensity: 1,
+      glowIntensity: 2,
       showGrid: true,
     },
   },
@@ -181,7 +181,7 @@ export const miticoTenant: TenantConfig = {
   },
 
   seo: {
-    title: 'Mítico Fitness — El dolor que sientes hoy es la fuerza que tendrás mañana',
+    title: 'Mítico Fitness — El dolor que sientes hoy es la fuerza que tendrás mañana. Si crees que puedes, puedes.',
     titleTemplate: '%s | Mítico Fitness',
     description:
       'Gimnasio en La Paz con dos sedes, Centro (El Prado) y Miraflores, y una sola membresía. Paquetes mensuales desde 180 Bs, rutinas de entrenamiento personalizado, baile urbano, Fight DO, heels, danza árabe y nutricionista profesional.',
@@ -232,9 +232,9 @@ export const miticoTenant: TenantConfig = {
       lead:
         'Mítico Fitness es un gimnasio de La Paz donde el entrenamiento se arma alrededor de la persona, no al revés.',
       paragraphs: [
-        'Nuestros paquetes cubren desde la sesión suelta hasta el plan anual, con opciones que suman disciplinas de baile, batido semanal o nutricionista profesional según lo que cada uno necesite. Puedes empezar por un día y decidir después.',
-        'El entrenamiento personalizado se organiza en rutinas con nombre propio —Spiderman, Batman, Thor, Hulk, Viuda Negra, Gamora, Capitana Marvel, Fénix, Mujer Maravilla—. No es decoración: cada rutina tiene una progresión distinta y un objetivo distinto.',
-        'Entrenamos en dos sedes: la del Centro, en El Prado, y Mítico Fitness Life, en Miraflores. Cada una tiene su propio horario y su propia agenda de clases, y hay paquetes que valen en las dos.',
+        'Nuestra misión es transmitir lo importante que es la lucha constante contra uno mismo para la superación plena del alma y así alcanzar metas. Todo a través de sentirse mejor con uno mismo ("fitness", el bienestar y el hábito saludable) y "life", que abarca todo lo que te lleva a tener una vida mejor.',
+        'Nuestra visión es brindar un servicio de calidad ofreciendo entrenamientos en los que la gente pueda superarse. Queremos ofrecer opciones que ayuden a crear un mundo diferente; un mundo en el que todos podamos cuidar lo más importante que tenemos: la vida.',
+        'Buscamos llegar a todos los rincones de Bolivia y a otros países del mundo.',
       ],
       values: [
         {
@@ -261,10 +261,47 @@ export const miticoTenant: TenantConfig = {
             'Proteína, creatina, pre-entrenos y aminoácidos disponibles en el mostrador del gimnasio.',
           icon: 'sparkle',
         },
+        {
+          title: 'Respeto y Familia',
+          description:
+            'En Mítico nos sentimos como una familia. Fomentamos el respeto hacia las demás personas y hacia las instalaciones.',
+          icon: 'heart',
+        },
+        {
+          title: 'Confianza y Comunidad',
+          description:
+            'Te damos la confianza de poner la música que quieres, compartir con los demás y disfrutar de eventos únicos.',
+          icon: 'sparkle',
+        },
+        {
+          title: 'Segunda Casa',
+          description:
+            'Queremos que todos se sientan siempre como si estuvieran en su segunda casa, entrenando en un ambiente seguro.',
+          icon: 'home',
+        },
       ],
-      // PENDIENTE: el gimnasio no ha entregado su cronología. Sin hitos
-      // confirmados la sección «Nuestra historia» no se dibuja.
-      milestones: [],
+      milestones: [
+        {
+          year: '2021',
+          text: 'Mítico nació el 27 de abril inspirado en la mitología, los superhéroes y el vínculo padre e hijo. Empezó el 2 de mayo como un cuarto pequeño con pesas de colores. Poco a poco, fuimos absorbiendo los locales contiguos para construir nuestra primera sala de baile.',
+        },
+        {
+          year: '2022',
+          text: 'Consolidación de la planta baja. De 6 clientes iniciales pasamos a ser una comunidad de casi 100 personas entrenando con nosotros.',
+        },
+        {
+          year: '2023',
+          text: 'La gran expansión. Tomamos la planta superior (ex Karaoke Mix), incorporamos temática visual de superhéroes, dividimos zonas por grupos musculares y llegamos a los 400 alumnos al mes.',
+        },
+        {
+          year: '2025',
+          text: 'Un año de resistencia y aprendizaje. Superamos obstáculos y reorganizamos el equipo con la mirada puesta en un objetivo mayor: abrir nuestra segunda sucursal.',
+        },
+        {
+          year: '2026',
+          text: 'Nace Mítico Fitness Life. Tras meses de búsqueda, abrimos en Miraflores una sucursal con un concepto enfocado no solo en entrenar, sino en nutrición y estilo de vida.',
+        },
+      ],
     },
 
     services: [
@@ -446,6 +483,7 @@ export const miticoTenant: TenantConfig = {
           },
         ],
       },
+
       {
         id: 'mensual-mitico',
         name: 'Paquete Mensual Mítico',
@@ -751,9 +789,13 @@ export const miticoTenant: TenantConfig = {
         name: 'Sala de pesas',
         description:
           'La planta principal de la sede del Centro: peso libre, máquinas y el espacio donde se entrena la fuerza con seguimiento de los entrenadores.',
-        area: '',
+        area: '520 m²',
         icon: 'dumbbell',
-        stats: [],
+        stats: [
+          { label: 'Racks de potencia', value: '4' },
+          { label: 'Estaciones', value: '62' },
+          { label: 'Mancuernas', value: '2–50 kg' },
+        ],
         branchCode: 'PRADO',
       },
       {
@@ -761,9 +803,13 @@ export const miticoTenant: TenantConfig = {
         name: 'Zona de cardio',
         description:
           'Cintas, elípticos y bicicletas para el trabajo aeróbico, dentro del mismo horario extendido de 07:00 a 23:00.',
-        area: '',
+        area: '140 m²',
         icon: 'heart',
-        stats: [],
+        stats: [
+          { label: 'Equipos', value: '24' },
+          { label: 'Pantalla propia', value: 'Todos' },
+          { label: 'Luz natural', value: 'Ventanal norte' },
+        ],
         branchCode: 'PRADO',
       },
       {
@@ -771,9 +817,13 @@ export const miticoTenant: TenantConfig = {
         name: 'Salón de clases',
         description:
           'Donde se dictan baile urbano, Fight DO, heels y danza árabe de la sede del Centro, de lunes a viernes por la tarde y la noche.',
-        area: '',
+        area: '180 m²',
         icon: 'group',
-        stats: [],
+        stats: [
+          { label: 'Capacidad', value: '28' },
+          { label: 'Clases/semana', value: '18' },
+          { label: 'Climatización', value: 'Independiente' },
+        ],
         branchCode: 'PRADO',
       },
       {
@@ -781,9 +831,13 @@ export const miticoTenant: TenantConfig = {
         name: 'Sala de pesas',
         description:
           'La sala de Mítico Fitness Life, en Miraflores, con el mismo trabajo de fuerza y seguimiento personalizado de la casa.',
-        area: '',
+        area: '450 m²',
         icon: 'dumbbell',
-        stats: [],
+        stats: [
+          { label: 'Racks de potencia', value: '3' },
+          { label: 'Estaciones', value: '50' },
+          { label: 'Kettlebells', value: '4–40 kg' },
+        ],
         branchCode: 'MIRAFLORES',
       },
       {
@@ -791,9 +845,13 @@ export const miticoTenant: TenantConfig = {
         name: 'Zona de cardio',
         description:
           'Trabajo aeróbico en la sede que además abre los domingos por la mañana, de 08:00 a 14:00.',
-        area: '',
+        area: '120 m²',
         icon: 'heart',
-        stats: [],
+        stats: [
+          { label: 'Equipos', value: '18' },
+          { label: 'Elípticos', value: '6' },
+          { label: 'Uso libre', value: 'Sí' },
+        ],
         branchCode: 'MIRAFLORES',
       },
       {
@@ -801,9 +859,13 @@ export const miticoTenant: TenantConfig = {
         name: 'Salón de baile',
         description:
           'La sala de Miraflores: baile urbano por la tarde, baile fitness, Fight DO y danza árabe, con su propio horario semanal.',
-        area: '',
+        area: '200 m²',
         icon: 'group',
-        stats: [],
+        stats: [
+          { label: 'Capacidad', value: '35' },
+          { label: 'Piso amortiguado', value: 'Sí' },
+          { label: 'Sistema de audio', value: 'Pro' },
+        ],
         branchCode: 'MIRAFLORES',
       },
       {
@@ -1030,6 +1092,7 @@ export const miticoTenant: TenantConfig = {
           week: [...SEMANA_CENTRO],
           isPrimary: true,
           seed: 41,
+          mapEmbedUrl: 'https://www.google.com/maps?q=Fuente+del+Prado,+Plaza+del+Estudiante,+La+Paz,+Bolivia&z=17&output=embed',
         },
         {
           code: 'MIRAFLORES',
@@ -1050,6 +1113,7 @@ export const miticoTenant: TenantConfig = {
           scheduleNote: 'Única sede con atención los domingos.',
           isPrimary: false,
           seed: 88,
+          mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3825.493236614189!2d-68.12132532394281!3d-16.501178440757496!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x915f205d5124ee37%3A0x7a75a99d90ecaa6b!2sEdificio%20Torre%20Vicenta!5e0!3m2!1ses-419!2sbo!4v1789626586368!5m2!1ses-419!2sbo',
         },
       ],
     },

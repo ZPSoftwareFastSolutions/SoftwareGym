@@ -80,8 +80,23 @@ export function SiteHeader({
     };
   }, [menuOpen]);
 
+  const isV2 = pathname.startsWith(`/${slug}/v2`);
+
+  const resolveHref = (segment: string) => {
+    if (isV2) {
+      if (segment === '') return `/${slug}/v2`;
+      return `/${slug}/v2/${segment}`;
+    }
+    return tenantHref(slug, segment);
+  };
+
   const isActive = (segment: string): boolean => {
-    const href = tenantHref(slug, segment);
+    const href = resolveHref(segment);
+    if (isV2) {
+      // En V2 (Single Page), no hay rutas activas marcadas excepto si comparamos hashes en el cliente, 
+      // pero por simplicidad de SSR, podemos dejar el Inicio activo si no hay hash.
+      return segment === '' ? pathname === `/${slug}/v2` : false;
+    }
     return segment === '' ? pathname === href : pathname.startsWith(href);
   };
 
@@ -97,7 +112,7 @@ export function SiteHeader({
       style={{ height: 'var(--header-height)' }}
     >
       <div className="shell flex h-full items-center justify-between gap-6">
-        <Logo logo={logo} href={tenantHref(slug)} name={name} compact />
+        <Logo logo={logo} href={resolveHref('')} name={name} compact />
 
         <nav aria-label="Navegación principal" className="hidden lg:block">
           <ul className="flex items-center gap-1">
@@ -106,7 +121,7 @@ export function SiteHeader({
               return (
                 <li key={item.segment || 'home'}>
                   <Link
-                    href={tenantHref(slug, item.segment)}
+                    href={resolveHref(item.segment)}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
                       'relative inline-flex h-11 items-center whitespace-nowrap px-3.5 text-[0.86rem] font-medium',
@@ -131,7 +146,7 @@ export function SiteHeader({
 
         <div className="flex items-center gap-2.5">
           <span className="hidden sm:contents">
-            <LinkButton href={tenantHref(slug, ctaSegment)} variant="primary" size="sm">
+            <LinkButton href={resolveHref(ctaSegment)} variant="primary" size="sm">
               {ctaLabel}
             </LinkButton>
           </span>
@@ -170,7 +185,7 @@ export function SiteHeader({
             {navigation.map((item, index) => (
               <li key={item.segment || 'home'}>
                 <Link
-                  href={tenantHref(slug, item.segment)}
+                  href={resolveHref(item.segment)}
                   aria-current={isActive(item.segment) ? 'page' : undefined}
                   className={cn(
                     'flex min-h-14 items-center justify-between border-b border-line',
@@ -191,7 +206,7 @@ export function SiteHeader({
           </ul>
 
           <div className="mt-7 flex flex-col gap-3">
-            <LinkButton href={tenantHref(slug, ctaSegment)} size="lg" fullWidth glow>
+            <LinkButton href={resolveHref(ctaSegment)} size="lg" fullWidth glow>
               {ctaLabel}
             </LinkButton>
           </div>

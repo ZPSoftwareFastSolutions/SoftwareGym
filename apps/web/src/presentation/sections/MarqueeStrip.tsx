@@ -43,7 +43,7 @@ export function MarqueeStrip({ items }: MarqueeStripProps) {
   return (
     <div
       data-print="hide"
-      className="relative overflow-hidden border-y border-line bg-raised py-5"
+      className="relative overflow-hidden border-y border-line bg-raised py-5 shadow-[inset_0_0_30px_rgba(57,255,20,0.05)] transform -skew-y-2 hover:skew-y-0 transition-transform duration-700"
       style={{
         maskImage: 'linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)',
         WebkitMaskImage: 'linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)',

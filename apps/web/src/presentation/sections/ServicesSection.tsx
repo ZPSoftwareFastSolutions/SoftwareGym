@@ -48,17 +48,17 @@ export function ServicesSection({
               <Reveal delay={Math.min(index, 5) * 70}>
                 <article
                   className={cn(
-                    'surface-card group flex h-full flex-col p-7',
+                    'surface-card group flex h-full flex-col p-7 shimmer-effect',
                     'transition-[transform,border-color] duration-300',
-                    'hover:-translate-y-1.5 hover:border-action/40',
+                    'hover:-translate-y-1.5 hover:border-action/40 overflow-hidden',
                   )}
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'grid h-12 w-12 place-items-center rounded-[var(--t-radius-md)]',
+                      'grid h-12 w-12 place-items-center rounded-[var(--t-radius-md)] relative z-10',
                       'bg-structural/25 text-action',
-                      'transition-colors duration-300 group-hover:bg-action group-hover:text-on-action',
+                      'transition-all duration-300 group-hover:bg-action group-hover:text-on-action group-hover:scale-110 group-hover:shadow-[0_0_20px_var(--color-action)]',
                     )}
                   >
                     <Icon name={service.icon} size={23} />

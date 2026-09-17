@@ -37,12 +37,17 @@ export function PlanCard({ plan, href, accion }: PlanCardProps) {
   return (
     <article
       className={cn(
-        'surface-card relative flex h-full flex-col p-7 lg:p-8',
-        'transition-[transform,border-color] duration-300',
+        'surface-card relative flex flex-col p-7 lg:p-8 shimmer-effect overflow-hidden w-full max-w-sm mx-auto',
+        'transition-all duration-500 ease-out',
         featured
-          ? 'border-action/60 lg:-translate-y-3 lg:scale-[1.02]'
-          : 'hover:-translate-y-1 hover:border-action/35',
+          ? 'border-[var(--color-action)] lg:-translate-y-5 lg:scale-[1.08] z-20 shadow-[0_0_50px_rgba(57,255,20,0.3)]'
+          : 'hover:-translate-y-2 hover:border-action/50 hover:shadow-[0_0_30px_rgba(57,255,20,0.15)] z-10',
       )}
+      style={{
+        clipPath: featured 
+          ? 'polygon(5% 0, 95% 0, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0 95%, 0 5%)'
+          : 'polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%)',
+      }}
     >
       {featured && (
         <div

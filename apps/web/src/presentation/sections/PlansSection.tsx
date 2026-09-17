@@ -31,14 +31,8 @@ interface PlansSectionProps {
  * larga, y el resto se reparte solo.
  */
 function gridFor(count: number): string {
-  // El hueco vertical es mayor que el horizontal a propósito: la tarjeta
-  // destacada saca su distintivo por encima del borde, y con un `gap` simétrico
-  // ese distintivo queda pegado a la tarjeta de la fila anterior.
   return cn(
-    'grid gap-x-6 gap-y-10',
-    count === 2 && 'sm:grid-cols-2',
-    count === 3 && 'md:grid-cols-3',
-    count >= 4 && 'sm:grid-cols-2 xl:grid-cols-3',
+    'flex flex-wrap justify-center items-stretch gap-8 perspective-[2000px]',
   );
 }
 
@@ -81,11 +75,21 @@ export function PlansSection({
               )}
 
               <div className={gridFor(group.plans.length)}>
-                {group.plans.map((plan, index) => (
-                  <Reveal key={plan.id} delay={Math.min(index, 4) * 90} className="h-full">
-                    <PlanCard plan={plan} href={href} />
-                  </Reveal>
-                ))}
+                {group.plans.map((plan, index) => {
+                  const isMiddle = index === Math.floor(group.plans.length / 2);
+                  const isLeft = index < Math.floor(group.plans.length / 2);
+                  const transformClass = plan.featured 
+                    ? '' 
+                    : isLeft 
+                      ? '[transform:rotateY(12deg)_translateX(1rem)]' 
+                      : '[transform:rotateY(-12deg)_translateX(-1rem)]';
+                      
+                  return (
+                    <Reveal key={plan.id} delay={Math.min(index, 4) * 90} className={cn('h-full transition-transform duration-500 hover:[transform:rotateY(0)_translateX(0)]', transformClass)}>
+                      <PlanCard plan={plan} href={href} />
+                    </Reveal>
+                  );
+                })}
               </div>
             </div>
           ))}
