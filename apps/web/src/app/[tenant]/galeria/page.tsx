@@ -16,7 +16,7 @@ export default async function GalleryPage({ params }: TenantPageParams) {
   const breadcrumb = navigation.find((n) => n.segment === 'galeria')?.label ?? 'Galería';
 
   return (
-    <>
+    <div className="relative flex flex-col min-h-screen z-10 bg-transparent">
       <PageHero
         slug={slug}
         eyebrow="Galería"
@@ -25,23 +25,21 @@ export default async function GalleryPage({ params }: TenantPageParams) {
         breadcrumb={breadcrumb}
       />
 
-      <GallerySection items={content.gallery} eyebrow="Espacios" title="Recorrido visual" />
+      <div className="bg-black/60 backdrop-blur-md py-10">
+        <GallerySection items={content.gallery} eyebrow="Espacios" title="Recorrido visual" />
+      </div>
 
       {features.showFacilities && (
-        <FacilitiesSection
-          facilities={content.facilities}
-          eyebrow="Instalaciones"
-          title="Qué vas a encontrar"
-          layout="grid"
-        />
+        <div className="bg-black/40 backdrop-blur-md py-10">
+          <FacilitiesSection
+            facilities={content.facilities}
+            eyebrow="Instalaciones"
+            title="Qué vas a encontrar"
+          />
+        </div>
       )}
 
-      <ClosingCtaSection
-        cta={content.closingCta}
-        contact={contact}
-        slug={slug}
-        showWhatsapp={features.whatsappFloatingButton}
-      />
-    </>
+      <ClosingCtaSection cta={content.closingCta} contact={contact} slug={slug} />
+    </div>
   );
 }

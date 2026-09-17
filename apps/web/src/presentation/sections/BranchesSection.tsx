@@ -1,509 +1,128 @@
-/**
- * CAPA: Presentation / Sections
- *
- * Sucursales en la vitrina.
- *
- * Idéntica para cualquier gimnasio: recibe las sedes declaradas en su archivo
- * de configuración. Mítico con dos sedes, otro gimnasio con cinco: el
- * componente no sabe cuál es cuál, y ninguna sede está escrita aquí.
- *
- * Tres presentaciones, porque cada página pide otra cosa:
- * - `portada`: el inicio. Tarjetas grandes con imagen, beneficios de tener
- *   varias sedes y salida a la página de sucursales. Sin mapas: varios iframes
- *   de Google pesan demasiado para la portada.
- * - `detalle`: la página `/sucursales`. Una fila por sede con su mapa, todos
- *   sus datos y un ancla (`#sede-CODE`) a la que enlaza la portada.
- * - `mapas`: contacto. Tarjetas compactas con el mapa de cada sede.
- *
- * Lo que la sede no tiene cargado cae al dato general del gimnasio (teléfono,
- * WhatsApp): nunca se esconde la tarjeta ni se inventa un valor.
- */
+'use client';
 
 import type { SedeDeVitrina } from '@core/domain/catalog/branches';
-import { urlDeMapaEmbebido, urlDeUbicacion } from '@core/domain/catalog/branches';
-import { resumirSemana } from '@core/domain/catalog/schedule';
-import type { BranchesContent, ContactInfo } from '@core/domain/tenant/tenant-config';
+import { tenantHref } from '@/lib/tenant-links';
+import { Icon } from '@/presentation/icons/Icon';
+import { LinkButton } from '@/presentation/ui/Button';
+import { Reveal } from '@/presentation/ui/Reveal';
 import { cn } from '@/lib/cn';
-import { telHref, tenantHref, whatsappHref } from '@/lib/tenant-links';
-import { hasIcon, Icon } from '../icons/Icon';
-import { ArtFrame } from '../ui/ArtFrame';
-import { Badge } from '../ui/Badge';
-import { LinkButton } from '../ui/Button';
-import { Reveal } from '../ui/Reveal';
-import { SectionHeading } from '../ui/SectionHeading';
 
-export type PresentacionDeSucursales = 'portada' | 'detalle' | 'mapas';
-
-interface BranchesSectionProps {
+interface BranchesProps {
   readonly sedes: readonly SedeDeVitrina[];
-  readonly tenantName: string;
   readonly slug: string;
-  readonly contact: ContactInfo;
-  readonly contenido?: BranchesContent;
-  readonly presentacion: PresentacionDeSucursales;
-  /** `showLocationMap` del gimnasio: sin él, ni `detalle` ni `mapas` incrustan mapas. */
-  readonly conMapa?: boolean;
-  /** `false` cuando la página ya trae su propio `h1` (la de sucursales). */
-  readonly conEncabezado?: boolean;
-  /** Antetítulo propio de la página que la usa («Cómo llegar» en contacto). */
-  readonly eyebrow?: string;
-  readonly className?: string;
 }
 
-/**
- * Beneficios por defecto. Son ciertos para cualquier gimnasio multisede que
- * venda una sola membresía; el que cobre por sede declara los suyos.
- */
-const BENEFICIOS_POR_DEFECTO: BranchesContent['benefits'] = [
-  { title: 'Una sola membresía', description: 'Tu plan vale en todas las sedes. No pagas dos veces ni tienes que elegir una.', icon: 'shield' },
-  { title: 'Cambia de sede', description: 'Entrena donde te quede mejor cada día, sin avisar ni pagar nada extra.', icon: 'sparkle' },
-  { title: 'El mismo equipo', description: 'Los mismos entrenadores y la misma forma de trabajar en cualquiera de ellas.', icon: 'trainer' },
-];
-
-const NUMEROS = ['', 'Una', 'Dos', 'Tres', 'Cuatro', 'Cinco', 'Seis'];
-
-function tituloGenerico(cantidad: number): { titulo: string; acento?: string } {
-  if (cantidad <= 1) return { titulo: 'Dónde', acento: 'entrenar' };
-  return { titulo: `${NUMEROS[cantidad] ?? cantidad} sedes,`, acento: 'una sola membresía' };
-}
-
-/** Semilla estable por sede para la composición gráfica. */
-function semilla(sede: SedeDeVitrina): number {
-  if (sede.seed !== undefined) return sede.seed;
-  let valor = 7;
-  for (const caracter of sede.code) valor = (valor * 31 + caracter.charCodeAt(0)) % 997;
-  return valor;
-}
-
-function ordinal(indice: number): string {
-  return String(indice + 1).padStart(2, '0');
-}
-
-export function BranchesSection({
-  sedes,
-  tenantName,
-  slug,
-  contact,
-  contenido,
-  presentacion,
-  conMapa = true,
-  conEncabezado = true,
-  eyebrow,
-  className,
-}: BranchesSectionProps) {
+export function BranchesSection({ sedes, slug }: BranchesProps) {
   if (sedes.length === 0) return null;
 
-  const varias = sedes.length > 1;
-  const generico = tituloGenerico(sedes.length);
-  const titulo = contenido?.title ?? generico.titulo;
-  const acento = contenido ? contenido.titleAccent : generico.acento;
-  const lead =
-    contenido?.lead ??
-    (varias
-      ? `Entrena en la sede que te quede más cerca: tu membresía de ${tenantName} vale en todas.`
-      : `Te esperamos en ${tenantName}.`);
-  const beneficios = contenido?.benefits ?? BENEFICIOS_POR_DEFECTO;
-
   return (
-    <section
-      id="sucursales"
-      className={cn('section relative scroll-mt-24 overflow-hidden', className)}
-      aria-labelledby={conEncabezado ? 'sucursales-title' : undefined}
-      aria-label={conEncabezado ? undefined : 'Sucursales'}
-    >
-      {presentacion === 'portada' && <div aria-hidden="true" className="bg-aura opacity-60" />}
+    <section className="relative w-full py-24">
+      <div className="shell relative z-20 mx-auto w-full max-w-7xl">
+        <div className="mb-20 text-center max-w-3xl mx-auto">
+          <Reveal>
+            <h2 className="text-sm font-bold tracking-widest text-action uppercase mb-3">Territorios</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-white" style={{ fontFamily: 'var(--t-font-display)' }}>
+              Elige tu campo de batalla
+            </h3>
+          </Reveal>
+        </div>
 
-      <div className="shell relative">
-        {conEncabezado && (
-          <SectionHeading
-            eyebrow={eyebrow ?? contenido?.eyebrow ?? 'Nuestras sucursales'}
-            title={
-              <span id="sucursales-title">
-                {titulo}
-                {acento && (
-                  <>
-                    {' '}
-                    <span className="t-accent">{acento}</span>
-                  </>
-                )}
-              </span>
-            }
-            lead={lead}
-          />
-        )}
-
-        {varias && presentacion !== 'mapas' && (
-          <ul className={cn('grid gap-4 sm:grid-cols-3', conEncabezado && 'mt-12')}>
-            {beneficios.map((beneficio, indice) => (
-              <li key={beneficio.title}>
-                <Reveal delay={indice * 70} className="h-full">
-                  <div className="flex h-full items-start gap-4 rounded-[var(--t-radius-lg)] border border-line bg-surface/60 p-5">
-                    <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--t-radius-md)] bg-action/12 text-action">
-                      <Icon name={hasIcon(beneficio.icon) ? beneficio.icon : 'sparkle'} size={20} />
-                    </span>
-                    <span>
-                      <span className="block font-semibold text-ink">{beneficio.title}</span>
-                      <span className="mt-1 block text-[0.88rem] leading-relaxed text-muted">{beneficio.description}</span>
-                    </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          {sedes.map((sede, index) => (
+            <Reveal key={sede.name} delay={index * 150} className="h-full">
+              <article className="group relative h-full flex flex-col p-8 md:p-12 overflow-hidden rounded-[32px] bg-black/40 backdrop-blur-xl border border-white/10 transition-all duration-500 hover:border-action/40 hover:bg-black/60 hover:shadow-[0_0_50px_rgba(57,255,20,0.1)]">
+                {/* Aura de fondo */}
+                <div className="absolute -top-32 -right-32 w-64 h-64 bg-action/20 blur-[100px] rounded-full group-hover:bg-action/40 transition-colors duration-700 pointer-events-none" />
+                
+                <header className="relative z-10 flex items-start justify-between mb-8">
+                  <div>
+                    <h4 className="text-3xl font-black text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>
+                      {sede.name}
+                    </h4>
+                    <p className="text-white/60 flex items-center gap-2">
+                      <Icon name="pin" size={16} className="text-action" />
+                      {sede.address}
+                    </p>
                   </div>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
-        )}
+                  <div className="flex items-center gap-2 px-3 py-1 bg-action/10 border border-action/20 rounded-full text-action text-xs font-bold tracking-widest uppercase">
+                    <span className="w-2 h-2 rounded-full bg-action animate-pulse shadow-[0_0_10px_var(--color-action)]" />
+                    Activa
+                  </div>
+                </header>
+                
+                <div className="relative z-10 flex-1">
+                  <h5 className="text-sm font-semibold text-white/40 uppercase tracking-widest mb-4">Equipamiento Principal</h5>
+                  <ul className="flex flex-wrap gap-3 mb-8">
+                    {sede.highlights.map((f) => (
+                      <li key={f} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white/80 text-sm flex items-center gap-2">
+                        <Icon name="sparkle" size={14} className="text-action/50" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
 
-        {presentacion === 'portada' && (
-          <>
-            <ul className={cn('mt-10 grid gap-6', varias && 'lg:grid-cols-2')}>
-              {sedes.map((sede, indice) => (
-                <li key={sede.code}>
-                  <Reveal delay={Math.min(indice, 3) * 90} className="h-full">
-                    <TarjetaDePortada
-                      sede={sede}
-                      indice={indice}
-                      varias={varias}
-                      slug={slug}
-                      contact={contact}
-                      tenantName={tenantName}
-                    />
-                  </Reveal>
-                </li>
-              ))}
-            </ul>
-            {varias && (
-              <div className="mt-10 flex flex-col items-center gap-3 text-center">
-                <LinkButton href={tenantHref(slug, 'sucursales')} variant="secondary" size="lg" icon="arrowRight">
-                  Ver sucursales, mapas y horarios
-                </LinkButton>
-              </div>
-            )}
-          </>
-        )}
+                  {/* MAPA Y CONTACTO */}
+                  <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-8">
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-semibold text-white/40 uppercase tracking-widest mb-4">Contacto</h5>
+                      
+                      <div className="flex flex-col">
+                        <p className="text-white flex items-center gap-3 text-lg font-bold">
+                          <Icon name="phone" size={18} className="text-action" />
+                          {sede.phone}
+                        </p>
+                        <span className="text-white/40 text-xs pl-[30px] mt-1">Línea directa Sede {sede.name.split('·')[0]?.trim() ?? sede.name}</span>
+                      </div>
 
-        {presentacion === 'detalle' && (
-          <ol className="mt-14 flex flex-col gap-10 lg:gap-14">
-            {sedes.map((sede, indice) => (
-              <li key={sede.code} id={`sede-${sede.code}`} className="scroll-mt-28">
-                <FilaDeDetalle
-                  sede={sede}
-                  indice={indice}
-                  varias={varias}
-                  contact={contact}
-                  tenantName={tenantName}
-                  conMapa={conMapa}
-                />
-              </li>
-            ))}
-          </ol>
-        )}
+                      {sede.scheduleNote && (
+                        <p className="text-white/80 flex items-center gap-3 mt-4">
+                          <Icon name="clock" size={18} className="text-action" />
+                          <span className="text-sm">{sede.scheduleNote}</span>
+                        </p>
+                      )}
+                      
+                      <div className="pt-4">
+                        <LinkButton 
+                          href={tenantHref(slug, 'horarios')} 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-white/20 text-white hover:bg-white hover:text-black w-full justify-center"
+                        >
+                          Ver horarios completos
+                        </LinkButton>
+                      </div>
+                    </div>
 
-        {presentacion === 'mapas' && (
-          <ul className={cn('mt-14 grid gap-6', varias ? 'md:grid-cols-2' : 'max-w-2xl')}>
-            {sedes.map((sede, indice) => (
-              <li key={sede.code}>
-                <Reveal delay={Math.min(indice, 3) * 80} className="h-full">
-                  <TarjetaConMapa
-                    sede={sede}
-                    varias={varias}
-                    contact={contact}
-                    tenantName={tenantName}
-                    conMapa={conMapa}
-                  />
-                </Reveal>
-              </li>
-            ))}
-          </ul>
-        )}
+                    <div className="w-full h-56 md:h-64 rounded-2xl overflow-hidden border border-white/10 opacity-80 group-hover:opacity-100 transition-opacity duration-500">
+                      <iframe
+                        title={`Mapa de ${sede.name}`}
+                        src={sede.mapEmbedUrl || `https://www.google.com/maps?q=${encodeURIComponent(sede.address)}&z=17&output=embed`}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen={false}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <footer className="relative z-10 mt-auto pt-8 border-t border-white/10">
+                  <LinkButton
+                    href={tenantHref(slug, 'instalaciones')}
+                    variant="ghost"
+                    icon="arrowRight"
+                    className="w-full justify-between px-0 text-white hover:text-action"
+                  >
+                    Ver instalaciones completas
+                  </LinkButton>
+                </footer>
+              </article>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
-  );
-}
-
-interface PiezaProps {
-  readonly sede: SedeDeVitrina;
-  readonly varias: boolean;
-  readonly contact: ContactInfo;
-  readonly tenantName: string;
-}
-
-/** Imagen de la sede: composición de marca con número y nombre grandes. */
-function VisualDeSucursal({
-  sede,
-  indice,
-  varias,
-  tenantName,
-  tituloId,
-  className,
-}: Omit<PiezaProps, 'contact'> & {
-  readonly indice: number;
-  /** Con id, el nombre ES el título de la tarjeta (`h3`); sin él, un rótulo visual. */
-  readonly tituloId?: string;
-  readonly className?: string;
-}) {
-  // Un `h*` hereda la tipografía display de la marca; el rótulo sin título
-  // tiene que pedirla explícitamente para verse igual.
-  const Nombre = tituloId ? 'h3' : 'p';
-  return (
-    <div className={cn('relative', className)}>
-      <ArtFrame seed={semilla(sede)} ratio="16 / 10" className="h-full w-full rounded-none border-0" />
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-      <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-7">
-        <div className="flex items-start justify-between gap-3">
-          {varias ? (
-            <span className="text-5xl font-bold leading-none text-action/90 sm:text-6xl" style={{ fontFamily: 'var(--t-font-display)' }}>
-              {ordinal(indice)}
-            </span>
-          ) : (
-            <span />
-          )}
-          {varias && sede.isPrimary && <Badge tone="action">Sede principal</Badge>}
-        </div>
-        <div>
-          <p className="flex items-center gap-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white/80">
-            <Icon name="pin" size={14} className="text-action" />
-            {tenantName}
-          </p>
-          <Nombre
-            id={tituloId}
-            className="t-h2 mt-1.5 text-white"
-            style={tituloId ? undefined : { fontFamily: 'var(--t-font-display)', textTransform: 'var(--t-heading-transform)', letterSpacing: 'var(--t-heading-tracking)', lineHeight: 1.06 }}
-          >
-            {sede.name}
-          </Nombre>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Destacados({ sede, columnas = false }: { readonly sede: SedeDeVitrina; readonly columnas?: boolean }) {
-  if (sede.highlights.length === 0) return null;
-  return (
-    <ul className={cn('grid gap-2.5', columnas && 'sm:grid-cols-2')}>
-      {sede.highlights.map((destacado) => (
-        <li key={destacado} className="flex items-start gap-2.5 text-[0.92rem] text-ink">
-          <span aria-hidden="true" className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-action/15 text-action">
-            <Icon name="check" size={13} />
-          </span>
-          {destacado}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function DatosDeContacto({
-  sede,
-  contact,
-  completo = false,
-}: {
-  readonly sede: SedeDeVitrina;
-  readonly contact: ContactInfo;
-  readonly completo?: boolean;
-}) {
-  const horario = resumirSemana(sede.week);
-  const telefono = sede.phone || contact.phone;
-
-  return (
-    <dl className="flex flex-col gap-3 text-[0.92rem]">
-      <div className="flex items-start gap-3">
-        <dt className="sr-only">Dirección</dt>
-        <Icon name="pin" size={18} className="mt-0.5 shrink-0 text-action" />
-        <dd className="text-ink">{sede.address}</dd>
-      </div>
-      <div className="flex items-start gap-3">
-        <dt className="sr-only">Horario</dt>
-        <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-action" />
-        <dd className="text-muted">
-          {horario.length > 0
-            ? horario.map((linea) => (
-                <span key={linea} className="block text-ink">
-                  {linea}
-                </span>
-              ))
-            : 'Consúltanos el horario de esta sede por WhatsApp.'}
-          {sede.scheduleNote && <span className="mt-1 block">{sede.scheduleNote}</span>}
-        </dd>
-      </div>
-      {completo && (
-        <div className="flex items-start gap-3">
-          <dt className="sr-only">Teléfono</dt>
-          <Icon name="phone" size={18} className="mt-0.5 shrink-0 text-action" />
-          <dd>
-            <a href={telHref(telefono)} className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:text-action hover:underline">
-              {telefono}
-            </a>
-          </dd>
-        </div>
-      )}
-      {completo && sede.email && (
-        <div className="flex items-start gap-3">
-          <dt className="sr-only">Correo</dt>
-          <Icon name="mail" size={18} className="mt-0.5 shrink-0 text-action" />
-          <dd>
-            <a href={`mailto:${sede.email}`} className="inline-flex min-h-11 items-center break-all text-ink underline-offset-4 hover:text-action hover:underline">
-              {sede.email}
-            </a>
-          </dd>
-        </div>
-      )}
-    </dl>
-  );
-}
-
-function TarjetaDePortada({
-  sede,
-  indice,
-  varias,
-  slug,
-  contact,
-  tenantName,
-}: PiezaProps & { readonly indice: number; readonly slug: string }) {
-  const ubicacion = urlDeUbicacion(sede, contact.city);
-
-  return (
-    <article
-      className="surface-card group flex h-full flex-col overflow-hidden transition-colors hover:border-action/40"
-      aria-labelledby={`portada-sede-${sede.code}`}
-    >
-      <VisualDeSucursal
-        sede={sede}
-        indice={indice}
-        varias={varias}
-        tenantName={tenantName}
-        tituloId={`portada-sede-${sede.code}`}
-      />
-
-      <div className="flex flex-1 flex-col gap-5 p-6 sm:p-8">
-        <div>
-          {sede.tagline && <p className="t-eyebrow">{sede.tagline}</p>}
-          {sede.description && <p className="mt-3 leading-relaxed text-muted">{sede.description}</p>}
-        </div>
-
-        <Destacados sede={sede} />
-
-        <div className="mt-auto flex flex-col gap-5 border-t border-line pt-5">
-          <DatosDeContacto sede={sede} contact={contact} />
-          <div className="flex flex-wrap gap-2.5">
-            {ubicacion && (
-              <LinkButton href={ubicacion} external variant="primary" size="md" icon="pin" iconPosition="start">
-                Ver ubicación
-              </LinkButton>
-            )}
-            {varias && (
-              <LinkButton href={`${tenantHref(slug, 'sucursales')}#sede-${sede.code}`} variant="ghost" size="md" icon="arrowRight">
-                Conocer la sede
-              </LinkButton>
-            )}
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function FilaDeDetalle({
-  sede,
-  indice,
-  varias,
-  contact,
-  tenantName,
-  conMapa,
-}: PiezaProps & { readonly indice: number; readonly conMapa: boolean }) {
-  const mapa = conMapa ? urlDeMapaEmbebido(sede, contact.city) : null;
-  const ubicacion = urlDeUbicacion(sede, contact.city);
-  // Alterna el lado de la imagen: dos filas iguales seguidas se leen como una lista.
-  const invertida = indice % 2 === 1;
-
-  return (
-    <Reveal>
-      <article className="surface-card grid overflow-hidden lg:grid-cols-2" aria-labelledby={`detalle-sede-${sede.code}`}>
-        <div className={cn('relative flex flex-col', invertida && 'lg:order-2')}>
-          <VisualDeSucursal sede={sede} indice={indice} varias={varias} tenantName={tenantName} />
-          {mapa && (
-            <iframe
-              src={mapa}
-              title={`Mapa de ${tenantName} ${sede.name}`}
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="map-embed h-64 w-full flex-1 border-0 border-t border-line lg:min-h-72"
-            />
-          )}
-        </div>
-
-        <div className="flex flex-col gap-6 p-7 sm:p-9 lg:p-11">
-          <div>
-            <p className="t-eyebrow">{sede.tagline || (varias && sede.isPrimary ? 'Sede principal' : 'Sucursal')}</p>
-            <h2 id={`detalle-sede-${sede.code}`} className="t-h2 mt-4">
-              {sede.name}
-            </h2>
-            {sede.description && <p className="t-lead mt-4">{sede.description}</p>}
-          </div>
-
-          <Destacados sede={sede} columnas />
-
-          <div className="rounded-[var(--t-radius-lg)] border border-line bg-surface/60 p-5">
-            <DatosDeContacto sede={sede} contact={contact} completo />
-          </div>
-
-          <div className="mt-auto flex flex-wrap gap-2.5">
-            {ubicacion && (
-              <LinkButton href={ubicacion} external variant="primary" size="lg" icon="pin" iconPosition="start" glow>
-                Cómo llegar
-              </LinkButton>
-            )}
-            <LinkButton href={whatsappHref(contact)} external variant="secondary" size="lg" icon="whatsapp" iconPosition="start">
-              Escribir por WhatsApp
-            </LinkButton>
-          </div>
-        </div>
-      </article>
-    </Reveal>
-  );
-}
-
-function TarjetaConMapa({ sede, varias, contact, tenantName, conMapa }: PiezaProps & { readonly conMapa: boolean }) {
-  const mapa = conMapa ? urlDeMapaEmbebido(sede, contact.city) : null;
-  const ubicacion = urlDeUbicacion(sede, contact.city);
-
-  return (
-    <article className="surface-card flex h-full flex-col overflow-hidden" aria-labelledby={`mapa-sede-${sede.code}`}>
-      {mapa ? (
-        <iframe
-          src={mapa}
-          title={`Mapa de ${tenantName} ${sede.name}`}
-          loading="lazy"
-          referrerPolicy="strict-origin-when-cross-origin"
-          className="map-embed h-56 w-full border-0 border-b border-line"
-        />
-      ) : (
-        <ArtFrame seed={semilla(sede)} icon="pin" ratio="16 / 9" className="rounded-none border-0 border-b" />
-      )}
-
-      <div className="flex flex-1 flex-col gap-5 p-6 sm:p-7">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted">{sede.tagline || tenantName}</span>
-            {varias && sede.isPrimary && <Badge tone="action">Sede principal</Badge>}
-          </div>
-          <h3 id={`mapa-sede-${sede.code}`} className="t-h3 mt-1.5">
-            {sede.name}
-          </h3>
-        </div>
-
-        <DatosDeContacto sede={sede} contact={contact} completo />
-
-        <div className="mt-auto flex flex-wrap gap-2.5">
-          {ubicacion && (
-            <LinkButton href={ubicacion} external variant="primary" size="md" icon="pin" iconPosition="start">
-              Ver ubicación
-            </LinkButton>
-          )}
-          <LinkButton href={whatsappHref(contact)} external variant="secondary" size="md" icon="whatsapp" iconPosition="start">
-            Escribir
-          </LinkButton>
-        </div>
-      </div>
-    </article>
   );
 }

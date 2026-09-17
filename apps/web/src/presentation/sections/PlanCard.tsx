@@ -5,12 +5,12 @@ import { cn } from '@/lib/cn';
 import { Icon } from '@/presentation/icons/Icon';
 import { LinkButton } from '@/presentation/ui/Button';
 
-interface PlanCardV2Props {
+interface PlanCardProps {
   readonly plan: MembershipPlan;
   readonly href: string;
 }
 
-export function PlanCardV2({ plan, href }: PlanCardV2Props) {
+export function PlanCard({ plan, href }: PlanCardProps) {
   const { featured } = plan;
 
   return (

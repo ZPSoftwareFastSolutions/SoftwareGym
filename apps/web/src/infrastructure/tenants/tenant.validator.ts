@@ -194,6 +194,9 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
       }
       if (!sede.name.trim()) issues.push(`content.branches.sedes "${sede.code}": name no puede estar vacío.`);
       if (!sede.address.trim()) issues.push(`content.branches.sedes "${sede.code}": address no puede estar vacía.`);
+      if (sede.whatsapp !== undefined && !/^\d{10,15}$/.test(sede.whatsapp)) {
+        issues.push(`content.branches.sedes "${sede.code}": whatsapp debe ser solo dígitos con código de país (sin + ni espacios).`);
+      }
       if (sede.highlights.length > 5) {
         issues.push(`content.branches.sedes "${sede.code}": máximo cinco highlights (tiene ${sede.highlights.length}).`);
       }

@@ -1,17 +1,6 @@
-/**
- * CAPA: Presentation / Sections
- *
- * Banda de texto en movimiento continuo.
- *
- * Se anima con `transform` (compositor, sin reflow) y el contenido se duplica
- * para que el bucle sea imperceptible. La copia está `aria-hidden`: el lector
- * de pantalla anunciaría la lista dos veces.
- *
- * Con `prefers-reduced-motion` la regla global la detiene: un movimiento
- * horizontal permanente es de lo peor para trastornos vestibulares.
- */
+'use client';
 
-import { Icon } from '../icons/Icon';
+import { Icon } from '@/presentation/icons/Icon';
 
 interface MarqueeStripProps {
   readonly items: readonly string[];
@@ -23,18 +12,18 @@ export function MarqueeStrip({ items }: MarqueeStripProps) {
   const Row = ({ hidden }: { hidden?: boolean }) => (
     <ul
       aria-hidden={hidden || undefined}
-      className="flex shrink-0 items-center gap-10 px-5"
+      className="flex shrink-0 items-center gap-12 px-6"
       style={{ minWidth: '50%' }}
     >
-      {items.map((item) => (
-        <li key={item} className="flex items-center gap-10 whitespace-nowrap">
+      {items.map((item, i) => (
+        <li key={item + i} className="flex items-center gap-12 whitespace-nowrap">
           <span
-            className="text-[1.05rem] font-bold uppercase tracking-[0.2em] text-ink/85"
+            className="text-2xl font-black uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-action via-white to-action bg-[length:200%_auto] animate-[gradient-x_3s_linear_infinite]"
             style={{ fontFamily: 'var(--t-font-display)' }}
           >
             {item}
           </span>
-          <Icon name="sparkle" size={15} className="text-action" />
+          <Icon name="sparkle" size={24} className="text-action drop-shadow-[0_0_10px_var(--color-action)] animate-pulse" />
         </li>
       ))}
     </ul>
@@ -43,13 +32,17 @@ export function MarqueeStrip({ items }: MarqueeStripProps) {
   return (
     <div
       data-print="hide"
-      className="relative overflow-hidden border-y border-line bg-raised py-5 shadow-[inset_0_0_30px_rgba(57,255,20,0.05)] transform -skew-y-2 hover:skew-y-0 transition-transform duration-700"
+      className="relative overflow-hidden py-10 my-10 perspective-[1000px] border-y border-white/5 bg-black/40 backdrop-blur-md shadow-[0_0_50px_rgba(57,255,20,0.05)]"
       style={{
-        maskImage: 'linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)',
-        WebkitMaskImage: 'linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)',
+        maskImage: 'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent)',
+        WebkitMaskImage: 'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent)',
       }}
     >
-      <div className="flex w-max animate-marquee">
+      {/* Overlay de luz holográfica */}
+      <div className="absolute inset-0 bg-gradient-to-b from-action/5 via-transparent to-action/5 pointer-events-none mix-blend-screen" />
+      
+      {/* Contenedor del Marquee con perspectiva 3D */}
+      <div className="flex w-max animate-marquee transform rotate-x-12 -rotate-y-2 scale-110 transition-transform duration-1000 hover:rotate-x-0 hover:rotate-y-0 hover:scale-100">
         <Row />
         <Row hidden />
       </div>

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { ContactConfig } from '@core/domain/tenant/tenant-config';
-import type { Sede } from '@core/domain/catalog/branches';
+import type { ContactInfo } from '@core/domain/tenant/tenant-config';
+import type { SedeDeVitrina } from '@core/domain/catalog/branches';
 import { Icon } from '@/presentation/icons/Icon';
 
 const FIELD_CLASSES = [
@@ -25,12 +25,12 @@ const INTERESES = [
 ] as const;
 
 interface ContactFormProps {
-  readonly contact: ContactConfig;
+  readonly contact: ContactInfo;
   readonly name: string;
-  readonly sedes?: readonly Sede[];
+  readonly sedes?: readonly SedeDeVitrina[];
 }
 
-export function ContactFormV2({ contact, name, sedes = [] }: ContactFormProps) {
+export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
   const searchParams = useSearchParams();
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
@@ -45,11 +45,12 @@ export function ContactFormV2({ contact, name, sedes = [] }: ContactFormProps) {
     else if (interesQuery === 'productos') setInteres('Productos y suplementos');
   }, [searchParams]);
 
-  // Si hay varias sedes, obtenemos el número de la sede seleccionada, sino el general
+  // Con varias sedes, el mensaje va al WhatsApp de la elegida. Se usa su campo
+  // `whatsapp` (con código de país) y no `phone`: `wa.me/78992777` no existe.
   const getSedePhone = () => {
     if (sedes.length > 1 && sedeSeleccionada) {
-      const sede = sedes.find(s => s.code === sedeSeleccionada);
-      if (sede?.phone) return sede.phone;
+      const sede = sedes.find((s) => s.code === sedeSeleccionada);
+      if (sede?.whatsapp) return sede.whatsapp;
     }
     return contact.whatsapp || contact.phone;
   };

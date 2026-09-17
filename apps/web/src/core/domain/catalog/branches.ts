@@ -29,6 +29,14 @@ export interface SedeDeVitrina {
   readonly highlights: readonly string[];
   readonly address: string;
   readonly phone: string;
+  /**
+   * WhatsApp de la sede en formato internacional, solo dígitos (`59178992777`).
+   *
+   * No se deduce de `phone`: el teléfono se publica como lo marca un vecino
+   * (`78992777`), y `wa.me` sin código de país manda el mensaje a un número
+   * que no existe. Ausente, el formulario usa el WhatsApp general del gimnasio.
+   */
+  readonly whatsapp?: string;
   readonly email?: string;
   /** Horario de atención PROPIO: dos sedes del mismo gimnasio no cierran igual. */
   readonly week: readonly DaySchedule[];

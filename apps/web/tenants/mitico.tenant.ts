@@ -991,6 +991,7 @@ export const miticoTenant: TenantConfig = {
     faq: [
       {
         id: 'sucursales',
+        tags: ['horarios'],
         question: '¿Puedo entrenar en las dos sedes?',
         answer:
           'Con los paquetes Life y con los que traen «entrada a dos sucursales», sí: entrenas tanto en la sede del Centro (El Prado) como en Mítico Fitness Life (Miraflores). Los paquetes de una sola sucursal valen en la que elijas al contratar.',
@@ -1003,6 +1004,7 @@ export const miticoTenant: TenantConfig = {
       },
       {
         id: 'horarios',
+        tags: ['horarios'],
         question: '¿A qué hora abren?',
         answer:
           'Las dos sedes abren de lunes a viernes de 07:00 a 23:00. Los sábados, el Centro de 09:00 a 22:00 y Miraflores de 08:00 a 22:00. Miraflores abre además los domingos, de 08:00 a 14:00.',
@@ -1027,6 +1029,7 @@ export const miticoTenant: TenantConfig = {
       },
       {
         id: 'clases',
+        tags: ['horarios'],
         question: '¿Qué clases dirigidas hay?',
         answer:
           'Baile urbano, Fight DO, heels y danza árabe, y baile fitness en Miraflores. Van dentro de los paquetes Dance, Mítico Fitness y Mítico Dance: no se pagan aparte. Cada sede tiene su propio horario, que puedes ver en la página de clases.',
@@ -1089,6 +1092,7 @@ export const miticoTenant: TenantConfig = {
           // la zona, y eso es lo que se publica hasta que el cliente la confirme.
           address: 'Zona Centro, El Prado · La Paz',
           phone: '77700867',
+          whatsapp: '59177700867',
           week: [...SEMANA_CENTRO],
           isPrimary: true,
           seed: 41,
@@ -1109,6 +1113,7 @@ export const miticoTenant: TenantConfig = {
           // PENDIENTE: dirección postal exacta, igual que en la sede del Centro.
           address: 'Zona Miraflores · La Paz',
           phone: '78992777',
+          whatsapp: '59178992777',
           week: [...SEMANA_MIRAFLORES],
           scheduleNote: 'Única sede con atención los domingos.',
           isPrimary: false,

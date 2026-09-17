@@ -1,20 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import type { ClaseGym } from '@core/domain/catalog/catalog';
-import type { DayHours } from '@core/domain/schedule';
-import type { Sede } from '@core/domain/catalog/branches';
+import type { ClaseDeVitrina, DaySchedule, SedeDeVitrina } from '@core/domain/catalog/catalog';
+import { NOMBRE_DE_DIA_ISO, rangoLegible } from '@core/domain/catalog/classes';
 import { cn } from '@/lib/cn';
 import { Reveal } from '@/presentation/ui/Reveal';
 import { Icon } from '@/presentation/icons/Icon';
 
 interface ScheduleTabsProps {
-  readonly classes: readonly ClaseGym[];
-  readonly hours: readonly DayHours[];
-  readonly sedes: readonly Sede[];
+  readonly classes: readonly ClaseDeVitrina[];
+  /** Horario general del gimnasio: se usa solo si no hay sedes con horario propio. */
+  readonly hours: readonly DaySchedule[];
+  readonly sedes: readonly SedeDeVitrina[];
 }
 
-export function ScheduleTabsV2({ classes, hours, sedes }: ScheduleTabsProps) {
+export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
   const [activeTab, setActiveTab] = useState<'atencion' | 'clases'>('atencion');
   const [activeSede, setActiveSede] = useState<string>(sedes[0]?.code || '');
 
@@ -23,7 +23,9 @@ export function ScheduleTabsV2({ classes, hours, sedes }: ScheduleTabsProps) {
     horarios: c.horarios.filter(h => h.branchCode === activeSede)
   })).filter(c => c.horarios.length > 0);
 
-  const currentSedeHours = hours; // In this domain, hours is general or per sede. Assuming general for now.
+  // Cada sede tiene su propia semana: Miraflores abre los domingos y el Centro
+  // no. Mostrar el horario general en las dos pestañas contaba mal a una de ellas.
+  const currentSedeHours = sedes.find((s) => s.code === activeSede)?.week ?? hours;
 
   return (
     <div className="w-full max-w-5xl mx-auto py-12">
@@ -83,7 +85,7 @@ export function ScheduleTabsV2({ classes, hours, sedes }: ScheduleTabsProps) {
       {activeTab === 'atencion' && (
         <Reveal>
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-            {hours.map((day, idx) => (
+            {currentSedeHours.map((day) => (
               <div 
                 key={day.day} 
                 className={cn(
@@ -114,7 +116,7 @@ export function ScheduleTabsV2({ classes, hours, sedes }: ScheduleTabsProps) {
             {filteredClasses.length === 0 ? (
               <div className="text-center py-12 text-white/40">No hay clases programadas para esta sede.</div>
             ) : (
-              filteredClasses.map((clase, idx) => {
+              filteredClasses.map((clase) => {
                 let bgClass = 'bg-black/60 border-white/10';
                 if (clase.name.toLowerCase().includes('baile')) bgClass = 'bg-purple-900/40 border-purple-500/30';
                 else if (clase.name.toLowerCase().includes('fight')) bgClass = 'bg-red-900/40 border-red-500/30';
@@ -129,11 +131,12 @@ export function ScheduleTabsV2({ classes, hours, sedes }: ScheduleTabsProps) {
                     
                     <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
                       {clase.horarios.map((h, i) => {
-                        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                        // Día ISO (1 = lunes … 7 = domingo). Un arreglo que empieza en
+                        // domingo dejaba el 7 sin nombre.
                         return (
                           <div key={i} className="flex flex-col items-center bg-black/40 px-4 py-2 rounded-xl min-w-[100px] border border-white/5">
-                            <span className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">{days[h.weekday]}</span>
-                            <span className="text-action font-mono">{h.startTime}</span>
+                            <span className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">{NOMBRE_DE_DIA_ISO[h.weekday].slice(0, 3)}</span>
+                            <span className="text-action font-mono">{rangoLegible(h)}</span>
                           </div>
                         );
                       })}

@@ -227,6 +227,12 @@ export interface FaqItem {
   readonly id: string;
   readonly question: string;
   readonly answer: string;
+  /**
+   * Temas de la pregunta («horarios»). Permiten que una página muestre solo las
+   * que le tocan sin copiar la lista. Sin etiquetas, la pregunta sale solo en
+   * las páginas que muestran todas.
+   */
+  readonly tags?: readonly string[];
 }
 
 export interface StatItem {

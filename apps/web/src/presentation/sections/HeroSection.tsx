@@ -1,120 +1,75 @@
-/**
- * CAPA: Presentation / Sections
- * Portada del sitio. Es el elemento LCP: no lleva animación de entrada que
- * retrase su pintado ni imágenes que compitan por ancho de banda.
- */
+'use client';
 
 import type { HeroContent } from '@core/domain/tenant/tenant-config';
 import { tenantHref } from '@/lib/tenant-links';
-import { Icon } from '../icons/Icon';
-import { LinkButton } from '../ui/Button';
-import { Reveal } from '../ui/Reveal';
+import { LinkButton } from '@/presentation/ui/Button';
+import { Icon } from '@/presentation/icons/Icon';
+import { ArtFrame } from '@/presentation/ui/ArtFrame';
+import { Reveal } from '@/presentation/ui/Reveal';
 
-interface HeroSectionProps {
+interface HeroProps {
   readonly hero: HeroContent;
   readonly slug: string;
-  /**
-   * Sedes activas (V3.0), para decirlo en la primera pantalla: con varias
-   * sedes, «dónde queda» es la primera duda de quien llega. Vacío o una sola,
-   * no se pinta nada.
-   */
   readonly sedes?: readonly string[];
 }
 
-export function HeroSection({ hero, slug, sedes = [] }: HeroSectionProps) {
+export function HeroSection({ hero, slug, sedes }: HeroProps) {
   return (
-    <section
-      className="relative flex min-h-[92svh] items-center overflow-hidden pt-[var(--header-height)]"
-      aria-labelledby="hero-title"
-    >
-      <div aria-hidden="true" className="bg-aura" />
-      <div aria-hidden="true" className="bg-grid" />
-      <div aria-hidden="true" className="bg-noise" />
+    <section className="relative w-full min-h-[90vh] flex items-center overflow-hidden">
+      <div className="shell relative z-20 mx-auto w-full max-w-7xl pt-20 pb-32">
+        <div className="flex flex-col items-center text-center space-y-8">
+          
+          <Reveal delay={0}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-action/40 bg-action/10 px-5 py-2 text-sm font-medium text-action backdrop-blur-md shadow-[0_0_15px_rgba(57,255,20,0.2)]">
+              <Icon name="sparkle" size={16} />
+              <span>{sedes && sedes.length > 0 ? sedes.join(' • ') : 'El olimpo del fitness'}</span>
+            </div>
+          </Reveal>
 
-      <div className="shell relative py-20 lg:py-24">
-        <div className="max-w-4xl">
-          <p className="t-eyebrow">{hero.eyebrow}</p>
+          <Reveal delay={100}>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-white drop-shadow-2xl max-w-5xl leading-[1.1]" style={{ fontFamily: 'var(--t-font-display)' }}>
+              {hero.title}{' '}
+              <br className="hidden md:block" />
+              <span className="relative inline-block mt-4 md:mt-0">
+                <span className="absolute inset-0 bg-action blur-[40px] opacity-60 animate-pulse mix-blend-screen"></span>
+                <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-action via-white to-action bg-[length:200%_auto] animate-[gradient-x_4s_linear_infinite]">
+                  {hero.titleAccent}
+                </span>
+              </span>
+            </h1>
+          </Reveal>
 
-          <h1 id="hero-title" className="t-display mt-7">
-            {hero.title}{' '}
-            <span className="t-accent inline-block relative text-gradient-dynamic drop-shadow-[0_0_15px_var(--color-action)]">
-              <span className="absolute inset-0 blur-[30px] opacity-70 bg-[var(--color-action)] mix-blend-screen animate-pulse" aria-hidden="true"></span>
-              <span className="relative z-10">{hero.titleAccent}</span>
-            </span>
-          </h1>
+          <Reveal delay={200}>
+            <p className="max-w-2xl text-lg md:text-xl text-white/80 font-medium leading-relaxed drop-shadow-md">
+              {hero.subtitle}
+            </p>
+          </Reveal>
 
-          <p className="t-lead mt-7 max-w-2xl">{hero.subtitle}</p>
-
-          <div className="mt-10 flex flex-col gap-3.5 sm:flex-row sm:items-center">
-            <LinkButton
-              href={tenantHref(slug, hero.primaryCta.segment)}
-              size="lg"
-              icon="arrowRight"
-              glow
-            >
-              {hero.primaryCta.label}
-            </LinkButton>
-            <LinkButton
-              href={tenantHref(slug, hero.secondaryCta.segment)}
-              variant="secondary"
-              size="lg"
-            >
-              {hero.secondaryCta.label}
-            </LinkButton>
-          </div>
-
-          {sedes.length > 1 && (
-            <nav aria-label="Nuestras sedes" className="mt-9">
-              <ul className="flex flex-wrap items-center gap-2.5">
-                <li className="me-1 flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-muted">
-                  <Icon name="pin" size={16} className="text-action" />
-                  {sedes.length} sedes
-                </li>
-                {sedes.map((sede) => (
-                  <li key={sede}>
-                    <a
-                      href={tenantHref(slug, 'sucursales')}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-action/40 bg-action/10 px-4 text-[0.9rem] font-semibold text-ink transition-colors hover:border-action hover:bg-action hover:text-on-action"
-                    >
-                      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-action shadow-[0_0_10px_var(--t-action)]" />
-                      {sede}
-                    </a>
-                  </li>
-                ))}
-                <li className="hidden text-[0.86rem] text-muted sm:block">· una sola membresía</li>
-              </ul>
-            </nav>
-          )}
+          <Reveal delay={300}>
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6 w-full sm:w-auto">
+              <LinkButton
+                href={tenantHref(slug, `${hero.primaryCta.segment}`)}
+                size="lg"
+                className="bg-action text-black hover:bg-action/90 hover:scale-105 hover:shadow-[0_0_30px_rgba(57,255,20,0.4)] h-14 px-8 text-lg font-bold border-none transition-all duration-300"
+              >
+                {hero.primaryCta.label}
+              </LinkButton>
+              {hero.secondaryCta && (
+                <LinkButton
+                  href={tenantHref(slug, `${hero.secondaryCta.segment}`)}
+                  variant="outline"
+                  size="lg"
+                  className="bg-white/5 text-white border border-white/20 hover:bg-white/10 hover:border-white/40 hover:scale-105 h-14 px-8 text-lg transition-all duration-300"
+                >
+                  {hero.secondaryCta.label}
+                </LinkButton>
+              )}</div>
+          </Reveal>
         </div>
-
-        <Reveal delay={220}>
-          <dl className="mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--t-radius-lg)] border border-line bg-line lg:mt-20 lg:grid-cols-4">
-            {hero.stats.map((stat) => (
-              <div key={stat.label} className="bg-surface px-5 py-7 text-center sm:px-7">
-                <dt className="sr-only">{stat.label}</dt>
-                <dd>
-                  <span
-                    className="block text-4xl font-bold leading-none text-action lg:text-5xl"
-                    style={{ fontFamily: 'var(--t-font-display)' }}
-                  >
-                    {stat.value}
-                  </span>
-                  <span className="mt-2.5 block text-[0.76rem] uppercase tracking-[0.14em] text-muted">
-                    {stat.label}
-                  </span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Reveal>
       </div>
-
-      <span
-        aria-hidden="true"
-        className="absolute bottom-7 start-1/2 hidden -translate-x-1/2 text-muted lg:block"
-      >
-        <Icon name="arrowDown" size={20} />
-      </span>
+      
+      {/* Elementos decorativos mitológicos / de energía */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0c0e0f] to-transparent z-10 pointer-events-none" />
     </section>
   );
 }

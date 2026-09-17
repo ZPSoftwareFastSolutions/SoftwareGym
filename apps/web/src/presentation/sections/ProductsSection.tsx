@@ -1,133 +1,61 @@
-/**
- * CAPA: Presentation / Sections
- *
- * Catálogo de mostrador: indumentaria, suplementos y accesorios.
- *
- * En V1 esto es exhibición, no comercio: no hay carrito, ni stock, ni pasarela.
- * Cada artículo deriva a WhatsApp con el nombre precargado, que es exactamente
- * como el gimnasio vende hoy. Simular un checkout que no cobra sería peor que
- * no tenerlo.
- */
+'use client';
 
-import type { ContactInfo } from '@core/domain/tenant/tenant-config';
 import type { ProductCategory } from '@core/domain/catalog/catalog';
-import { whatsappHref } from '@/lib/tenant-links';
-import { Icon } from '../icons/Icon';
-import { Badge } from '../ui/Badge';
-import { LinkButton } from '../ui/Button';
-import { Reveal } from '../ui/Reveal';
-import { SectionHeading } from '../ui/SectionHeading';
+import type { ContactInfo } from '@core/domain/tenant/tenant-config';
+import { tenantHref } from '@/lib/tenant-links';
+import { LinkButton } from '@/presentation/ui/Button';
+import { Reveal } from '@/presentation/ui/Reveal';
 
-interface ProductsSectionProps {
+interface ProductsProps {
   readonly categories: readonly ProductCategory[];
   readonly contact: ContactInfo;
-  readonly eyebrow?: string;
-  readonly title?: string;
-  readonly lead?: string;
+  readonly slug: string;
 }
 
-/** Consulta por un artículo concreto, con el nombre ya escrito en el mensaje. */
-function productEnquiryHref(contact: ContactInfo, productName: string): string {
-  const digits = contact.whatsapp.replace(/\D/g, '');
-  const message = `Hola 👋 Quiero consultar por: ${productName}`;
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
-}
-
-export function ProductsSection({
-  categories,
-  contact,
-  eyebrow = 'Productos',
-  title = 'Calidad en la que puedes confiar',
-  lead,
-}: ProductsSectionProps) {
-  const withItems = categories.filter((c) => c.items.length > 0);
-  if (withItems.length === 0) return null;
+export function ProductsSection({ categories, contact, slug }: ProductsProps) {
+  if (categories.length === 0) return null;
 
   return (
-    <section className="section relative overflow-hidden" aria-labelledby="productos-title">
-      <div className="shell relative">
-        <SectionHeading eyebrow={eyebrow} title={title} lead={lead} align="center" />
-
-        <div className="mt-16 flex flex-col gap-16 lg:mt-20">
-          {withItems.map((category) => (
-            <div key={category.id}>
-              <Reveal>
-                <header className="flex items-start gap-4">
-                  <span
-                    aria-hidden="true"
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--t-radius-md)] bg-action/12 text-action"
-                  >
-                    <Icon name={category.icon} size={21} />
-                  </span>
-                  <div>
-                    <h3 className="t-h3">{category.name}</h3>
-                    <p className="mt-1.5 text-[0.9rem] text-muted">{category.description}</p>
-                  </div>
-                </header>
-              </Reveal>
-
-              <ul className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {category.items.map((item, index) => (
-                  <li key={item.id}>
-                    <Reveal delay={Math.min(index, 5) * 70} className="h-full">
-                      {/* El distintivo va en flujo, no absoluto sobre el borde:
-                          sobresaliendo quedaba a 5 px de la tarjeta de la fila
-                          anterior y se leía como si la tocara. */}
-                      <article className="surface-card flex h-full flex-col gap-4 p-6">
-                        {item.badge && (
-                          <div>
-                            <Badge>{item.badge}</Badge>
-                          </div>
-                        )}
-
-                        <div className="flex-1">
-                          <h4 className="text-[1.02rem] font-semibold leading-snug text-ink">
-                            {item.name}
-                          </h4>
-                          {item.note && (
-                            <p className="mt-1.5 text-[0.85rem] text-muted">{item.note}</p>
-                          )}
-                        </div>
-
-                        <p className="flex items-baseline gap-1.5">
-                          <span className="text-[0.85rem] font-semibold text-muted">
-                            {item.currency}
-                          </span>
-                          <span
-                            className="text-3xl font-bold leading-none text-ink"
-                            style={{ fontFamily: 'var(--t-font-display)' }}
-                          >
-                            {item.price.toLocaleString('es-BO')}
-                          </span>
-                        </p>
-
-                        <LinkButton
-                          href={productEnquiryHref(contact, item.name)}
-                          variant="secondary"
-                          size="sm"
-                          fullWidth
-                          external
-                        >
-                          Consultar
-                        </LinkButton>
-                      </article>
-                    </Reveal>
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <section className="relative w-full py-24 bg-black/20">
+      <div className="shell relative z-20 mx-auto w-full max-w-7xl">
+        {/* CARRUSEL HORIZONTAL EN MÓVIL */}
+        <div className="flex overflow-x-auto pb-8 -mx-6 px-6 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 md:mx-0 md:px-0">
+          {categories.map((cat, idx) => (
+            <Reveal key={cat.name} delay={idx * 150} className="w-[85vw] min-w-[300px] max-w-[350px] snap-center shrink-0 md:w-auto md:min-w-0 md:max-w-none md:h-full">
+              <article className="group relative flex flex-col h-full bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-8 transition-all duration-500 hover:scale-105 hover:bg-white/10 hover:border-action/30 hover:shadow-[0_0_40px_rgba(57,255,20,0.1)]">
+                <h4 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>
+                  {cat.name}
+                </h4>
+                <p className="text-white/60 text-sm mb-6 flex-1">
+                  {cat.description}
+                </p>
+                
+                <ul className="space-y-3 mb-8">
+                  {cat.items.map((item) => (
+                    <li key={item.name} className="flex items-start justify-between gap-4 text-sm">
+                      <span className="text-white/90 font-medium">{item.name}</span>
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className="font-bold text-action">{item.price}</span>
+                        {item.note && <span className="text-[0.7rem] text-white/40">{item.note}</span>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </Reveal>
           ))}
         </div>
 
-        <Reveal delay={150}>
-          <div className="mt-16 flex flex-col items-center gap-5 text-center">
-            <p className="max-w-xl text-[0.92rem] text-muted">
-              ¿Tienes preguntas? Escríbenos por WhatsApp y te ayudamos a elegir los mejores
-              productos para tus objetivos.
-            </p>
-            <LinkButton href={whatsappHref(contact)} variant="primary" size="lg" external glow>
-              Solicitar más información
-            </LinkButton>
+        <Reveal delay={300}>
+          <div className="mt-16 flex justify-center">
+             <LinkButton
+                href={tenantHref(slug, 'contacto?interes=productos')}
+                variant="outline"
+                size="lg"
+                className="text-white border-white/20 hover:bg-white hover:text-black"
+              >
+                Consultar disponibilidad
+              </LinkButton>
           </div>
         </Reveal>
       </div>

@@ -1,176 +1,121 @@
-/**
- * CAPA: Presentation / Sections
- * Instalaciones: alterna imagen y texto en filas para dar ritmo de lectura.
- *
- * V4.1 · REPARTO POR SEDE. La misma sección sirve a un gimnasio de una sede y a
- * uno de cuatro. Si las áreas declaran a qué sede pertenecen (`branchCode`) y la
- * base devuelve esas sedes, se presentan en pestañas; si no, en una sola lista,
- * exactamente como antes. La decisión sale de los DATOS: la sección no sabe qué
- * gimnasio la está usando ni cuántas sedes tiene.
- */
+'use client';
 
+import { useState } from 'react';
 import type { FacilityItem } from '@core/domain/catalog/catalog';
-import {
-  agruparInstalacionesPorSede,
-  describirGrupo,
-  necesitaPestanasDeSede,
-  type SedeDeInstalaciones,
-} from '@core/domain/catalog/facilities';
+import { agruparInstalacionesPorSede, necesitaPestanasDeSede, type SedeDeInstalaciones } from '@core/domain/catalog/facilities';
 import { cn } from '@/lib/cn';
-import { Icon } from '../icons/Icon';
-import { ArtFrame } from '../ui/ArtFrame';
-import { Badge } from '../ui/Badge';
-import { Pestanas } from '../ui/Pestanas';
-import { Reveal } from '../ui/Reveal';
-import { SectionHeading } from '../ui/SectionHeading';
-
-type DisposicionDeInstalaciones = 'rows' | 'grid';
+import { Icon } from '@/presentation/icons/Icon';
+import { Reveal } from '@/presentation/ui/Reveal';
+import { ArtFrame } from '@/presentation/ui/ArtFrame';
 
 interface FacilitiesSectionProps {
   readonly facilities: readonly FacilityItem[];
+  readonly sucursales?: readonly SedeDeInstalaciones[];
   readonly eyebrow?: string;
   readonly title?: string;
-  readonly lead?: string;
-  readonly layout?: DisposicionDeInstalaciones;
-  /**
-   * Sedes activas del gimnasio (de la base). Sin ellas —o sin áreas atribuidas—
-   * la sección se comporta como siempre, en una sola lista.
-   */
-  readonly sucursales?: readonly SedeDeInstalaciones[];
 }
 
-/** La retícula: tarjetas iguales, para cuando la sección acompaña a otras. */
-function Reticula({ facilities }: { readonly facilities: readonly FacilityItem[] }) {
+export function FacilitiesSection({ facilities, sucursales = [], eyebrow, title }: FacilitiesSectionProps) {
+  const gruposCrudos = agruparInstalacionesPorSede(facilities, sucursales);
+  const usarPestanas = necesitaPestanasDeSede(gruposCrudos);
+  const grupos = usarPestanas 
+    ? gruposCrudos.map(g => ({ key: g.code, label: g.name, items: g.facilities }))
+    : [{ key: 'general', label: '', items: facilities }];
+  
+  const [activeTab, setActiveTab] = useState(grupos[0]?.key || '');
+
+  const itemsAMostrar = grupos.find(g => g.key === activeTab)?.items || [];
+
   return (
-    <ul className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {facilities.map((facility, index) => (
-        <li key={facility.id}>
-          <Reveal delay={Math.min(index, 5) * 70}>
-            <article className="surface-card h-full overflow-hidden">
-              <ArtFrame seed={index * 29 + 13} icon={facility.icon} ratio="16 / 10" />
-              <div className="p-6">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="t-h3">{facility.name}</h3>
-                  {/* Sin superficie declarada no se pinta una etiqueta vacía:
-                      el gimnasio puede no haber medido todavía sus áreas. */}
-                  {facility.area !== '' && <Badge tone="neutral">{facility.area}</Badge>}
-                </div>
-                <p className="mt-3 text-[0.92rem] leading-relaxed text-muted">
-                  {facility.description}
-                </p>
-              </div>
-            </article>
-          </Reveal>
-        </li>
-      ))}
-    </ul>
-  );
-}
+    <section className="relative w-full py-20">
+      <div className="shell relative z-20 mx-auto w-full max-w-7xl">
+        <Reveal>
+          <div className="mb-16 md:text-center max-w-3xl md:mx-auto">
+            {eyebrow && <h2 className="text-sm font-bold tracking-widest text-action uppercase mb-3">{eyebrow}</h2>}
+            {title && <h3 className="text-4xl md:text-6xl font-black text-white" style={{ fontFamily: 'var(--t-font-display)' }}>{title}</h3>}
+          </div>
+        </Reveal>
 
-/** Las filas: imagen y texto alternados, con los datos de cada área. */
-function Filas({ facilities }: { readonly facilities: readonly FacilityItem[] }) {
-  return (
-    <div className="mt-16 flex flex-col gap-16 lg:gap-24">
-      {facilities.map((facility, index) => {
-        const reversed = index % 2 === 1;
-
-        return (
-          <Reveal key={facility.id}>
-            <article
-              className={cn(
-                'grid items-center gap-8 lg:grid-cols-2 lg:gap-14',
-                reversed && 'lg:[&>*:first-child]:order-2',
-              )}
-            >
-              <ArtFrame
-                seed={index * 37 + 5}
-                icon={facility.icon}
-                ratio="4 / 3"
-                className="w-full"
-              />
-
-              <div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="grid h-11 w-11 place-items-center rounded-[var(--t-radius-md)] bg-structural/25 text-action"
-                  >
-                    <Icon name={facility.icon} size={21} />
-                  </span>
-                  {facility.area !== '' && <Badge tone="neutral">{facility.area}</Badge>}
-                </div>
-
-                <h3 className="t-h2 mt-5">{facility.name}</h3>
-                <p className="t-lead mt-4">{facility.description}</p>
-
-                {/* Las fichas de datos solo aparecen si el gimnasio las
-                    entregó: una retícula de tres huecos vacíos se lee como un
-                    error de la página, no como información que falta. */}
-                {facility.stats.length > 0 && (
-                  <dl className="mt-8 grid grid-cols-3 gap-px overflow-hidden rounded-[var(--t-radius-md)] border border-line bg-line">
-                    {facility.stats.map((stat) => (
-                      <div key={stat.label} className="bg-surface px-4 py-5 text-center">
-                        <dt className="text-[0.7rem] uppercase tracking-[0.12em] text-muted">
-                          {stat.label}
-                        </dt>
-                        <dd className="mt-2 text-lg font-bold text-ink">{stat.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
+        {usarPestanas && (
+          <div className="flex flex-wrap justify-center gap-4 mb-16">
+            {grupos.map((grupo) => (
+              <button
+                key={grupo.key}
+                onClick={() => setActiveTab(grupo.key)}
+                className={cn(
+                  'px-8 py-3 rounded-full font-bold text-sm tracking-widest uppercase transition-all duration-300 border',
+                  activeTab === grupo.key 
+                    ? 'bg-action text-black border-action shadow-[0_0_20px_rgba(57,255,20,0.3)]' 
+                    : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30 hover:text-white'
                 )}
-              </div>
-            </article>
-          </Reveal>
-        );
-      })}
-    </div>
-  );
-}
-
-function Contenido({
-  facilities,
-  layout,
-}: {
-  readonly facilities: readonly FacilityItem[];
-  readonly layout: DisposicionDeInstalaciones;
-}) {
-  return layout === 'grid' ? <Reticula facilities={facilities} /> : <Filas facilities={facilities} />;
-}
-
-export function FacilitiesSection({
-  facilities,
-  eyebrow = 'Instalaciones',
-  title = 'El espacio también entrena',
-  lead,
-  layout = 'rows',
-  sucursales = [],
-}: FacilitiesSectionProps) {
-  if (facilities.length === 0) return null;
-
-  const grupos = agruparInstalacionesPorSede(facilities, sucursales);
-  const porSede = necesitaPestanasDeSede(grupos);
-
-  return (
-    // `aria-label` y no `aria-labelledby`: `SectionHeading` no emite un id al
-    // que apuntar, y una referencia rota deja la sección sin nombre accesible.
-    <section className="section" aria-label={title}>
-      <div className="shell">
-        <SectionHeading eyebrow={eyebrow} title={title} lead={lead} />
-
-        {porSede ? (
-          <Pestanas
-            className="mt-12"
-            etiquetaDelGrupo="Sucursales"
-            pestanas={grupos.map((grupo) => ({
-              id: grupo.code,
-              etiqueta: grupo.name,
-              detalle: describirGrupo(grupo),
-              contenido: <Contenido facilities={grupo.facilities} layout={layout} />,
-            }))}
-          />
-        ) : (
-          <Contenido facilities={facilities} layout={layout} />
+              >
+                Sede {((grupo.label || '').split('·')[0] || '').trim()}
+              </button>
+            ))}
+          </div>
         )}
+
+        <div className="mt-16 flex flex-col gap-16 lg:gap-32">
+          {itemsAMostrar.map((facility, index) => {
+            const reversed = index % 2 === 1;
+
+            return (
+              <Reveal key={facility.id} delay={100}>
+                <article
+                  className={cn(
+                    'grid items-center gap-8 lg:grid-cols-2 lg:gap-16',
+                    reversed && 'lg:[&>*:first-child]:order-2'
+                  )}
+                >
+                  <div className="relative w-full aspect-[4/3] lg:aspect-[5/4] rounded-[2rem] overflow-hidden border border-white/10 group hover:border-action/30 transition-colors">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 opacity-60" />
+                    <ArtFrame 
+                      seed={index * 29 + 13} 
+                      icon={facility.icon} 
+                      ratio="4 / 3" 
+                      className="w-full h-full object-cover scale-100 group-hover:scale-105 transition-transform duration-700" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3 mb-6">
+                      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/5 text-action border border-white/10">
+                        <Icon name={facility.icon} size={20} />
+                      </span>
+                      {facility.area && (
+                        <span className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-xs font-bold text-white uppercase tracking-widest">
+                          {facility.area}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <h4 className="text-3xl lg:text-5xl font-bold text-white mb-4 uppercase" style={{ fontFamily: 'var(--t-font-display)' }}>
+                      {facility.name}
+                    </h4>
+                    <p className="text-white/60 text-lg leading-relaxed mb-8">
+                      {facility.description}
+                    </p>
+
+                    {facility.stats && facility.stats.length > 0 && (
+                      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10">
+                        {facility.stats.map((stat) => (
+                          <div key={stat.label} className="bg-black/60 backdrop-blur-md px-4 py-6 text-center hover:bg-white/5 transition-colors">
+                            <dt className="text-[0.65rem] uppercase tracking-[0.15em] text-white/50 font-bold mb-2 h-8 flex items-center justify-center">
+                              {stat.label}
+                            </dt>
+                            <dd className="text-xl lg:text-2xl font-black text-white" style={{ fontFamily: 'var(--t-font-display)' }}>
+                              {stat.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                  </div>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

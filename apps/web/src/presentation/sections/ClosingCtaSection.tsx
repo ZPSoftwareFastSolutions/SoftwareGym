@@ -1,65 +1,46 @@
-/**
- * CAPA: Presentation / Sections
- * Llamada a la acción de cierre. Aparece al final de todas las páginas.
- */
+'use client';
 
-import type { ContactInfo, TenantContent } from '@core/domain/tenant/tenant-config';
-import { tenantHref, whatsappHref } from '@/lib/tenant-links';
-import { LinkButton } from '../ui/Button';
-import { Reveal } from '../ui/Reveal';
+import { tenantHref } from '@/lib/tenant-links';
+import type { ContactInfo } from '@core/domain/tenant/tenant-config';
+import { LinkButton } from '@/presentation/ui/Button';
+import { Icon } from '@/presentation/icons/Icon';
+import { Reveal } from '@/presentation/ui/Reveal';
 
-interface ClosingCtaSectionProps {
-  readonly cta: TenantContent['closingCta'];
+interface ClosingCtaProps {
+  readonly cta: {
+    readonly title: string;
+    readonly subtitle: string;
+    readonly label: string;
+  };
   readonly contact: ContactInfo;
   readonly slug: string;
-  readonly showWhatsapp: boolean;
 }
 
-export function ClosingCtaSection({ cta, contact, slug, showWhatsapp }: ClosingCtaSectionProps) {
+export function ClosingCtaSection({ cta, contact, slug }: ClosingCtaProps) {
   return (
-    <section className="section relative overflow-hidden" aria-labelledby="cta-title">
-      <div aria-hidden="true" className="bg-aura" />
-      <div aria-hidden="true" className="bg-noise" />
-
-      <div className="shell relative">
+    <section className="relative w-full py-32 mb-20">
+      <div className="shell relative z-20 mx-auto w-full max-w-5xl">
         <Reveal>
-          <div
-            className="surface-card relative overflow-hidden px-7 py-14 text-center sm:px-12 lg:py-20"
-            style={{
-              background:
-                'linear-gradient(135deg, color-mix(in srgb, var(--t-structural-deep) 62%, transparent), color-mix(in srgb, var(--t-card) 88%, transparent))',
-            }}
-          >
-            <div aria-hidden="true" className="bg-grid" />
-
-            <div className="relative mx-auto max-w-2xl">
-              <h2 id="cta-title" className="t-h1">
+          <div className="relative overflow-hidden rounded-[3rem] bg-black/80 border border-white/10 p-12 md:p-20 text-center backdrop-blur-xl">
+            {/* Elementos gráficos internos */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-full bg-action/10 blur-[120px] pointer-events-none" />
+            
+            <div className="relative z-10">
+              <h2 className="text-5xl md:text-7xl font-black text-white mb-6 tracking-tight leading-none" style={{ fontFamily: 'var(--t-font-display)' }}>
                 {cta.title}
               </h2>
-              <p className="t-lead mx-auto mt-5">{cta.subtitle}</p>
-
-              <div className="mt-10 flex flex-col justify-center gap-3.5 sm:flex-row">
+              <p className="text-xl md:text-2xl font-bold text-white/60 max-w-2xl mx-auto mb-12">
+                {cta.subtitle}
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                 <LinkButton
                   href={tenantHref(slug, 'contacto')}
                   size="lg"
-                  icon="arrowRight"
-                  glow
+                  className="bg-action text-black hover:bg-action/90 hover:scale-105 hover:shadow-[0_0_30px_rgba(57,255,20,0.4)] h-16 px-10 text-lg font-bold border-none transition-all duration-300"
                 >
-                  {cta.label}
+                  {cta.label || 'VAMOS CON TODO'}
                 </LinkButton>
-
-                {showWhatsapp && (
-                  <LinkButton
-                    href={whatsappHref(contact)}
-                    external
-                    variant="secondary"
-                    size="lg"
-                    icon="whatsapp"
-                    iconPosition="start"
-                  >
-                    Escribir por WhatsApp
-                  </LinkButton>
-                )}
               </div>
             </div>
           </div>

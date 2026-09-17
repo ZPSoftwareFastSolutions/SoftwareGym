@@ -1,114 +1,113 @@
-/**
- * CAPA: Presentation / Sections
- * Relato del gimnasio: texto, valores y línea de tiempo.
- */
+'use client';
 
 import type { AboutContent } from '@core/domain/tenant/tenant-config';
-import { hasIcon, Icon } from '../icons/Icon';
-import { ArtFrame } from '../ui/ArtFrame';
-import { Reveal } from '../ui/Reveal';
-import { SectionHeading } from '../ui/SectionHeading';
+import { Icon, hasIcon } from '@/presentation/icons/Icon';
+import { Reveal } from '@/presentation/ui/Reveal';
+import { cn } from '@/lib/cn';
 
-interface AboutSectionProps {
+interface AboutProps {
   readonly about: AboutContent;
-  readonly withArt?: boolean;
 }
 
-export function AboutSection({ about, withArt = true }: AboutSectionProps) {
+export function AboutSection({ about }: AboutProps) {
   return (
-    <>
-      <section className="section" aria-labelledby="nosotros-title">
-        <div className="shell">
-          <div className="grid items-start gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-            <div>
-              <SectionHeading eyebrow={about.eyebrow} title={about.title} lead={about.lead} />
+    <div className="w-full">
+      {/* 1. TRAYECTORIA (HISTORIA) - AHORA ARRIBA COMO PIDIÓ EL USUARIO */}
+      {about.milestones.length > 0 && (
+        <section className="relative w-full py-20" aria-labelledby="historia-title">
+          <div className="shell max-w-5xl mx-auto">
+            <Reveal>
+              <h2 className="text-sm font-bold tracking-widest text-action uppercase mb-3 text-center">Nuestra Trayectoria</h2>
+              <h3 id="historia-title" className="text-4xl md:text-5xl font-black text-white text-center mb-16" style={{ fontFamily: 'var(--t-font-display)' }}>
+                Forjando Leyendas
+              </h3>
+            </Reveal>
 
-              <div className="mt-8 flex flex-col gap-5">
-                {about.paragraphs.map((paragraph, index) => (
-                  <Reveal key={paragraph.slice(0, 24)} delay={Math.min(index, 4) * 80}>
-                    <p className="t-body">{paragraph}</p>
-                  </Reveal>
-                ))}
+            <div className="relative border-l-2 border-white/10 ml-4 md:ml-0 md:border-l-0">
+              {/* Línea central en desktop */}
+              <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-white/10 -translate-x-1/2" />
+              
+              <div className="space-y-12">
+                {about.milestones.map((milestone, index) => {
+                  const isEven = index % 2 === 0;
+                  return (
+                    <Reveal key={milestone.year} delay={index * 100}>
+                      <div className={cn(
+                        "relative flex flex-col md:flex-row items-center",
+                        isEven ? "md:flex-row-reverse" : ""
+                      )}>
+                        {/* Punto central */}
+                        <div className="absolute left-0 md:left-1/2 w-4 h-4 rounded-full bg-action -translate-x-[9px] md:-translate-x-1/2 shadow-[0_0_15px_rgba(57,255,20,0.8)] z-10" />
+                        
+                        {/* Contenido */}
+                        <div className={cn(
+                          "w-full md:w-1/2 pl-8 md:pl-0",
+                          isEven ? "md:pr-16 text-left md:text-right" : "md:pl-16 text-left"
+                        )}>
+                          <div className="bg-black/40 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/10 hover:border-action/30 transition-all hover:-translate-y-1 hover:bg-black/60">
+                            <span className="inline-block text-3xl font-black text-action mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>
+                              {milestone.year}
+                            </span>
+                            <p className="text-white/70 text-lg leading-relaxed">
+                              {milestone.text}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </Reveal>
+                  );
+                })}
               </div>
             </div>
+          </div>
+        </section>
+      )}
 
-            {withArt && (
-              <Reveal delay={120}>
-                <div className="grid gap-4 sm:grid-cols-2 lg:sticky lg:top-28">
-                  <ArtFrame seed={301} icon="dumbbell" ratio="3 / 4" />
-                  <div className="flex flex-col gap-4 sm:pt-10">
-                    <ArtFrame seed={412} icon="group" ratio="1 / 1" />
-                    <ArtFrame seed={523} icon="heart" ratio="4 / 3" />
+      {/* 2. VALORES */}
+      <section className="relative w-full py-20 bg-white/5" aria-labelledby="valores-title">
+        <div className="shell max-w-6xl mx-auto">
+          <Reveal>
+            <h2 className="text-sm font-bold tracking-widest text-action uppercase mb-3 text-center">Nuestra Filosofía</h2>
+            <h3 id="valores-title" className="text-4xl md:text-5xl font-black text-white text-center mb-16" style={{ fontFamily: 'var(--t-font-display)' }}>
+              Cómo trabajamos
+            </h3>
+          </Reveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {about.values.map((value, index) => (
+              <Reveal key={value.title} delay={index * 100} className="h-full">
+                <article className="group h-full bg-black/40 backdrop-blur-md border border-white/10 p-8 rounded-[2rem] transition-all duration-300 hover:border-action/40 hover:bg-black/60 hover:shadow-[0_0_30px_rgba(57,255,20,0.1)]">
+                  <div className="w-14 h-14 bg-action/10 text-action rounded-2xl flex items-center justify-center mb-6 group-hover:bg-action group-hover:text-black transition-colors">
+                    <Icon name={hasIcon(value.icon) ? value.icon : 'sparkle'} size={24} />
                   </div>
-                </div>
+                  <h4 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'var(--t-font-display)' }}>
+                    {value.title}
+                  </h4>
+                  <p className="text-white/60 leading-relaxed">
+                    {value.description}
+                  </p>
+                </article>
               </Reveal>
-            )}
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="section surface-raised" aria-labelledby="valores-title">
-        <div className="shell">
-          <h2 id="valores-title" className="t-h2 max-w-2xl">
-            Cómo trabajamos
-          </h2>
-
-          <ul className="mt-12 grid gap-5 sm:grid-cols-2">
-            {about.values.map((value, index) => (
-              <li key={value.title}>
-                <Reveal delay={Math.min(index, 4) * 80}>
-                  <article className="surface-card flex h-full gap-5 p-7">
-                    <span
-                      aria-hidden="true"
-                      className="grid h-12 w-12 shrink-0 place-items-center rounded-[var(--t-radius-md)] bg-action/12 text-action"
-                    >
-                      <Icon name={hasIcon(value.icon) ? value.icon : 'sparkle'} size={22} />
-                    </span>
-                    <div>
-                      <h3 className="t-h3">{value.title}</h3>
-                      <p className="mt-2.5 text-[0.93rem] leading-relaxed text-muted">
-                        {value.description}
-                      </p>
-                    </div>
-                  </article>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
+      {/* 3. RELATO Y MANIFIESTO */}
+      <section className="relative w-full py-24" aria-labelledby="manifiesto-title">
+        <div className="shell max-w-4xl mx-auto text-center">
+          <Reveal>
+            <Icon name="quote" size={48} className="text-action/20 mx-auto mb-8" />
+            <div className="space-y-6">
+              {about.paragraphs.map((paragraph, index) => (
+                <p key={index} className="text-xl md:text-2xl font-medium text-white/80 leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
-
-      {/* Un gimnasio que todavía no escribió su historia no publica una línea
-          de tiempo vacía con el borde dibujado: la sección entera no existe. */}
-      {about.milestones.length > 0 && (
-      <section className="section" aria-labelledby="historia-title">
-        <div className="shell">
-          <h2 id="historia-title" className="t-h2 max-w-2xl">
-            Nuestra historia
-          </h2>
-
-          <ol className="mt-12 border-s border-line ps-8">
-            {about.milestones.map((milestone, index) => (
-              <li key={milestone.year} className="relative pb-10 last:pb-0">
-                <Reveal delay={Math.min(index, 5) * 70}>
-                  <span
-                    aria-hidden="true"
-                    className="absolute -start-[calc(2rem+5px)] top-1.5 grid h-2.5 w-2.5 place-items-center rounded-full bg-action ring-4 ring-[var(--t-surface)]"
-                  />
-                  <span
-                    className="block text-2xl font-bold text-action"
-                    style={{ fontFamily: 'var(--t-font-display)' }}
-                  >
-                    {milestone.year}
-                  </span>
-                  <p className="mt-1.5 max-w-xl text-[0.95rem] text-muted">{milestone.text}</p>
-                </Reveal>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-      )}
-    </>
+    </div>
   );
 }
