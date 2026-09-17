@@ -37,10 +37,12 @@ import {
   extensionDeImagen,
   mensajeDeErrorDeComprobante,
   TAMANO_MAXIMO_DE_IMAGEN,
+  TIPOS_DE_AVISO_DE_COMPROBANTE,
   type Comprobante,
   type FiltroDeComprobantes,
 } from '@core/domain/operations/receipts';
 import { esMetodoDePago } from '@core/domain/operations/members';
+import type { AvisoPersonal } from '@core/domain/operations/notifications';
 import { numero } from '@core/domain/operations/dashboard';
 
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -127,6 +129,23 @@ async function bytesVerificados(blob: Blob | null): Promise<ImagenValidada | nul
 }
 
 export class SupabaseReceiptsRepository implements ReceiptsRepositoryPort {
+  async avisos(): Promise<readonly AvisoPersonal[]> {
+    const { data } = await this.supabase
+      .from('customer_messages')
+      .select('id, kind, title, body, created_at, read_at')
+      .in('kind', [...TIPOS_DE_AVISO_DE_COMPROBANTE])
+      .order('created_at', { ascending: false })
+      .limit(10);
+    return (data ?? []).map((f) => ({
+      id: String(f.id),
+      kind: String(f.kind),
+      title: String(f.title ?? ''),
+      body: String(f.body ?? ''),
+      createdAt: String(f.created_at ?? ''),
+      leido: Boolean(f.read_at),
+    }));
+  }
+
   constructor(private readonly supabase: SupabaseClient) {}
 
   async listar(filtro: FiltroDeComprobantes): Promise<readonly Comprobante[]> {

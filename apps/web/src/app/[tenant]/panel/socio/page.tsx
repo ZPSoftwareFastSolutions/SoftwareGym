@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { construirNotificaciones } from '@core/domain/operations/notifications';
+import { AVISO_DE_CUENTA_PARA_COMPROBANTE } from '@core/domain/operations/receipts';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { calcularRacha, diaDelHorario, diasCerradosDelHorario } from '@core/domain/operations/streak';
 import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
@@ -183,7 +184,11 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
       ? { endDate: ficha.endDate, effectiveStatus: ficha.membershipStatus, daysRemaining: ficha.daysRemaining }
       : null;
 
-  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId, avisosDeReservas) : [];
+  // V4.2 · Avisos de la revisión de sus comprobantes, junto a los de reservas y
+  // en orden de llegada.
+  const avisosDeComprobantes = features.enableNotifications && conPagos && customerId ? await (await receiptsRepository()).avisos() : [];
+  const personales = [...avisosDeComprobantes, ...avisosDeReservas].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId, personales) : [];
   const racha = calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
   const horarioDeHoy = diaDelHorario(tenant.hours.week, hoy);
   const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
@@ -224,6 +229,18 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
             Adjunta la captura del pago que hiciste con el QR. Recepción la verifica y tu plan se activa.
           </p>
           <div className="mt-6">{formularioDePago}</div>
+        </section>
+      )}
+
+      {/* V4.2 · Llegó desde «Pagar con QR» con una cuenta que aún no es de socio
+          (la ventana lo avisa, pero el enlace se puede abrir a mano). */}
+      {codigoAPagar && conPagos && !customerId && (
+        <section className="surface-card border-action/40 p-6 sm:p-7" aria-labelledby="titulo-pago-sin-ficha">
+          <h2 id="titulo-pago-sin-ficha" className="flex items-center gap-2 t-h3">
+            <Icon name="idcard" size={18} className="text-action" />
+            {AVISO_DE_CUENTA_PARA_COMPROBANTE['sin-ficha'].titulo}
+          </h2>
+          <p className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">{AVISO_DE_CUENTA_PARA_COMPROBANTE['sin-ficha'].cuerpo}</p>
         </section>
       )}
 

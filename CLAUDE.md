@@ -2087,6 +2087,21 @@ Los 5 anuncios salen en la portada (prioridad: mayor `sort_order` primero) y el 
   Se detectó comparando la captura de producción con la local y buscando las reglas en el CSS servido. Tras cambiar
   `globals.css`, desplegar con `npx vercel deploy --prod --yes --force` y comprobar una regla nueva en el `.css` servido.
 - **Nombres de clase propios:** nunca con prefijo de utilidad de Tailwind (`fill-action` chocaba con `fill-*` de SVG).
+
+**Pago por QR desde la vitrina y novedades primero (2026-09-16).**
+- **GOLD no mostraba «Pagar con QR»:** `cobroDeTenant` exigía `content.paymentQr` en el archivo aunque el QR, titular y
+  banco viven en la base (`/panel/cobros`). GOLD tenía su QR cargado y sin ese bloque las tarjetas decían «Quiero este
+  plan». Ahora el bloque es solo respaldo.
+- **Solo un socio sube comprobantes:** `GET /[tenant]/pago/cuenta` (dinámica, `private, no-store`, solo la propia
+  sesión) responde `socio · sin-sesion · sin-ficha · otro-gimnasio · indisponible` con `cuentaParaSubirComprobante`
+  (dominio, con pruebas). «Ya pagué» la consulta antes de mandar al panel y, si no es socio, explica qué falta y ofrece
+  entrar o crear la cuenta, o pedir a recepción que la cree. El panel repite el aviso si se abre `?pagar=` a mano, y la
+  acción y la base siguen exigiendo ficha.
+- **Aviso de la revisión:** la base deja un aviso personal al aprobar o rechazar (migración `…170000`); llega a la
+  campana del socio como tipo `comprobante` (rechazo = urgencia alta) junto a los de reservas.
+- **Novedades primero:** la portada `anuncios` va en tres bloques. Con una columna (móvil y tablet) el orden es
+  identidad → novedades → texto, botones, sedes y cifras. Con dos, las novedades ocupan la columna derecha desde arriba.
+  La tarjeta destacada se limita a 30 rem para que en tablet asome la siguiente.
 - **Contraste medido:** el carmesí `#D62828` da 3,9:1 sobre el fondo: solo texto ≥ 24 px (lemas a 1,5 rem) o fondo de
   insignia con texto blanco (5,0:1).
 - **No se inventó:** el póster «Miss y Mister GOLDS · 7mo aniversario» y sus categorías de la maqueta no se publicaron

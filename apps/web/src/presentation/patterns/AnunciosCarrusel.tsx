@@ -123,7 +123,7 @@ export function AnunciosCarrusel({ anuncios, presentacion = 'fila' }: AnunciosCa
             key={anuncio.id}
             className={cn(
               'shrink-0 snap-start',
-              destacado ? 'w-[88%] sm:w-[85%]' : 'w-[min(20rem,82vw)] sm:w-[22rem]',
+              destacado ? 'w-[88%] sm:w-[min(85%,30rem)]' : 'w-[min(20rem,82vw)] sm:w-[22rem]',
             )}
           >
             <button

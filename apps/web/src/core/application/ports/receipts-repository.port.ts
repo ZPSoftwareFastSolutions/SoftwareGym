@@ -11,6 +11,7 @@ import type {
   TipoDeImagen,
 } from '../../domain/operations/receipts';
 import type { MetodoDePago } from '../../domain/operations/members';
+import type { AvisoPersonal } from '../../domain/operations/notifications';
 import type { ModoDeMonto, ModoDeQr, PlanACobrar, QrDeCobro } from '../../domain/operations/cobro-qr';
 import type { Pagina } from '../../domain/shared/paginacion';
 import type { ResultadoDeOperacion } from './resultado';
@@ -62,6 +63,12 @@ export interface ReceiptsRepositoryPort {
   revisar(id: string, aprobar: boolean, nota: string | null, montoVerificado: number | null): Promise<ResultadoDeOperacion<void>>;
 
   contarPendientes(): Promise<number>;
+
+  /**
+   * V4.2 · Avisos personales que dejó la base al revisar los comprobantes de
+   * quien pregunta (aprobado o rechazado). RLS solo devuelve los propios.
+   */
+  avisos(): Promise<readonly AvisoPersonal[]>;
 }
 
 export interface AjustesDeCobro {

@@ -26,6 +26,7 @@
 
 import type { AnuncioPublico } from '@core/domain/operations/announcements';
 import type { HeroContent } from '@core/domain/tenant/tenant-config';
+import { cn } from '@/lib/cn';
 import { tenantHref } from '@/lib/tenant-links';
 import { Icon } from '../icons/Icon';
 import { AnunciosCarrusel } from '../patterns/AnunciosCarrusel';
@@ -45,7 +46,7 @@ function Cifras({ stats, compactas }: { readonly stats: HeroContent['stats']; re
       className={
         compactas
           ? 'mt-8 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-line pt-7 sm:grid-cols-4'
-          : 'grid grid-cols-2 gap-px overflow-hidden rounded-[var(--t-radius-lg)] border border-line bg-line'
+          : 'mt-9 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--t-radius-lg)] border border-line bg-line sm:grid-cols-4'
       }
     >
       {stats.map((stat) => (
@@ -80,8 +81,23 @@ export function AnnouncementsHeroSection({ hero, slug, anuncios, sedes = [] }: A
       <div aria-hidden="true" className="bg-aura" />
       <div aria-hidden="true" className="bg-grid" />
 
-      <div className="shell relative grid gap-12 py-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-center lg:gap-14 lg:py-16">
-        <div>
+      {/*
+        V4.2 · LAS NOVEDADES PRIMERO, EN CUALQUIER ANCHO. Tres bloques:
+          A · identidad (rótulo, titular, lema)
+          C · novedades y eventos
+          B · lo demás (texto, botones, sedes, cifras)
+        En una columna el orden es A → C → B: en un teléfono las novedades se
+        ven justo bajo el titular, no después de sedes y cifras. En dos
+        columnas, A y B van a la izquierda y C ocupa la derecha desde arriba.
+        El orden del DOM es el de lectura en móvil; la rejilla lo recoloca.
+      */}
+      <div
+        className={cn(
+          'shell relative grid gap-x-14 gap-y-8 py-10 lg:py-16',
+          conAnuncios && 'lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[auto_1fr]',
+        )}
+      >
+        <div className={cn(conAnuncios && 'lg:col-start-1 lg:row-start-1 lg:self-end')}>
           <p className="t-eyebrow t-eyebrow--flanked">{hero.eyebrow}</p>
 
           {/* El acento va en su propia línea: en una marca de titulares altos y
@@ -92,8 +108,22 @@ export function AnnouncementsHeroSection({ hero, slug, anuncios, sedes = [] }: A
           </h1>
 
           {hero.motto && <p className="t-script mt-4 text-[clamp(1.5rem,1.2rem+1.1vw,2rem)]">{hero.motto}</p>}
+        </div>
 
-          <p className="t-lead mt-5 max-w-xl">{hero.subtitle}</p>
+        {conAnuncios && (
+          <section aria-label="Anuncios del gimnasio" className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+            <div className="-mb-11 flex h-11 items-center gap-2.5">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-highlight" />
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-action">
+                {hero.announcementsLabel ?? 'Novedades'}
+              </span>
+            </div>
+            <AnunciosCarrusel anuncios={anuncios} presentacion="destacado" />
+          </section>
+        )}
+
+        <div className={cn(conAnuncios && 'lg:col-start-1 lg:row-start-2')}>
+          <p className="t-lead max-w-xl">{hero.subtitle}</p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <LinkButton href={tenantHref(slug, hero.primaryCta.segment)} size="lg" icon="arrowRight" glow>
@@ -125,25 +155,8 @@ export function AnnouncementsHeroSection({ hero, slug, anuncios, sedes = [] }: A
             </div>
           )}
 
-          {/* Con anuncios, las cifras bajan a una fila bajo la identidad: la
-              columna de al lado ya es la pieza principal. */}
-          {conAnuncios && <Cifras stats={hero.stats} compactas />}
-        </div>
-
-        <div>
-          {conAnuncios ? (
-            <section aria-label="Anuncios del gimnasio">
-              <div className="-mb-11 flex h-11 items-center gap-2.5">
-                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-highlight" />
-                <span className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-action">
-                  {hero.announcementsLabel ?? 'Novedades'}
-                </span>
-              </div>
-              <AnunciosCarrusel anuncios={anuncios} presentacion="destacado" />
-            </section>
-          ) : (
-            <Cifras stats={hero.stats} compactas={false} />
-          )}
+          {/* Sin anuncios publicados, las cifras ocupan su lugar: nada se inventa. */}
+          <Cifras stats={hero.stats} compactas={conAnuncios} />
         </div>
       </div>
     </section>

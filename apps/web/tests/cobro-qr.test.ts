@@ -19,6 +19,8 @@ import {
   seleccionarQrDeCobro,
   type QrDeCobro,
 } from '../src/core/domain/operations/cobro-qr.ts';
+import { AVISO_DE_CUENTA_PARA_COMPROBANTE, cuentaParaSubirComprobante } from '../src/core/domain/operations/receipts.ts';
+import { construirNotificaciones } from '../src/core/domain/operations/notifications.ts';
 
 const HOY = '2026-09-11';
 const FIT = { id: 'plan-fit', price: 180 };
@@ -184,5 +186,57 @@ describe('validación de valores que llegan de fuera', () => {
     assert.match(mensajeDeErrorDeCobro('42501 permission denied'), /settings\.manage/);
     assert.match(mensajeDeErrorDeCobro('P0001 plan_invalido'), /plan/);
     assert.doesNotMatch(mensajeDeErrorDeCobro('XX000 algo raro'), /gerencia|permiso/);
+  });
+});
+
+describe('V4.2 · quién puede subir un comprobante desde «Pagar con QR»', () => {
+  const GOLD = 'golds-gym-premium';
+
+  it('solo un socio de este gimnasio, vinculado a su ficha', () => {
+    assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: GOLD, customerId: 'c1' }, GOLD), 'socio');
+  });
+
+  it('sin sesión: tiene que entrar o crear su cuenta', () => {
+    assert.equal(cuentaParaSubirComprobante('anonimo', null, GOLD), 'sin-sesion');
+  });
+
+  it('con cuenta pero sin ficha (o sin gimnasio): lo resuelve recepción', () => {
+    assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: GOLD, customerId: null }, GOLD), 'sin-ficha');
+    assert.equal(cuentaParaSubirComprobante('autenticado', null, GOLD), 'sin-ficha');
+    assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: null, customerId: null }, GOLD), 'sin-ficha');
+  });
+
+  it('la cuenta de otro gimnasio no sube comprobantes aquí, aunque tenga ficha allí', () => {
+    assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: 'mitico', customerId: 'c9' }, GOLD), 'otro-gimnasio');
+  });
+
+  it('si no se pudo comprobar no se adivina', () => {
+    assert.equal(cuentaParaSubirComprobante('indisponible', null, GOLD), 'indisponible');
+    assert.equal(cuentaParaSubirComprobante('autenticado', 'error', GOLD), 'indisponible');
+  });
+
+  it('cada situación que no es «socio» tiene su mensaje, y los de cuenta mencionan a recepción', () => {
+    for (const clave of ['sin-sesion', 'sin-ficha', 'otro-gimnasio'] as const) {
+      assert.match(AVISO_DE_CUENTA_PARA_COMPROBANTE[clave].cuerpo, /recepción/);
+    }
+    assert.ok(AVISO_DE_CUENTA_PARA_COMPROBANTE.indisponible.titulo.length > 0);
+  });
+});
+
+describe('V4.2 · aviso de la revisión de un comprobante', () => {
+  const aviso = (kind: string, leido = false) => ({ id: kind, kind, title: 't', body: 'cuerpo', createdAt: '2026-09-16T10:00:00Z', leido });
+
+  it('llega como notificación de comprobante; el rechazo sin leer es urgente', () => {
+    const [rechazo, aprobado] = construirNotificaciones(null, [], false, [aviso('comprobante_rechazado'), aviso('comprobante_aprobado')]);
+    assert.equal(rechazo?.tipo, 'comprobante');
+    assert.equal(rechazo?.urgencia, 'alta');
+    assert.equal(aprobado?.tipo, 'comprobante');
+    assert.equal(aprobado?.urgencia, 'media');
+    assert.equal(rechazo?.descartable, true);
+  });
+
+  it('los avisos de reservas siguen siendo de reserva', () => {
+    const [reserva] = construirNotificaciones(null, [], false, [aviso('reserva_promovida')]);
+    assert.equal(reserva?.tipo, 'reserva');
   });
 });

@@ -64,6 +64,65 @@ export interface Comprobante {
   readonly reviewedAt: string | null;
 }
 
+/**
+ * V4.2 · Quién puede subir un comprobante desde «Pagar con QR».
+ *
+ * Solo un SOCIO: una cuenta de este gimnasio vinculada a su ficha. Se decide
+ * ANTES de mandar a la persona al panel, para que no pague, llegue al panel y
+ * descubra que su cuenta no sirve. La base lo vuelve a exigir al subir.
+ */
+export type CuentaParaComprobante = 'socio' | 'sin-sesion' | 'sin-ficha' | 'otro-gimnasio' | 'indisponible';
+
+export interface PerfilParaComprobante {
+  readonly tenantSlug: string | null;
+  readonly customerId: string | null;
+}
+
+export function cuentaParaSubirComprobante(
+  sesion: 'autenticado' | 'anonimo' | 'indisponible',
+  perfil: PerfilParaComprobante | null | 'error',
+  slugDelGimnasio: string,
+): CuentaParaComprobante {
+  if (sesion === 'anonimo') return 'sin-sesion';
+  if (sesion === 'indisponible' || perfil === 'error') return 'indisponible';
+  // Autenticado pero sin perfil en ningún gimnasio: para el socio es lo mismo
+  // que no tener ficha, y lo resuelve recepción.
+  if (perfil === null || perfil.tenantSlug === null) return 'sin-ficha';
+  if (perfil.tenantSlug !== slugDelGimnasio) return 'otro-gimnasio';
+  return perfil.customerId ? 'socio' : 'sin-ficha';
+}
+
+/** Qué se le dice a quien todavía no puede subir un comprobante. */
+export const AVISO_DE_CUENTA_PARA_COMPROBANTE: Readonly<
+  Record<Exclude<CuentaParaComprobante, 'socio'>, { readonly titulo: string; readonly cuerpo: string }>
+> = {
+  'sin-sesion': {
+    titulo: 'Necesitas tu cuenta de socio',
+    cuerpo:
+      'Para subir el comprobante tienes que entrar con tu cuenta. Si todavía no tienes una, créala con tu correo, ' +
+      'o pide en recepción que te la creen.',
+  },
+  'sin-ficha': {
+    titulo: 'Tu cuenta todavía no es de socio',
+    cuerpo:
+      'Tu cuenta está creada, pero aún no está vinculada a tu ficha de socio. Pide en recepción que te registren ' +
+      'con este mismo correo y después podrás subir tu comprobante.',
+  },
+  'otro-gimnasio': {
+    titulo: 'Entraste con la cuenta de otro gimnasio',
+    cuerpo:
+      'Para pagar aquí necesitas tu cuenta de socio de este gimnasio. Créala con otro correo o pide en recepción ' +
+      'que te la creen.',
+  },
+  indisponible: {
+    titulo: 'No pudimos comprobar tu cuenta',
+    cuerpo: 'Vuelve a intentarlo en un momento. Si sigue igual, consulta en recepción.',
+  },
+};
+
+/** Tipos de aviso personal que deja la base al revisar un comprobante. */
+export const TIPOS_DE_AVISO_DE_COMPROBANTE = ['comprobante_aprobado', 'comprobante_rechazado'] as const;
+
 export interface FiltroDeComprobantes {
   readonly desde?: string;
   readonly hasta?: string;

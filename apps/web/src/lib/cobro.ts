@@ -20,12 +20,13 @@ export interface CobroPorQr {
 export function cobroDeTenant(tenant: TenantConfig): CobroPorQr | undefined {
   if (tenant.features.enablePayments !== true) return undefined;
 
-  const pago = tenant.content.paymentQr;
-  if (!pago) return undefined;
-
   return {
     slug: tenant.slug,
-    pago,
+    // V4.2 · El QR, el titular y el banco los guarda gerencia en la BASE
+    // (`/panel/cobros`); la ventana los pide al abrirse. `paymentQr` del archivo
+    // es solo respaldo. Antes se exigía, y un gimnasio con su QR ya cargado en
+    // la base pero sin ese bloque (GOLD) no mostraba «Pagar con QR».
+    pago: tenant.content.paymentQr ?? {},
     whatsappHref: whatsappHref(tenant.contact),
     gimnasio: tenant.name,
   };

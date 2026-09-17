@@ -33,6 +33,7 @@ const ICONO: Record<Notificacion['tipo'], AnyIconKey> = {
   aviso: 'sparkle',
   bienvenida: 'heart',
   reserva: 'calendar',
+  comprobante: 'upload',
 };
 
 const ESTILO: Record<Notificacion['urgencia'], string> = {

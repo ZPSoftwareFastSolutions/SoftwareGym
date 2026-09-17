@@ -16,7 +16,7 @@
  * los únicos que no se pueden deducir de ningún dato.
  */
 
-export type TipoDeNotificacion = 'vencimiento' | 'vencida' | 'aviso' | 'bienvenida' | 'reserva';
+export type TipoDeNotificacion = 'vencimiento' | 'vencida' | 'aviso' | 'bienvenida' | 'reserva' | 'comprobante';
 
 /**
  * Aviso personal que escribe la base por un hecho de reservas (V3.4): se liberó
@@ -83,10 +83,14 @@ export function construirNotificaciones(
   // Lo personal de reservas va antes que los avisos generales: «se liberó tu
   // lugar para mañana» caduca antes que un aviso de feriado.
   for (const aviso of personales) {
+    // V4.2 · La revisión de un comprobante llega por la misma bandeja. Un
+    // rechazo pide actuar (volver a subirlo), así que va con urgencia alta.
+    const deComprobante = aviso.kind.startsWith('comprobante_');
+    const urgente = aviso.kind === 'reservas_bloqueadas' || aviso.kind === 'comprobante_rechazado';
     lista.push({
       id: `${PREFIJO_DE_AVISO_PERSONAL}${aviso.id}`,
-      tipo: 'reserva',
-      urgencia: aviso.leido ? 'informativa' : aviso.kind === 'reservas_bloqueadas' ? 'alta' : 'media',
+      tipo: deComprobante ? 'comprobante' : 'reserva',
+      urgencia: aviso.leido ? 'informativa' : urgente ? 'alta' : 'media',
       titulo: aviso.title,
       cuerpo: aviso.body,
       fecha: aviso.createdAt,

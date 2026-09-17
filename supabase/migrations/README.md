@@ -205,3 +205,4 @@ Pruebas por rol, tope diario, alcance de sede, guarda de la foto y autorización
 Verificado con sesión simulada (revertido): Administración de GOLD escribe los campos nuevos, una etiqueta con espacios
 en el borde → 23514, Recepción → 0 filas, el anónimo lee las columnas nuevas; `javascript:`, espacios y enlaces > 500
 → 23514. Advisors: solo el aviso aceptado de contraseñas filtradas.
+| `20260916170000_v4_2_aviso_al_socio_al_revisar_su_comprobante.sql` | Al pasar un comprobante de `pendiente` a `aprobado`/`rechazado`, un disparador AFTER UPDATE deja un aviso personal al socio (`customer_messages`, kinds `comprobante_aprobado`/`comprobante_rechazado`) con importe, plan y motivo, vía `app.avisar_al_socio` (DEFINER). Probado revertido: el socio ve los dos avisos; recepción ve 0 avisos e insertar uno → 42501 |

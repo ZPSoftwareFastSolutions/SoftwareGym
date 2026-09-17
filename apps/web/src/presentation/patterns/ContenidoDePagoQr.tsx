@@ -13,9 +13,14 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  AVISO_DE_CUENTA_PARA_COMPROBANTE,
+  type CuentaParaComprobante,
+} from '@core/domain/operations/receipts';
 import type { PaymentQrInfo } from '@core/domain/tenant/tenant-config';
 import { fechaLarga, importe } from '@/lib/formato';
-import { LinkButton } from '../ui/Button';
+import { Button, LinkButton } from '../ui/Button';
 import { Icon } from '../icons/Icon';
 
 /** Forma de la respuesta de `/[tenant]/pago/datos`. */
@@ -45,7 +50,7 @@ interface ContenidoDePagoQrProps {
 
 const PASOS = [
   { icono: 'qr', texto: 'Escanea el QR con la app de tu banco y paga el importe.' },
-  { icono: 'upload', texto: 'Sube la captura del comprobante desde tu panel de socio.' },
+  { icono: 'upload', texto: 'Entra con tu cuenta de socio y sube la captura del comprobante.' },
   { icono: 'check', texto: 'Recepción lo verifica y tu plan se activa.' },
 ] as const;
 
@@ -53,6 +58,28 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
   const [datos, setDatos] = useState<DatosPublicosDeCobro | null>(null);
   const [fallo, setFallo] = useState(false);
   const [imagenRota, setImagenRota] = useState(false);
+  const router = useRouter();
+  // V4.2 · Antes de mandar al panel se comprueba que quien pagó puede subir el
+  // comprobante: con cuenta, de este gimnasio y vinculada a su ficha.
+  const [cuenta, setCuenta] = useState<CuentaParaComprobante | 'comprobando' | null>(null);
+  const destinoDelPanel = `/${slug}/panel/socio?pagar=${encodeURIComponent(codigoDePlan)}`;
+
+  const comprobarCuenta = async () => {
+    setCuenta('comprobando');
+    try {
+      const respuesta = await fetch(`/${slug}/pago/cuenta`, { cache: 'no-store' });
+      const cuerpo = (await respuesta.json()) as { estado?: CuentaParaComprobante };
+      const estado = respuesta.ok && cuerpo.estado ? cuerpo.estado : 'indisponible';
+      if (estado === 'socio') {
+        router.push(destinoDelPanel);
+        return;
+      }
+      setCuenta(estado);
+    } catch {
+      setCuenta('indisponible');
+    }
+  };
+  const aviso = cuenta && cuenta !== 'comprobando' && cuenta !== 'socio' ? AVISO_DE_CUENTA_PARA_COMPROBANTE[cuenta] : null;
 
   useEffect(() => {
     let vigente = true;
@@ -134,12 +161,38 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
         ))}
       </ol>
 
+      {aviso && cuenta && (
+        <div role="alert" className="w-full rounded-[var(--t-radius-md)] border border-action/40 bg-action/10 px-4 py-3.5 text-start">
+          <p className="flex items-center gap-2 text-[0.9rem] font-semibold text-ink">
+            <Icon name="idcard" size={17} className="shrink-0 text-action" />
+            {aviso.titulo}
+          </p>
+          <p className="mt-1.5 text-[0.84rem] leading-relaxed text-muted">{aviso.cuerpo}</p>
+          {(cuenta === 'sin-sesion' || cuenta === 'otro-gimnasio') && (
+            <div className="mt-3">
+              <LinkButton href={`/${slug}/acceso`} variant="outline" size="sm" icon="lock" iconPosition="start" fullWidth>
+                Iniciar sesión o crear cuenta
+              </LinkButton>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex w-full flex-col gap-2.5">
-        <LinkButton href={`/${slug}/panel/socio?pagar=${encodeURIComponent(codigoDePlan)}`} variant="primary" size="md" icon="upload" iconPosition="start" fullWidth>
-          Ya pagué: subir comprobante
-        </LinkButton>
+        <Button
+          variant="primary"
+          size="md"
+          icon="upload"
+          iconPosition="start"
+          fullWidth
+          onClick={comprobarCuenta}
+          disabled={cuenta === 'comprobando'}
+          aria-busy={cuenta === 'comprobando'}
+        >
+          {cuenta === 'comprobando' ? 'Comprobando tu cuenta…' : cuenta === 'indisponible' ? 'Reintentar' : 'Ya pagué: subir comprobante'}
+        </Button>
         <LinkButton href={whatsappHref} external variant="secondary" size="md" icon="whatsapp" iconPosition="start" fullWidth>
-          Consultar por WhatsApp
+          {aviso ? 'Pedir a recepción por WhatsApp' : 'Consultar por WhatsApp'}
         </LinkButton>
       </div>
     </div>
