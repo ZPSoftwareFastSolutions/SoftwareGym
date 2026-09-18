@@ -49,7 +49,7 @@ const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
  */
 const TOPE_DE_OPCIONES = 1000;
 const COLUMNAS_DE_LISTA =
-  'id, code, first_name, full_name, phone, birth_date, deleted_at, created_at, membership_id, plan_id, plan_name, end_date, membership_status, days_remaining, last_visit';
+  'id, code, first_name, full_name, document_id, phone, birth_date, deleted_at, created_at, membership_id, plan_id, plan_name, end_date, membership_status, days_remaining, last_visit';
 
 function texto(valor: unknown): string | null {
   return typeof valor === 'string' && valor.trim() !== '' ? valor : null;
@@ -109,6 +109,7 @@ function mapearSocioDeLista(fila: Record<string, unknown>): SocioDeLista {
     code: texto(fila.code),
     firstName: texto(fila.first_name) ?? '',
     fullName: texto(fila.full_name) ?? 'Socio',
+    documentId: texto(fila.document_id),
     phone: texto(fila.phone),
     birthDate: texto(fila.birth_date),
     archivedAt: texto(fila.deleted_at),

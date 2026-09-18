@@ -159,7 +159,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   const misClases = clasesDelPlan(clasesDelGimnasio, planVigente);
   const otrasClases = clasesDelGimnasio.filter((c) => c.isActive && !misClases.some((m) => m.id === c.id));
   const misSesiones = sesionesDeLaSemana
-    .filter((s) => (misClases.some((c) => c.id === s.classId) || s.miReservaId) && s.estado !== 'realizada')
+    .filter((s) => s.estado !== 'realizada')
     .slice(0, 12);
   const ahora = `${hoy}T${horaEnZona(tenant.hours.timezone)}`;
   const estadoDeReservaDe = (s: (typeof misSesiones)[number]): EstadoDeReservaDeSesion => {
@@ -700,13 +700,27 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                   </Modal>
                 )}
               </div>
-              <p className="mt-1.5 text-[0.86rem] text-muted">
-                {misClases.length > 0
-                  ? conReservas
+              {misClases.length === 0 ? (
+                <div className="mt-4 rounded-[var(--t-radius-md)] border border-action/40 bg-action/10 px-4 py-3">
+                  <p className="flex items-start gap-2.5 text-[0.88rem] leading-relaxed text-ink">
+                    <Icon name="sparkle" size={17} className="mt-0.5 shrink-0 text-action" />
+                    <span>
+                      Tu plan actual no incluye estas clases. Te invitamos a mejorar tu paquete el próximo mes para poder reservar y unirte a ellas.
+                    </span>
+                  </p>
+                  <div className="mt-3 flex">
+                    <LinkButton href={tenantHref(slug, 'planes')} variant="primary" size="sm">
+                      Ver paquetes con clases
+                    </LinkButton>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-1.5 text-[0.86rem] text-muted">
+                  {conReservas
                     ? `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Reserva tu lugar: el cupo es limitado y quien reservó tiene prioridad.`
-                    : `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Llega unos minutos antes: el cupo es limitado y el instructor o recepción registra tu asistencia.`
-                  : 'Tu plan actual no incluye clases grupales.'}
-              </p>
+                    : `Tu plan incluye ${misClases.map((c) => c.name).join(', ')}. Llega unos minutos antes: el cupo es limitado y el instructor o recepción registra tu asistencia.`}
+                </p>
+              )}
 
               {estadoDeReservas?.bloqueadoHasta && (
                 <p className="mt-4 flex items-start gap-2.5 rounded-[var(--t-radius-md)] border border-structural/50 bg-structural/10 px-4 py-3 text-[0.88rem] text-ink">
@@ -729,7 +743,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
               {filasDeAgenda.length > 0 ? (
                 <MiAgendaDeClases className="mt-5" filas={filasDeAgenda} hoy={hoy} mostrarSede={multisede} />
               ) : (
-                misClases.length > 0 && <EmptyState className="mt-5" icono="calendar" titulo={`No hay sesiones de tus clases en los próximos ${diasVisibles} días`} />
+                <EmptyState className="mt-5" icono="calendar" titulo={`No hay sesiones de clases programadas en los próximos ${diasVisibles} días`} />
               )}
 
               {conReservas && (proximasReservas.length > 0 || historialDeReservas.length > 0) && (

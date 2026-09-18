@@ -238,7 +238,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           )}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] items-start">
           <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-asistencia">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -378,17 +378,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
             subirEsMalo
             accion="A quién llamar"
           />
-          {gestionSocios && (
-            <StatCard
-              href={`${socios}?q=Completar datos en recepción`}
-              etiqueta="Faltan datos presenciales"
-              valor={`${sociosPendientes}`}
-              icono="alert"
-              tono={sociosPendientes > 0 ? 'alerta' : 'neutro'}
-              comparacion="pagaron en línea pero no completaron su alta en recepción"
-              accion="Ver pendientes"
-            />
-          )}
+
           {gestionSocios && (
             <StatCard
               href={`${socios}?vista=cumple`}

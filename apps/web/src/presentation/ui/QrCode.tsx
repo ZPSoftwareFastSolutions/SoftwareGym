@@ -34,6 +34,7 @@ export function QrCode({ matriz, descripcion, className }: QrCodeProps) {
 
   return (
     <svg
+      xmlns="http://www.w3.org/2000/svg"
       viewBox={`0 0 ${total} ${total}`}
       role="img"
       aria-label={descripcion}

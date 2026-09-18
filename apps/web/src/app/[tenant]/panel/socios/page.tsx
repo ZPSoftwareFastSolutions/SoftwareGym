@@ -14,6 +14,7 @@ import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { cn } from '@/lib/cn';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
+import { datosPresencialesPendientes } from '@core/domain/operations/alta-del-socio';
 import {
   diasDesde,
   esEstadoDeMembresia,
@@ -182,12 +183,20 @@ export default async function SociosPage({ params, searchParams }: SociosPagePro
               {
                 clave: 'socio',
                 titulo: 'Socio',
-                celda: (f) => (
-                  <span className="flex flex-col">
-                    <BotonFicha customerId={f.id}>{f.fullName}</BotonFicha>
-                    <span className="font-mono text-[0.72rem] font-normal tracking-[0.08em] text-muted">{f.code ?? 'sin código'}</span>
-                  </span>
-                ),
+                celda: (f) => {
+                  const camposFaltantes = datosPresencialesPendientes(f, features.enableMemberManagement ? features.inPersonFields ?? [] : []);
+                  const esPendiente = f.membershipStatus && camposFaltantes.length > 0;
+                  
+                  return (
+                    <span className="flex flex-col items-start gap-1">
+                      <BotonFicha customerId={f.id}>{f.fullName}</BotonFicha>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-[0.72rem] font-normal tracking-[0.08em] text-muted">{f.code ?? 'sin código'}</span>
+                        {esPendiente && <Badge tone="highlight">Socio Pendiente</Badge>}
+                      </span>
+                    </span>
+                  );
+                },
               },
               { clave: 'plan', titulo: 'Plan', celda: (f) => f.planName ?? '—' },
               {

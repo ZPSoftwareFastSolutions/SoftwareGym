@@ -133,6 +133,7 @@ export interface SocioDeLista {
   readonly code: string | null;
   readonly firstName: string;
   readonly fullName: string;
+  readonly documentId: string | null;
   readonly phone: string | null;
   readonly birthDate: string | null;
   readonly archivedAt: string | null;

@@ -23,6 +23,7 @@ import Link from 'next/link';
 import type { AccionRapida, ClaveDeAccionRapida } from '@core/domain/operations/tablero';
 import { tenantHref } from '@/lib/tenant-links';
 import { Icon, type AnyIconKey } from '../icons/Icon';
+import { cn } from '@/lib/cn';
 import { Modal } from '../ui/Modal';
 import { CheckInPanel } from './CheckInPanel';
 
@@ -69,14 +70,14 @@ interface AccionesRapidasProps {
   readonly className?: string;
 }
 
-function Cuerpo({ accion, detalle }: { readonly accion: AccionRapida; readonly detalle?: string }) {
+function Cuerpo({ accion, detalle, isPrincipal = false }: { readonly accion: AccionRapida; readonly detalle?: string; readonly isPrincipal?: boolean }) {
   return (
     <>
-      <span className="flex size-10 items-center justify-center rounded-[var(--t-radius-md)] bg-action/12 text-action">
-        <Icon name={ICONO[accion.clave]} size={20} />
+      <span className={cn("flex items-center justify-center rounded-[var(--t-radius-md)] bg-action/12 text-action", isPrincipal ? "size-14" : "size-10")}>
+        <Icon name={ICONO[accion.clave]} size={isPrincipal ? 28 : 20} />
       </span>
-      <span className="text-[1.02rem] font-semibold text-ink">{accion.etiqueta}</span>
-      <span className="text-[0.82rem] leading-snug text-muted">{detalle ?? accion.descripcion}</span>
+      <span className={cn("font-semibold text-ink", isPrincipal ? "text-[1.2rem] mt-2" : "text-[1.02rem]")}>{accion.etiqueta}</span>
+      <span className={cn("leading-snug text-muted", isPrincipal ? "text-[0.9rem]" : "text-[0.82rem]")}>{detalle ?? accion.descripcion}</span>
     </>
   );
 }
@@ -89,56 +90,77 @@ export function AccionesRapidas({
   comprobantesPendientes,
   className,
 }: AccionesRapidasProps) {
-  if (acciones.length === 0) return null;
+  const principales = acciones.filter((a) => a.clave === 'escanear' || a.clave === 'inventario');
+  const secundarias = acciones.filter((a) => a.clave !== 'escanear' && a.clave !== 'inventario');
+
+  const renderAccion = (accion: AccionRapida, isPrincipal: boolean = false) => {
+    if (accion.clave === 'escanear') {
+      if (!sucursalDelMostrador) return null;
+      return (
+        <Modal
+          key={accion.clave}
+          titulo={mostrarSucursal ? `Registrar entrada · ${sucursalDelMostrador.name}` : 'Registrar entrada'}
+          descripcion="Con la cámara o con el lector. Se registra solo al leer el QR."
+          anchoMaximo="md"
+          montarSoloAbierto
+          prevenirCierreEnFondo
+          disparador={
+            <button
+              type="button"
+              className={cn(
+                CLASE_DE_TARJETA,
+                'border-action/50 bg-action/8',
+                isPrincipal && 'sm:items-center sm:text-center sm:py-8'
+              )}
+            >
+              <Cuerpo
+                accion={accion}
+                detalle={mostrarSucursal ? `Registra en ${sucursalDelMostrador.name}` : accion.descripcion}
+                isPrincipal={isPrincipal}
+              />
+            </button>
+          }
+        >
+          <CheckInPanel slug={slug} sucursal={sucursalDelMostrador} mostrarSucursal={mostrarSucursal} empezarConCamara />
+        </Modal>
+      );
+    }
+
+    const detalle =
+      accion.clave === 'comprobantes' && typeof comprobantesPendientes === 'number'
+        ? comprobantesPendientes === 0
+          ? 'No queda ninguno por revisar'
+          : `${comprobantesPendientes} esperando aprobación`
+        : undefined;
+
+    return (
+      <Link
+        key={accion.clave}
+        href={tenantHref(slug, DESTINO[accion.clave])}
+        className={cn(CLASE_DE_TARJETA, isPrincipal && 'sm:items-center sm:text-center sm:py-8')}
+      >
+        <Cuerpo accion={accion} isPrincipal={isPrincipal} {...(detalle ? { detalle } : {})} />
+      </Link>
+    );
+  };
 
   return (
-    <section aria-labelledby="titulo-acciones-rapidas" className={className}>
+    <section aria-labelledby="titulo-acciones-rapidas" className={cn('flex flex-col gap-6', className)}>
       <h2 id="titulo-acciones-rapidas" className="sr-only">
         Acciones frecuentes
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {acciones.map((accion) => {
-          if (accion.clave === 'escanear') {
-            // Sin sede operable el dominio ya la habría filtrado; el `null` de
-            // aquí es el cinturón: nunca se abre el lector sin saber DÓNDE se
-            // registra, porque la base volvería a exigirlo y daría un error.
-            if (!sucursalDelMostrador) return null;
-            return (
-              <Modal
-                key={accion.clave}
-                titulo={mostrarSucursal ? `Registrar entrada · ${sucursalDelMostrador.name}` : 'Registrar entrada'}
-                descripcion="Con la cámara o con el lector. Se registra solo al leer el QR."
-                anchoMaximo="md"
-                montarSoloAbierto
-                prevenirCierreEnFondo
-                disparador={
-                  <button type="button" className={`${CLASE_DE_TARJETA} border-action/50 bg-action/8`}>
-                    <Cuerpo
-                      accion={accion}
-                      detalle={mostrarSucursal ? `Registra en ${sucursalDelMostrador.name}` : accion.descripcion}
-                    />
-                  </button>
-                }
-              >
-                <CheckInPanel slug={slug} sucursal={sucursalDelMostrador} mostrarSucursal={mostrarSucursal} empezarConCamara />
-              </Modal>
-            );
-          }
+      
+      {principales.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {principales.map((accion) => renderAccion(accion, true))}
+        </div>
+      )}
 
-          const detalle =
-            accion.clave === 'comprobantes' && typeof comprobantesPendientes === 'number'
-              ? comprobantesPendientes === 0
-                ? 'No queda ninguno por revisar'
-                : `${comprobantesPendientes} esperando aprobación`
-              : undefined;
-
-          return (
-            <Link key={accion.clave} href={tenantHref(slug, DESTINO[accion.clave])} className={CLASE_DE_TARJETA}>
-              <Cuerpo accion={accion} {...(detalle ? { detalle } : {})} />
-            </Link>
-          );
-        })}
-      </div>
+      {secundarias.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {secundarias.map((accion) => renderAccion(accion, false))}
+        </div>
+      )}
     </section>
   );
 }

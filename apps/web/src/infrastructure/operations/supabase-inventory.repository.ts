@@ -55,7 +55,10 @@ export class SupabaseInventoryRepository implements InventoryRepositoryPort {
         price: data.price,
       });
 
-    if (error) return fallo('No se pudo crear el producto.');
+    if (error) {
+      console.error('[inventario] crear', error);
+      return fallo('No se pudo crear el producto.');
+    }
     return exito(undefined);
   }
 
