@@ -42,6 +42,9 @@ const connectSrc = ["'self'", SUPABASE_ORIGIN].filter(Boolean).join(' ');
  */
 const mediaSrc = ["'self'", 'blob:', SUPABASE_ORIGIN].filter(Boolean).join(' ');
 const imgSrc = ["'self'", 'data:', 'blob:', SUPABASE_ORIGIN].filter(Boolean).join(' ');
+const isDev = process.env.NODE_ENV !== 'production';
+const scriptSrc = ["'self'", "'unsafe-inline'", isDev ? "'unsafe-eval'" : ''].filter(Boolean).join(' ');
+
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -60,7 +63,7 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src ${scriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
       `img-src ${imgSrc}`,
       `media-src ${mediaSrc}`,
@@ -73,7 +76,7 @@ const securityHeaders = [
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      'upgrade-insecure-requests',
+      ...(isDev ? [] : ['upgrade-insecure-requests']),
     ].join('; '),
   },
 ];
