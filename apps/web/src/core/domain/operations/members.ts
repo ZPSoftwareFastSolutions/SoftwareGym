@@ -304,6 +304,11 @@ export function diasDesde(fecha: string | null, hoy: string): number | null {
 /** Mensaje legible para un error lanzado por las operaciones de la base. */
 export function mensajeDeErrorDeSocio(codigo: string): string {
   if (codigo.includes('documento_duplicado')) return 'Ya hay un socio con ese documento.';
+  // V4.2 · Un correo, una ficha por gimnasio: evita el socio duplicado entre el
+  // alta en línea y la de recepción.
+  if (codigo.includes('correo_duplicado') || codigo.includes('customers_tenant_email_uk')) {
+    return 'Ya hay una ficha con ese correo. Búscala en Socios: si la persona se registró en línea, completa esa ficha en vez de crear otra.';
+  }
   if (codigo.includes('nombre_invalido')) return 'Revisa el nombre y el apellido.';
   if (codigo.includes('correo_invalido')) return 'Ese correo no tiene un formato válido.';
   if (codigo.includes('plan_invalido')) return 'Ese plan no está disponible.';

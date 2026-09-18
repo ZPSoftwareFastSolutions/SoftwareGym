@@ -29,6 +29,8 @@ interface HoursSummarySectionProps {
   readonly eyebrow?: string;
   readonly title?: string;
   readonly lead?: string;
+  /** V4.2 · Sin «Horario completo» cuando la sección ya está en `/horarios`. */
+  readonly conEnlaceAlHorario?: boolean;
 }
 
 export function HoursSummarySection({
@@ -38,6 +40,7 @@ export function HoursSummarySection({
   eyebrow = 'Horarios',
   title = 'Cuándo puedes venir',
   lead,
+  conEnlaceAlHorario = true,
 }: HoursSummarySectionProps) {
   const tramos = resumirHorario(hours.week);
   if (tramos.length === 0) return null;
@@ -49,9 +52,11 @@ export function HoursSummarySection({
           <SectionHeading eyebrow={eyebrow} title={title} lead={lead} />
 
           <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-            <LinkButton href={tenantHref(slug, 'horarios')} variant="secondary" size="md" icon="arrowRight">
-              Horario completo
-            </LinkButton>
+            {conEnlaceAlHorario && (
+              <LinkButton href={tenantHref(slug, 'horarios')} variant="secondary" size="md" icon="arrowRight">
+                Horario completo
+              </LinkButton>
+            )}
             {conClases && (
               <LinkButton href={tenantHref(slug, 'clases')} variant="primary" size="md" icon="arrowRight">
                 Horario de clases

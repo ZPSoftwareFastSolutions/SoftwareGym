@@ -206,3 +206,15 @@ Verificado con sesión simulada (revertido): Administración de GOLD escribe los
 en el borde → 23514, Recepción → 0 filas, el anónimo lee las columnas nuevas; `javascript:`, espacios y enlaces > 500
 → 23514. Advisors: solo el aviso aceptado de contraseñas filtradas.
 | `20260916170000_v4_2_aviso_al_socio_al_revisar_su_comprobante.sql` | Al pasar un comprobante de `pendiente` a `aprobado`/`rechazado`, un disparador AFTER UPDATE deja un aviso personal al socio (`customer_messages`, kinds `comprobante_aprobado`/`comprobante_rechazado`) con importe, plan y motivo, vía `app.avisar_al_socio` (DEFINER). Probado revertido: el socio ve los dos avisos; recepción ve 0 avisos e insertar uno → 42501 |
+
+### V4.2 · Alta en línea del socio e historial de GOLD (2026-09-17, aplicadas con autorización del usuario)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260917100000_v4_2_alta_online_del_socio.sql` | Índice único de correo por gimnasio (`customers_tenant_email_uk`), `app.crear_ficha_propia()` envuelta por `public.crear_mi_ficha()` (invocador): quien tiene cuenta y correo confirmado crea o adopta SU ficha al subir el comprobante, con código correlativo y la nota de que falta completarla en recepción; devuelve `ficha_ambigua` o `ficha_de_otra_cuenta` en vez de adivinar. `app.ficha_propia_sin_membresia` + disparadores en `access_passes` y `attendance_records`: una ficha creada por su propia cuenta **no entra al gimnasio hasta que recepción aprueba su pago** (`ficha_sin_pago_aprobado`). `registrar_socio` traduce el choque de correo a `correo_duplicado` |
+| `20260917101000_v4_2_acceso_de_la_ficha_propia_y_nombre_al_vincular.sql` | `public.mi_ficha_sin_pago_aprobado()` para que el panel del socio sepa si su QR está habilitado sin poder cambiarlo, y `app._enlazar_cuenta_y_ficha` copia el nombre de la ficha cuando la cuenta se registró solo con el correo (así el socio que da de alta recepción no aparece como «juan.perez») |
+| `20260917110000_v4_2_gold_historial_de_demostracion.sql` | **Datos, no esquema.** Historial de DEMOSTRACIÓN de GOLD (junio–septiembre 2026): 16 socios con ficha completa repartidos en las cuatro sedes, 31 membresías de sus planes reales con renovaciones consecutivas, vencidas y por vencer, 31 pagos (efectivo, QR, transferencia, tarjeta), 18 comprobantes (aprobados con su pago, dos rechazados con motivo y dos pendientes) y 591 entradas con su pase de acceso. Solo toca `golds-gym-premium`, resuelto por slug; idempotente (si ya hay un socio `@demo.gymplatform.bo` no hace nada) y reproducible (`setseed`). Apaga `preparar_pase_de_acceso` **solo dentro de su transacción** para escribir pases con fecha histórica —el disparador los fija en «ahora», que es lo correcto al escanear— y lo vuelve a encender. Comprueba al terminar que hay 15 socios o más, 90 días o más de entradas y las cuatro sedes |
+
+Los comprobantes sembrados **no tienen archivo en Storage** (no se puede subir un binario desde SQL): la bandeja y la
+ficha muestran «Sin imagen» en vez del icono roto del navegador (`MiniaturaDeComprobante`). Para retirar la
+demostración basta con borrar lo que cuelga de los socios con correo `@demo.gymplatform.bo`.

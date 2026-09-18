@@ -16,10 +16,12 @@ import { esModoDeMonto, esModoDeQr, evaluarImporte } from '@core/domain/operatio
 import { fechaIsoValida } from '@core/domain/operations/periodo';
 import { PERMISO } from '@core/domain/operations/workspace';
 import { esEstadoDeComprobante, esOrigenDeComprobante, type Comprobante } from '@core/domain/operations/receipts';
+import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
 import {
   membersRepository,
   paymentSettingsRepository,
   receiptsRepository,
+  tenantRepository,
 } from '@infra/config/composition-root';
 import { importe } from '@/lib/formato';
 import {
@@ -184,11 +186,18 @@ export async function subirMiComprobante(_previo: EstadoDeFormulario, form: Form
   if (!acceso.ok) return { mensaje: acceso.mensaje };
   const { slug, perfil } = acceso.contexto;
 
-  if (!perfil.customerId || !perfil.tenantId) {
+  // V4.2 · Alta en línea. La configuración sale del REGISTRO del gimnasio de la
+  // ruta (ya comprobado contra la sesión), nunca del formulario.
+  const tenant = await getTenantBySlug(tenantRepository(), slug);
+  const altaEnLinea = tenant?.members?.onlineSignup === true;
+
+  if (!perfil.tenantId || (!perfil.customerId && !altaEnLinea)) {
     return { mensaje: 'Tu cuenta todavía no está vinculada a tu ficha de socio. Acércate a recepción.' };
   }
 
   const { plan, monto, errores } = await validarImporteYPlan(form);
+  // Quien se da de alta paga UN plan: sin plan no hay membresía que aprobar.
+  if (!perfil.customerId && !plan) errores.planId = 'Elige el plan que pagaste.';
   const imagen = await imagenDeFormulario(form, 'comprobante');
   if (!imagen) errores.comprobante = 'Adjunta la captura o foto del comprobante.';
   else if (!imagen.ok) errores.comprobante = imagen.mensaje;
@@ -197,9 +206,21 @@ export async function subirMiComprobante(_previo: EstadoDeFormulario, form: Form
     return { errores, mensaje: 'Revisa los campos marcados.' };
   }
 
-  const subida = await (await receiptsRepository()).subir({
+  const recibos = await receiptsRepository();
+
+  // La ficha se crea recién aquí, con el formulario ya validado: una cuenta que
+  // solo mira planes no deja fichas vacías. La base la crea o VINCULA la única
+  // ficha libre con su correo confirmado; nunca crea una segunda.
+  let customerId = perfil.customerId;
+  if (!customerId) {
+    const ficha = await recibos.crearMiFicha();
+    if (!ficha.ok) return { mensaje: ficha.mensaje };
+    customerId = ficha.valor;
+  }
+
+  const subida = await recibos.subir({
     tenantId: perfil.tenantId,
-    customerId: perfil.customerId,
+    customerId,
     planId: plan?.id ?? null,
     amount: monto,
     method: 'qr',
@@ -210,7 +231,11 @@ export async function subirMiComprobante(_previo: EstadoDeFormulario, form: Form
   if (!subida.ok) return { mensaje: subida.mensaje };
 
   revalidatePath(`/${slug}/panel`, 'layout');
-  return { exito: 'Comprobante enviado. Recepción lo revisa y tu membresía se activa al aprobarlo.' };
+  return {
+    exito: perfil.customerId
+      ? 'Comprobante enviado. Recepción lo revisa y tu membresía se activa al aprobarlo.'
+      : 'Comprobante enviado. Recepción lo revisa: al aprobarlo se activa tu membresía y tu QR de entrada.',
+  };
 }
 
 /**

@@ -16,9 +16,16 @@ import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { construirNotificaciones } from '@core/domain/operations/notifications';
 import { AVISO_DE_CUENTA_PARA_COMPROBANTE } from '@core/domain/operations/receipts';
+import {
+  datosPresencialesPendientes,
+  listaDeCampos,
+  qrHabilitado,
+  situacionDelSocio,
+  type SituacionDelSocio,
+} from '@core/domain/operations/alta-del-socio';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { calcularRacha, diaDelHorario, diasCerradosDelHorario } from '@core/domain/operations/streak';
-import { ETIQUETA_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
+import { ETIQUETA_SIN_SUCURSAL } from '@core/domain/operations/branches';
 import { edad, NOMBRE_DE_ESTADO_DE_MEMBRESIA, NOMBRE_DE_METODO_DE_PAGO } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE } from '@core/domain/operations/receipts';
 import { clasesDelPlan, horaDeFin, sumarDias } from '@core/domain/operations/classes';
@@ -47,7 +54,6 @@ import { DataTable } from '@/presentation/ui/DataTable';
 import { EmptyState } from '@/presentation/ui/EmptyState';
 import { Modal } from '@/presentation/ui/Modal';
 import { QrCode } from '@/presentation/ui/QrCode';
-import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
 import { Button, LinkButton } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
@@ -69,6 +75,23 @@ function Dato({ etiqueta, valor }: { readonly etiqueta: string; readonly valor: 
     </div>
   );
 }
+
+/** V4.2 · Cómo se lee cada punto del alta en la tarjeta de socio. */
+const NOMBRE_DE_SITUACION: Readonly<Record<SituacionDelSocio, string>> = {
+  'sin-ficha': 'Sin ficha',
+  'pago-en-revision': 'Pago en revisión',
+  'sin-membresia': 'Sin membresía activa',
+  pendiente: 'Socio pendiente',
+  completo: 'Socio activo',
+};
+
+const TONO_DE_SITUACION: Readonly<Record<SituacionDelSocio, 'action' | 'neutral' | 'structural' | 'highlight'>> = {
+  'sin-ficha': 'neutral',
+  'pago-en-revision': 'structural',
+  'sin-membresia': 'neutral',
+  pendiente: 'highlight',
+  completo: 'action',
+};
 
 export default async function PanelDeSocioPage({ params, searchParams }: SocioPageProps) {
   const tenant = await loadTenantPage(params, 'memberLogin');
@@ -188,19 +211,34 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   // en orden de llegada.
   const avisosDeComprobantes = features.enableNotifications && conPagos && customerId ? await (await receiptsRepository()).avisos() : [];
   const personales = [...avisosDeComprobantes, ...avisosDeReservas].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId, personales) : [];
+  // V4.2 · Con alta en línea, la cuenta sin ficha no «espera a recepción»: puede
+  // pagar y subir su comprobante. El aviso de «falta vincular tu ficha» sobra.
+  const altaEnLinea = conPagos && tenant.members?.onlineSignup === true;
+  const notificaciones = features.enableNotifications ? construirNotificaciones(membresia, avisos, !customerId && !altaEnLinea, personales) : [];
   const racha = calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
   const horarioDeHoy = diaDelHorario(tenant.hours.week, hoy);
   const esteMes = dias.filter((dia) => dia.slice(0, 7) === hoy.slice(0, 7)).length;
-  // La racha y el conteo salen de las FECHAS, sin mirar la sede: ir a una sede un
-  // día y a otra al siguiente son dos días seguidos.
-  const sedesDelMes = multisede ? repartoPorSucursal(historial.filter((r) => r.attendanceDate.slice(0, 7) === hoy.slice(0, 7))) : [];
   const ultimasEntradas = historial.slice(0, 8);
   const token = features.enableQrAttendance ? ficha?.checkinToken ?? null : null;
   const matriz = token ? matrizQr(token) : null;
   const planAPagar = planes.find((plan) => plan.code === codigoAPagar) ?? planes.find((plan) => plan.id === ficha?.planId);
   const pendientes = comprobantes.filter((c) => c.status === 'pendiente').length;
   const años = edad(ficha?.birthDate ?? null, hoy);
+
+  // V4.2 · En qué punto del alta está. «Socio pendiente» es una LECTURA:
+  // membresía aprobada + datos presenciales que el gimnasio exige y faltan.
+  // El QR sigue la misma regla que la base usa para dejar entrar.
+  const fichaSinPagoAprobado = customerId ? await (await receiptsRepository()).miFichaSinPagoAprobado() : false;
+  const datosPendientes = ficha ? datosPresencialesPendientes(ficha, tenant.members?.inPersonFields ?? []) : [];
+  const situacion = situacionDelSocio({
+    tieneFicha: Boolean(customerId),
+    fichaSinPagoAprobado,
+    comprobantesPendientes: pendientes,
+    tieneMembresia: Boolean(ficha?.membershipId),
+    datosPendientes,
+  });
+  const conQr = Boolean(token && matriz) && qrHabilitado({ tieneFicha: Boolean(customerId), fichaSinPagoAprobado });
+  const proximaClase = inscripciones[0] ?? null;
 
   if (!perfil.tenantSlug) {
     return (
@@ -211,7 +249,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   }
 
   const formularioDePago =
-    conPagos && customerId ? (
+    conPagos && (customerId || altaEnLinea) ? (
       <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
     ) : null;
 
@@ -234,7 +272,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
 
       {/* V4.2 · Llegó desde «Pagar con QR» con una cuenta que aún no es de socio
           (la ventana lo avisa, pero el enlace se puede abrir a mano). */}
-      {codigoAPagar && conPagos && !customerId && (
+      {codigoAPagar && conPagos && !customerId && !altaEnLinea && (
         <section className="surface-card border-action/40 p-6 sm:p-7" aria-labelledby="titulo-pago-sin-ficha">
           <h2 id="titulo-pago-sin-ficha" className="flex items-center gap-2 t-h3">
             <Icon name="idcard" size={18} className="text-action" />
@@ -245,81 +283,222 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
       )}
 
       {!customerId ? (
-        <section className="surface-card">
-          <EmptyState
-            icono="idcard"
-            titulo="Falta vincular tu ficha de socio"
-            descripcion="Tu cuenta está creada. Cuando recepción te registre con este mismo correo, aquí verás tu plan, tu QR y tu racha."
-          />
-        </section>
+        altaEnLinea ? (
+          // V4.2 · Alta en línea: la cadena entera, a la vista, en el orden en
+          // que ocurre. Nada se habilita al subir la captura: se habilita al
+          // aprobarla.
+          !codigoAPagar && (
+            <section className="surface-card p-6 sm:p-8" aria-labelledby="titulo-alta-en-linea">
+              <p className="text-[0.74rem] font-semibold uppercase tracking-[0.16em] text-action">Hazte socio en línea</p>
+              <h2 id="titulo-alta-en-linea" className="mt-2 t-h2">Elige tu plan y súbenos tu comprobante</h2>
+              <ol className="mt-6 grid gap-3 md:grid-cols-4">
+                {[
+                  ['1', 'Elige tu plan', 'y págalo con el QR del gimnasio.'],
+                  ['2', 'Sube la captura', 'del comprobante aquí mismo.'],
+                  ['3', 'Recepción lo aprueba', 'y se activan tu membresía y tu QR.'],
+                  ['4', 'En tu primera visita', 'recepción completa tu ficha con tus datos.'],
+                ].map(([n, titulo, texto]) => (
+                  <li key={n} className="flex gap-3 rounded-[var(--t-radius-md)] bg-raised p-4">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-action text-[0.8rem] font-bold text-on-action">{n}</span>
+                    <span className="text-[0.88rem] leading-snug text-ink">
+                      <strong className="block font-semibold">{titulo}</strong>
+                      <span className="text-muted">{texto}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              {formularioDePago && <div className="mt-7 border-t border-line pt-7">{formularioDePago}</div>}
+            </section>
+          )
+        ) : (
+          <section className="surface-card">
+            <EmptyState
+              icono="idcard"
+              titulo="Falta vincular tu ficha de socio"
+              descripcion="Tu cuenta está creada. Cuando recepción te registre con este mismo correo, aquí verás tu plan, tu QR y tu racha."
+            />
+          </section>
+        )
       ) : (
         <>
-          {/* V4.2 · Lo primero que ve el socio es quién es: su cara y su nombre.
-              No es adorno —es lo que recepción compara al escanear su QR—, y por
-              eso va arriba y no escondido en «información personal». */}
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-mi-identidad">
-            <h2 id="titulo-mi-identidad" className="t-h3">
-              Hola, {perfil.fullName.split(/\s+/)[0] ?? perfil.fullName}
-            </h2>
-            <div className="mt-5">
-              <FotoDePerfilForm slug={slug} nombre={perfil.fullName} fotoUrl={miFoto.url} />
+          {/*
+            V4.2 · PRIMERA VISTA: LA TARJETA DE SOCIO.
+            Lo que se busca en el mostrador y al llegar, en este orden: el QR de
+            entrada, quién es (foto y nombre), el estado de su membresía y sus
+            días, su racha, su próxima clase y las acciones. En un teléfono el QR
+            va arriba y a tamaño de lectura; en escritorio, a la izquierda.
+          */}
+          <section className="surface-card overflow-hidden" aria-labelledby="titulo-tarjeta-de-socio">
+            <h2 id="titulo-tarjeta-de-socio" className="sr-only">Tu tarjeta de socio</h2>
+            <div className="grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+              <div className="flex flex-col items-center gap-3 border-b border-line bg-raised/50 p-6 text-center sm:p-7 md:border-b-0 md:border-e">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted">Tu QR de entrada</p>
+                {conQr && matriz && token ? (
+                  <>
+                    <div className="w-full max-w-[17rem] rounded-[var(--t-radius-md)] bg-white p-3">
+                      <QrCode matriz={matriz} descripcion="Código QR personal para registrar tu entrada al gimnasio" className="max-w-none" />
+                    </div>
+                    <p className="break-all font-mono text-[0.74rem] tracking-[0.12em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
+                    {/* Mismo QR a pantalla casi completa: en el mostrador, con el
+                        brillo bajo o el teléfono lejos, uno pequeño no se lee. */}
+                    <Modal
+                      titulo="Tu QR de entrada"
+                      descripcion="Súbele el brillo a la pantalla si el lector no lo capta."
+                      anchoMaximo="md"
+                      disparador={
+                        <Button variant="primary" size="md" icon="qr" iconPosition="start" fullWidth>
+                          Mostrar en grande
+                        </Button>
+                      }
+                    >
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-full max-w-[26rem] rounded-[var(--t-radius-md)] bg-white p-4">
+                          <QrCode matriz={matriz} descripcion="Tu QR personal de entrada al gimnasio" className="max-w-none" />
+                        </div>
+                        <p className="font-mono text-[0.9rem] tracking-[0.14em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
+                      </div>
+                    </Modal>
+                  </>
+                ) : (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6">
+                    <span className="grid h-16 w-16 place-items-center rounded-full border border-line text-muted">
+                      <Icon name="lock" size={24} />
+                    </span>
+                    <p className="font-semibold text-ink">
+                      {situacion === 'pago-en-revision' ? 'Se activa al aprobar tu pago' : 'Todavía no tienes QR'}
+                    </p>
+                    <p className="max-w-[22ch] text-[0.84rem] text-muted">
+                      {situacion === 'pago-en-revision'
+                        ? 'Recepción está revisando tu comprobante. Te avisamos aquí apenas lo apruebe.'
+                        : fichaSinPagoAprobado
+                          ? 'Paga tu plan y sube el comprobante: al aprobarlo se activa.'
+                          : 'Pídelo en recepción y quedará disponible aquí.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex min-w-0 flex-col gap-5 p-6 sm:p-7">
+                <div className="flex items-center gap-4">
+                  {miFoto.url ? (
+                    <img src={miFoto.url} alt="" className="h-16 w-16 shrink-0 rounded-[var(--t-radius-lg)] border border-line object-cover" />
+                  ) : (
+                    <span aria-hidden="true" className="grid h-16 w-16 shrink-0 place-items-center rounded-[var(--t-radius-lg)] border border-line bg-raised text-[1.3rem] font-bold text-muted">
+                      {(perfil.fullName.trim()[0] ?? '?').toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-[1.15rem] font-semibold text-ink">{ficha?.fullName ?? perfil.fullName}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <Badge tone={TONO_DE_SITUACION[situacion]}>{NOMBRE_DE_SITUACION[situacion]}</Badge>
+                      {ficha?.code && <span className="font-mono text-[0.78rem] text-muted">{ficha.code}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {situacion === 'pendiente' && (
+                  <p className="flex items-start gap-2.5 rounded-[var(--t-radius-md)] border border-action/40 bg-action/10 px-4 py-3 text-[0.86rem] leading-relaxed text-ink">
+                    <Icon name="idcard" size={17} className="mt-0.5 shrink-0 text-action" />
+                    <span>
+                      Tu membresía y tu QR ya funcionan. En tu próxima visita, recepción completará tu ficha con tu{' '}
+                      {listaDeCampos(datosPendientes)}: lleva tu documento.
+                    </span>
+                  </p>
+                )}
+
+                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-[var(--t-radius-md)] bg-raised px-4 py-3">
+                    <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted">{ficha?.planName ?? 'Membresía'}</dt>
+                    <dd className="mt-1">
+                      <span className="text-[1.9rem] font-bold leading-none text-ink">
+                        {ficha?.daysRemaining !== null && ficha?.daysRemaining !== undefined ? Math.max(ficha.daysRemaining, 0) : '—'}
+                      </span>
+                      <span className="mt-1 block text-[0.76rem] text-muted">
+                        {ficha?.endDate ? `días · vence ${fechaCorta(ficha.endDate)}` : 'sin membresía activa'}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="rounded-[var(--t-radius-md)] bg-raised px-4 py-3">
+                    <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted">Racha</dt>
+                    <dd className="mt-1">
+                      <span className="text-[1.9rem] font-bold leading-none text-ink">{racha.actual}</span>
+                      <span className="mt-1 block text-[0.76rem] text-muted">
+                        {racha.actual === 1 ? 'día' : 'días'} · mejor {racha.mejor} · {esteMes} este mes
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="col-span-2 rounded-[var(--t-radius-md)] bg-raised px-4 py-3 sm:col-span-1">
+                    <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted">Próxima clase</dt>
+                    <dd className="mt-1">
+                      {proximaClase ? (
+                        <>
+                          <span className="block truncate text-[1.05rem] font-semibold text-ink">{proximaClase.nombre}</span>
+                          <span className="mt-1 block text-[0.76rem] text-muted">
+                            {fechaCorta(proximaClase.sessionDate)} · {proximaClase.startTime}
+                            {inscripciones.length > 1 ? ` · +${inscripciones.length - 1} más` : ''}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="mt-1 block text-[0.84rem] text-muted">{conClases ? 'No estás inscrito en ninguna' : 'Sin clases en tu plan'}</span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+                  {formularioDePago && (
+                    <Modal
+                      titulo="Pagar mi mensualidad"
+                      descripcion="Paga con el QR del gimnasio y sube la captura del comprobante."
+                      anchoMaximo="lg"
+                      montarSoloAbierto
+                      disparador={
+                        <Button variant="primary" size="md" icon="upload" iconPosition="start" fullWidth>
+                          {ficha?.membershipId ? 'Renovar / subir comprobante' : 'Pagar mi plan'}
+                        </Button>
+                      }
+                    >
+                      <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
+                    </Modal>
+                  )}
+                  {conClases && (
+                    <LinkButton href="#mis-clases" variant="secondary" size="md" icon="calendar" iconPosition="start">
+                      {conReservas ? 'Reservar clase' : 'Mis clases'}
+                    </LinkButton>
+                  )}
+                  <Modal
+                    titulo="Tu racha"
+                    descripcion="Los días que el gimnasio cierra no la cortan."
+                    anchoMaximo="md"
+                    disparador={
+                      <Button variant="ghost" size="md" icon="fire" iconPosition="start">
+                        Ver mi constancia
+                      </Button>
+                    }
+                  >
+                    <RachaCalendario racha={racha} />
+                  </Modal>
+                  {/* La foto se habilita con el pago aprobado, igual que el QR:
+                      es lo que recepción compara al escanear. */}
+                  {conQr && (
+                    <Modal
+                      titulo="Tu foto de perfil"
+                      descripcion="Recepción la ve al escanear tu QR."
+                      anchoMaximo="md"
+                      disparador={
+                        <Button variant="ghost" size="md" icon="user" iconPosition="start">
+                          {miFoto.url ? 'Cambiar foto' : 'Subir foto'}
+                        </Button>
+                      }
+                    >
+                      <FotoDePerfilForm slug={slug} nombre={perfil.fullName} fotoUrl={miFoto.url} />
+                    </Modal>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              href="#mi-membresia"
-              etiqueta={ficha?.planName ?? 'Membresía'}
-              valor={ficha?.daysRemaining !== null && ficha?.daysRemaining !== undefined ? String(Math.max(ficha.daysRemaining, 0)) : '—'}
-              icono="shield"
-              tono={ficha?.membershipStatus === 'active' ? 'accion' : ficha?.membershipStatus ? 'alerta' : 'neutro'}
-              comparacion={ficha?.endDate ? `días restantes · vence ${fechaCorta(ficha.endDate)}` : 'sin membresía registrada'}
-              accion="Ver mi plan"
-            />
-            <StatCard
-              href="#mis-entradas"
-              etiqueta="Este mes"
-              valor={String(esteMes)}
-              icono="calendar"
-              comparacion={
-                sedesDelMes.length > 1 || (sedesDelMes.length === 1 && sedesDelMes[0]?.branchId !== null)
-                  ? sedesDelMes.map((s) => `${s.branchId ? s.nombre : 'sin sede'}: ${s.visitas}`).join(' · ')
-                  : esteMes === 1
-                    ? 'visita registrada'
-                    : 'visitas registradas'
-              }
-              accion="Ver mis entradas"
-            />
-            <Modal
-              titulo="Tu racha"
-              descripcion="Los días que el gimnasio cierra no la cortan."
-              anchoMaximo="md"
-              disparador={
-                <StatCard boton etiqueta="Racha" valor={`${racha.actual}`} icono="fire" tono={racha.actual >= 3 ? 'accion' : 'neutro'} comparacion={`mejor racha: ${racha.mejor} días`} accion="Ver calendario" />
-              }
-            >
-              <RachaCalendario racha={racha} />
-            </Modal>
-            {token && matriz ? (
-              <Modal
-                titulo="Tu QR de entrada"
-                descripcion="Enséñalo en recepción."
-                anchoMaximo="md"
-                disparador={<StatCard boton etiqueta="QR de entrada" valor="Mostrar" icono="qr" tono="accion" comparacion="ábrelo grande en el mostrador" accion="Abrir QR" />}
-              >
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-full max-w-[26rem] rounded-[var(--t-radius-md)] bg-white p-4">
-                    <QrCode matriz={matriz} descripcion="Tu QR personal de entrada al gimnasio" className="max-w-none" />
-                  </div>
-                  <p className="font-mono text-[0.9rem] tracking-[0.14em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
-                </div>
-              </Modal>
-            ) : (
-              <StatCard href="#mis-entradas" etiqueta="Últimos 12 meses" valor={String(dias.length)} icono="dumbbell" comparacion="entradas registradas" />
-            )}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,21rem)]">
             <section id="mi-membresia" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-membresia">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -365,22 +544,6 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
               )}
 
               <div className="mt-6 flex flex-wrap gap-3">
-                {formularioDePago && (
-                  <Modal
-                    titulo="Pagar mi mensualidad"
-                    descripcion="Paga con el QR del gimnasio y sube la captura del comprobante."
-                    anchoMaximo="lg"
-                    montarSoloAbierto
-                    disparador={
-                      <Button variant="primary" size="md" icon="upload" iconPosition="start" glow>
-                        {ficha?.membershipId ? 'Renovar / subir comprobante' : 'Pagar mi plan'}
-                      </Button>
-                    }
-                  >
-                    {/* El QR del plan elegido lo enseña el propio formulario. */}
-                    <SubirComprobanteForm slug={slug} modo="socio" planes={planes} planSugerido={planAPagar?.id} />
-                  </Modal>
-                )}
                 <LinkButton href={tenantHref(slug, 'planes')} variant="secondary" size="md">
                   Ver paquetes
                 </LinkButton>
@@ -408,45 +571,6 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                 </div>
               )}
             </section>
-
-            <section className="surface-card flex flex-col items-center gap-3 p-6 text-center sm:p-7" aria-labelledby="titulo-qr">
-              <h2 id="titulo-qr" className="t-h3">Tu QR de entrada</h2>
-              {matriz && token ? (
-                <>
-                  <p className="text-[0.84rem] text-muted">Enséñalo en recepción para registrar tu entrada.</p>
-                  <div className="rounded-[var(--t-radius-md)] bg-white p-3">
-                    <QrCode matriz={matriz} descripcion="Código QR personal para registrar tu entrada al gimnasio" className="max-w-[13rem]" />
-                  </div>
-                  <p className="break-all font-mono text-[0.72rem] tracking-[0.12em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
-                  {/* Mismo QR, a pantalla casi completa: en el mostrador, con el
-                      brillo bajo o el teléfono lejos, un QR pequeño no se lee. */}
-                  <Modal
-                    titulo="Tu QR de entrada"
-                    descripcion="Súbele el brillo a la pantalla si el lector no lo capta."
-                    anchoMaximo="md"
-                    disparador={
-                      <Button variant="primary" size="md" icon="qr" iconPosition="start" fullWidth>
-                        Mostrar QR
-                      </Button>
-                    }
-                  >
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-full max-w-[26rem] rounded-[var(--t-radius-md)] bg-white p-4">
-                        <QrCode matriz={matriz} descripcion="Tu QR personal de entrada al gimnasio" className="max-w-none" />
-                      </div>
-                      <p className="font-mono text-[0.9rem] tracking-[0.14em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
-                    </div>
-                  </Modal>
-                  <p className="flex items-start gap-2 text-start text-[0.76rem] text-muted">
-                    <Icon name="lock" size={14} className="mt-0.5 shrink-0 text-action" />
-                    <span>Solo sirve para marcar tu asistencia. No lleva tus datos ni da acceso a tu cuenta.</span>
-                  </p>
-                </>
-              ) : (
-                <EmptyState icono="lock" titulo="Todavía no tienes QR" descripcion="Pídelo en recepción y quedará disponible aquí." />
-              )}
-            </section>
-          </div>
 
           {/* §6 · «Horarios» está en la lista de lo que el socio necesita a
               diario, justo después de su membresía y su QR. Se enseña la semana

@@ -12,6 +12,7 @@
  * arquitectónica de todo el proyecto.
  */
 
+import type { CampoDeFichaPresencial } from '../operations/alta-del-socio';
 import type {
   FacilityItem,
   FaqItem,
@@ -240,6 +241,19 @@ export interface TenantConfig {
    * que tenía la página antes de existir este campo.
    */
   readonly home?: Partial<ComposicionDePortada>;
+  /**
+   * V4.2 · Alta de socios.
+   * - `onlineSignup`: quien crea su cuenta en la web puede elegir un plan, pagar
+   *   por QR y subir su comprobante sin pasar antes por recepción (la base crea o
+   *   vincula su ficha al subirlo). Requiere `enablePayments`.
+   * - `inPersonFields`: datos que recepción toma en persona. Mientras falten, el
+   *   socio con membresía aprobada se lee como «socio pendiente».
+   * Sin declarar: sin alta en línea y sin «pendiente», como antes.
+   */
+  readonly members?: {
+    readonly onlineSignup?: boolean;
+    readonly inPersonFields?: readonly CampoDeFichaPresencial[];
+  };
   /** Metadatos de aprovisionamiento. Informativos en V1. */
   readonly provisioning: {
     readonly plan: 'starter' | 'professional' | 'enterprise';

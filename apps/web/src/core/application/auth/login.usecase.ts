@@ -105,6 +105,31 @@ export const MENSAJE_CUENTA_DE_OTRO_GIMNASIO =
   'Tu cuenta está registrada en otro gimnasio de la plataforma y no puede entrar aquí. ' +
   'Para ser socio de este gimnasio, crea una cuenta con un correo distinto.';
 
+/**
+ * V4.2 · Reglas de una contraseña nueva, en un solo sitio: el alta y la
+ * pantalla de «crear tu contraseña» no pueden exigir cosas distintas.
+ */
+export function errorDeContrasenaNueva(password: string, correo = ''): string | null {
+  if (!password) return 'Elige una contraseña.';
+  if (password.length < LARGO_MINIMO_PASSWORD) return `La contraseña necesita al menos ${LARGO_MINIMO_PASSWORD} caracteres.`;
+  // bcrypt trunca en 72 bytes: más allá, los caracteres extra no cuentan y el
+  // usuario creería tener una contraseña más fuerte de la que tiene.
+  if (password.length > 72) return 'La contraseña no puede pasar de 72 caracteres.';
+  if (correo && password.toLowerCase() === correo.trim().toLowerCase()) return 'La contraseña no puede ser igual a tu correo.';
+  return null;
+}
+
+export const MENSAJE_ENLACE_DE_ACCESO_ENVIADO =
+  'Te enviamos un enlace para entrar y crear tu contraseña. Si no lo ves en unos minutos, revisa spam o promociones.';
+
+/** Errores de pedir el enlace: el límite de envíos es el único que la persona puede resolver esperando. */
+export function mensajeDeEnlaceDeAcceso(codigo: string): string {
+  if (codigo.includes('rate_limit') || codigo === '429') return 'Ya te enviamos un enlace hace poco. Espera un minuto y vuelve a pedirlo.';
+  if (codigo.includes('email_address_invalid')) return 'Ese correo no parece válido. Revisa que el dominio esté bien escrito.';
+  if (codigo.includes('signup_disabled') || codigo.includes('otp_disabled')) return 'El acceso por enlace está desactivado. Acércate a recepción.';
+  return 'No pudimos enviar el enlace en este momento. Vuelve a intentarlo.';
+}
+
 export function validarRegistro(datos: DatosRegistro): ResultadoValidacion {
   const errores: Record<string, string> = {};
 
@@ -133,17 +158,8 @@ export function validarRegistro(datos: DatosRegistro): ResultadoValidacion {
     errores.email = 'Ese correo no tiene un formato válido.';
   }
 
-  if (!datos.password) {
-    errores.password = 'Elige una contraseña.';
-  } else if (datos.password.length < LARGO_MINIMO_PASSWORD) {
-    errores.password = `La contraseña necesita al menos ${LARGO_MINIMO_PASSWORD} caracteres.`;
-  } else if (datos.password.length > 72) {
-    // bcrypt trunca en 72 bytes: más allá, los caracteres extra no cuentan y
-    // el usuario creería tener una contraseña más fuerte de la que tiene.
-    errores.password = 'La contraseña no puede pasar de 72 caracteres.';
-  } else if (correo && datos.password.toLowerCase() === correo.toLowerCase()) {
-    errores.password = 'La contraseña no puede ser igual a tu correo.';
-  }
+  const errorDeClave = errorDeContrasenaNueva(datos.password, correo);
+  if (errorDeClave) errores.password = errorDeClave;
 
   if (!datos.tenantSlug.trim()) {
     errores.general = 'No se pudo determinar el gimnasio.';

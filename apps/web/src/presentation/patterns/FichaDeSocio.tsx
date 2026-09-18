@@ -17,6 +17,7 @@
 import Link from 'next/link';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import { listaDeCampos } from '@core/domain/operations/alta-del-socio';
 import { fechaCorta, importe } from '@/lib/formato';
 import {
   edad,
@@ -174,6 +175,11 @@ function ContenidoDeFicha({ datos, slug, rutaDeFicha }: { readonly datos: FichaC
           {estado}
         </span>
         {ficha.archivedAt && <span className="rounded-full border border-structural/50 px-3 py-1 text-[0.72rem] text-structural">Archivado</span>}
+        {datos.datosPendientes.length > 0 && !ficha.archivedAt && (
+          <span className="rounded-full border border-action/50 bg-action/10 px-3 py-1 text-[0.72rem] font-semibold text-ink" title={`Falta ${listaDeCampos(datos.datosPendientes)}`}>
+            {ficha.membershipId ? 'Socio pendiente' : 'Ficha incompleta'} · falta {listaDeCampos(datos.datosPendientes)}
+          </span>
+        )}
         {ficha.pendingReceipts > 0 && (
           <span className="rounded-full border border-line px-3 py-1 text-[0.72rem] text-muted">
             {ficha.pendingReceipts} comprobante{ficha.pendingReceipts === 1 ? '' : 's'} pendiente{ficha.pendingReceipts === 1 ? '' : 's'}

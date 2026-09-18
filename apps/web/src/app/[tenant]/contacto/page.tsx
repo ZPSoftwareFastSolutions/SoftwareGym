@@ -38,6 +38,7 @@ export default async function ContactPage({ params }: TenantPageParams) {
         name={name}
         showForm={features.contactForm}
         showMap={features.showLocationMap && !conSucursales}
+        slug={slug}
       />
 
       {conSucursales && (

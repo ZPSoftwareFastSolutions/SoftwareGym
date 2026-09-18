@@ -289,8 +289,9 @@ export const goldsGymPremiumTenant: TenantConfig = {
     showTeam: false,
     showTestimonials: false,
     showFaq: false,
-    // PENDIENTE: sin URL de mapa no hay nada que incrustar.
-    showLocationMap: false,
+    // Cada sede dibuja su mapa con sus coordenadas, las de su enlace de Google
+    // Maps o su dirección; sin ninguna, la tarjeta muestra el arte de la marca.
+    showLocationMap: true,
   },
 
   seo: {
@@ -325,6 +326,17 @@ export const goldsGymPremiumTenant: TenantConfig = {
    * institucional no son el eje. Es la capacidad `home` de la plataforma; no hay
    * ninguna portada «de GOLD» en el código.
    */
+  /**
+   * V4.2 · Alta en línea: la persona crea su cuenta, elige su plan, paga con el
+   * QR y sube el comprobante desde la web. Recepción lo aprueba y, en su primera
+   * visita, completa en persona el documento, el teléfono y la fecha de
+   * nacimiento; hasta entonces se ve como «socio pendiente».
+   */
+  members: {
+    onlineSignup: true,
+    inPersonFields: ['documentId', 'phone', 'birthDate'],
+  },
+
   home: {
     estilo: 'anuncios',
     planes: 'tarifario',

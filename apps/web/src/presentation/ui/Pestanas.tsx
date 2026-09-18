@@ -37,10 +37,12 @@ interface PestanasProps {
   /** Nombre del grupo para lectores de pantalla: «Sucursales». */
   readonly etiquetaDelGrupo: string;
   readonly className?: string;
+  /** V4.2 · Pestaña abierta al empezar (por ejemplo, el día de hoy). Por defecto, la primera. */
+  readonly inicial?: number;
 }
 
-export function Pestanas({ pestanas, etiquetaDelGrupo, className }: PestanasProps) {
-  const [activa, setActiva] = useState(0);
+export function Pestanas({ pestanas, etiquetaDelGrupo, className, inicial = 0 }: PestanasProps) {
+  const [activa, setActiva] = useState(() => Math.min(Math.max(inicial, 0), Math.max(pestanas.length - 1, 0)));
   const botones = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Con una sola pestaña, la pestaña sobra: se enseña el contenido y ya.

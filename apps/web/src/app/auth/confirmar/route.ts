@@ -114,5 +114,9 @@ export async function GET(request: NextRequest) {
   // original al seguir la redirección, y el formulario lo lee en cliente y lo
   // borra de la barra. Quien llegó aquí a mano, sin fragmento, ve el acceso
   // sin ningún aviso.
-  return NextResponse.redirect(paginaDeAcceso('fragmento'));
+  const destino = paginaDeAcceso('fragmento');
+  // V4.2 · Enlace de acceso (crear contraseña): la pantalla de acceso lo sabe
+  // por este marcador y pide la contraseña con los tokens del fragmento.
+  if (searchParams.get('activar') === '1') destino.searchParams.set('activar', '1');
+  return NextResponse.redirect(destino);
 }

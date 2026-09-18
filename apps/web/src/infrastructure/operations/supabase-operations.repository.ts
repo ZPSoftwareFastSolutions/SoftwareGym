@@ -660,6 +660,13 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
     if (errorDePase) {
       const detalle = String(errorDePase.code ?? '') + ' ' + String(errorDePase.message ?? '');
 
+      if (detalle.includes('ficha_sin_pago_aprobado')) {
+        // V4.2 · Ficha creada en línea cuyo comprobante nadie aprobó todavía.
+        return {
+          tipo: 'error',
+          mensaje: `${nombre} se registró en línea y todavía no tiene un pago aprobado. Revisa su comprobante en «Comprobantes» antes de dejarle entrar.`,
+        };
+      }
       if (detalle.includes('limite_de_accesos_diarios')) {
         return { tipo: 'sin-cupo-diario', socio: nombre, tope: await this.topeDeAccesosDiarios(tenantId), identidad };
       }

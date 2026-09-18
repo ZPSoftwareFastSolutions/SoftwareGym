@@ -112,7 +112,7 @@ export function Dialogo({
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+      <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-5 sm:px-6">
         <div className="min-w-0">
           <h2 className="t-h3 leading-tight">{titulo}</h2>
           {descripcion && <p className="mt-1.5 text-[0.85rem] text-muted">{descripcion}</p>}
@@ -131,7 +131,7 @@ export function Dialogo({
         </button>
       </div>
 
-      <div className="max-h-[78vh] overflow-y-auto px-6 py-6">{montarSoloAbierto && !abierto ? null : children}</div>
+      <div className="max-h-[78vh] overflow-y-auto px-5 py-6 sm:px-6">{montarSoloAbierto && !abierto ? null : children}</div>
     </dialog>
   );
 }

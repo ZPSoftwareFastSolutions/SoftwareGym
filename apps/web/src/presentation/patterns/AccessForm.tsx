@@ -24,6 +24,7 @@ import { PATRON_NOMBRE_HTML } from '@core/application/auth/login.usecase';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { Button } from '../ui/Button';
+import { CrearContrasenaForm, PedirEnlaceForm } from './AccesoConEnlace';
 
 const CAMPO = [
   'w-full min-h-12 rounded-[var(--t-radius-md)] border border-line bg-surface px-4 py-3',
@@ -107,19 +108,29 @@ function LimpiarPasswordAlTerminar({
  * su contraseña. Se borran de la barra en cuanto se leen, porque una URL con
  * un token de acceso acaba copiada, compartida o en el historial.
  */
-function useConfirmacionDelFragmento(activo: boolean): 'ok' | 'fallo' | undefined {
+function useConfirmacionDelFragmento(
+  activo: boolean,
+  paraCrearContrasena: boolean,
+): { readonly resultado: 'ok' | 'fallo' | undefined; readonly tokens: { readonly access: string; readonly refresh: string } | null } {
   const [resultado, setResultado] = useState<'ok' | 'fallo' | undefined>();
+  const [tokens, setTokens] = useState<{ readonly access: string; readonly refresh: string } | null>(null);
   useEffect(() => {
     if (!activo || typeof window === 'undefined') return;
     const fragmento = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const access = fragmento.get('access_token');
+    const refresh = fragmento.get('refresh_token');
     if (fragmento.get('error') || fragmento.get('error_code')) setResultado('fallo');
-    else if (fragmento.get('access_token')) setResultado('ok');
+    // V4.2 · Enlace de acceso: los tokens se guardan en memoria (no en la URL ni
+    // en almacenamiento) solo para mandarlos al servidor junto a la contraseña.
+    else if (paraCrearContrasena && access && refresh) setTokens({ access, refresh });
+    else if (access) setResultado('ok');
     const url = new URL(window.location.href);
     url.hash = '';
     url.searchParams.delete('confirmado');
+    url.searchParams.delete('activar');
     window.history.replaceState(null, '', url.toString());
-  }, [activo]);
-  return resultado;
+  }, [activo, paraCrearContrasena]);
+  return { resultado, tokens };
 }
 
 /** Botón de reenviar: fuera del formulario de alta, con su propio estado. */
@@ -160,7 +171,11 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
   // solo ve quien vuelve del correo de confirmación.
   const params = useSearchParams();
   const confirmado = params.get('confirmado');
-  const confirmacionDelFragmento = useConfirmacionDelFragmento(confirmado === 'fragmento');
+  const { resultado: confirmacionDelFragmento, tokens } = useConfirmacionDelFragmento(
+    confirmado === 'fragmento',
+    params.get('activar') === '1',
+  );
+  const [conEnlace, setConEnlace] = useState(false);
   const confirmacion =
     confirmado === '1'
       ? ('ok' as const)
@@ -195,6 +210,22 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
   useEffect(() => {
     if (estadoRegistro.exito) formRegistro.current?.reset();
   }, [estadoRegistro.exito]);
+
+  if (tokens) {
+    return (
+      <div className="surface-card p-7 lg:p-9">
+        <CrearContrasenaForm slug={slug} accessToken={tokens.access} refreshToken={tokens.refresh} />
+      </div>
+    );
+  }
+
+  if (conEnlace) {
+    return (
+      <div className="surface-card p-7 lg:p-9">
+        <PedirEnlaceForm slug={slug} alVolver={() => setConEnlace(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="surface-card p-7 lg:p-9">
@@ -335,6 +366,14 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
           </div>
 
           <BotonEnviar>Entrar</BotonEnviar>
+
+          <button
+            type="button"
+            onClick={() => setConEnlace(true)}
+            className="min-h-11 text-[0.86rem] font-semibold leading-snug text-action underline-offset-4 hover:underline"
+          >
+            ¿Olvidaste tu contraseña o te registraron en recepción?
+          </button>
         </form>
       ) : (
         <form

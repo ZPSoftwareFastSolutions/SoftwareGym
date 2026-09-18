@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AVISO_DE_CUENTA_PARA_COMPROBANTE,
+  puedeSubirComprobante,
   type CuentaParaComprobante,
 } from '@core/domain/operations/receipts';
 import type { PaymentQrInfo } from '@core/domain/tenant/tenant-config';
@@ -70,7 +71,7 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
       const respuesta = await fetch(`/${slug}/pago/cuenta`, { cache: 'no-store' });
       const cuerpo = (await respuesta.json()) as { estado?: CuentaParaComprobante };
       const estado = respuesta.ok && cuerpo.estado ? cuerpo.estado : 'indisponible';
-      if (estado === 'socio') {
+      if (puedeSubirComprobante(estado)) {
         router.push(destinoDelPanel);
         return;
       }
@@ -79,7 +80,7 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
       setCuenta('indisponible');
     }
   };
-  const aviso = cuenta && cuenta !== 'comprobando' && cuenta !== 'socio' ? AVISO_DE_CUENTA_PARA_COMPROBANTE[cuenta] : null;
+  const aviso = cuenta && cuenta !== 'comprobando' && !puedeSubirComprobante(cuenta) ? AVISO_DE_CUENTA_PARA_COMPROBANTE[cuenta] : null;
 
   useEffect(() => {
     let vigente = true;
@@ -170,7 +171,7 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
           <p className="mt-1.5 text-[0.84rem] leading-relaxed text-muted">{aviso.cuerpo}</p>
           {(cuenta === 'sin-sesion' || cuenta === 'otro-gimnasio') && (
             <div className="mt-3">
-              <LinkButton href={`/${slug}/acceso`} variant="outline" size="sm" icon="lock" iconPosition="start" fullWidth>
+              <LinkButton href={`/${slug}/acceso`} variant="outline" size="md" icon="lock" iconPosition="start" fullWidth>
                 Iniciar sesión o crear cuenta
               </LinkButton>
             </div>

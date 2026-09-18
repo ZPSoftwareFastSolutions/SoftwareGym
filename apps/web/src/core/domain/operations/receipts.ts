@@ -71,7 +71,12 @@ export interface Comprobante {
  * ANTES de mandar a la persona al panel, para que no pague, llegue al panel y
  * descubra que su cuenta no sirve. La base lo vuelve a exigir al subir.
  */
-export type CuentaParaComprobante = 'socio' | 'sin-sesion' | 'sin-ficha' | 'otro-gimnasio' | 'indisponible';
+export type CuentaParaComprobante = 'socio' | 'alta-en-linea' | 'sin-sesion' | 'sin-ficha' | 'otro-gimnasio' | 'indisponible';
+
+/** Las dos situaciones que pueden seguir al panel a subir su comprobante. */
+export function puedeSubirComprobante(cuenta: CuentaParaComprobante): cuenta is 'socio' | 'alta-en-linea' {
+  return cuenta === 'socio' || cuenta === 'alta-en-linea';
+}
 
 export interface PerfilParaComprobante {
   readonly tenantSlug: string | null;
@@ -82,6 +87,8 @@ export function cuentaParaSubirComprobante(
   sesion: 'autenticado' | 'anonimo' | 'indisponible',
   perfil: PerfilParaComprobante | null | 'error',
   slugDelGimnasio: string,
+  /** V4.2 · El gimnasio admite alta en línea (`members.onlineSignup`). */
+  altaEnLinea = false,
 ): CuentaParaComprobante {
   if (sesion === 'anonimo') return 'sin-sesion';
   if (sesion === 'indisponible' || perfil === 'error') return 'indisponible';
@@ -89,12 +96,15 @@ export function cuentaParaSubirComprobante(
   // que no tener ficha, y lo resuelve recepción.
   if (perfil === null || perfil.tenantSlug === null) return 'sin-ficha';
   if (perfil.tenantSlug !== slugDelGimnasio) return 'otro-gimnasio';
-  return perfil.customerId ? 'socio' : 'sin-ficha';
+  if (perfil.customerId) return 'socio';
+  // Sin ficha: con alta en línea, la ficha se crea (o se vincula) al subir el
+  // comprobante; sin ella, lo resuelve recepción.
+  return altaEnLinea ? 'alta-en-linea' : 'sin-ficha';
 }
 
 /** Qué se le dice a quien todavía no puede subir un comprobante. */
 export const AVISO_DE_CUENTA_PARA_COMPROBANTE: Readonly<
-  Record<Exclude<CuentaParaComprobante, 'socio'>, { readonly titulo: string; readonly cuerpo: string }>
+  Record<Exclude<CuentaParaComprobante, 'socio' | 'alta-en-linea'>, { readonly titulo: string; readonly cuerpo: string }>
 > = {
   'sin-sesion': {
     titulo: 'Necesitas tu cuenta de socio',

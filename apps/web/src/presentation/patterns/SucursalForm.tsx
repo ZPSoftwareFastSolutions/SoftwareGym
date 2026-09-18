@@ -123,7 +123,7 @@ export function SucursalForm({ slug, sucursal }: SucursalFormProps) {
         />
       </Campo>
 
-      <Campo id="sucursal-mapa" etiqueta="Enlace de Google Maps" error={errores.googleMapsUrl} ayuda="En Google Maps: Compartir → Copiar enlace. Es el botón «Ver ubicación» de la web.">
+      <Campo id="sucursal-mapa" etiqueta="Enlace de Google Maps" error={errores.googleMapsUrl} ayuda="En Google Maps: Compartir → Copiar enlace. Es el botón «Ver ubicación» de la web y, si dejas latitud y longitud vacías, de él se toma el punto del mapa.">
         <input name="googleMapsUrl" type="url" defaultValue={valores.googleMapsUrl} maxLength={300} placeholder="https://maps.app.goo.gl/…" className={CLASE_DE_CONTROL} />
       </Campo>
 

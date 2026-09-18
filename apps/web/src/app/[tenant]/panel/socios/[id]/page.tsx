@@ -21,12 +21,14 @@ import {
   NOMBRE_DE_METODO_DE_PAGO,
 } from '@core/domain/operations/members';
 import { NOMBRE_DE_ESTADO_DE_COMPROBANTE, NOMBRE_DE_ORIGEN } from '@core/domain/operations/receipts';
+import { datosPresencialesPendientes, listaDeCampos } from '@core/domain/operations/alta-del-socio';
 import { calcularRacha, diasCerradosDelHorario } from '@core/domain/operations/streak';
 import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
 import { matrizQr } from '@infra/operations/qr';
 import {
   archivarSocio,
   desvincularCuentaDeSocio,
+  enviarAccesoWebAlSocio,
   restaurarSocio,
   rotarQrDeSocio,
 } from '../actions';
@@ -42,6 +44,7 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
 import { Button, LinkButton } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
+import { MiniaturaDeComprobante } from '@/presentation/patterns/MiniaturaDeComprobante';
 import { exigirPermiso, fechaCorta, importe } from '../../_datos';
 
 export const metadata: Metadata = { title: 'Ficha del socio', robots: { index: false, follow: false } };
@@ -89,6 +92,10 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
   const base = tenantHref(slug, 'panel/socios');
   const campos = { tenantSlug: slug, customerId: ficha.id };
   const archivado = Boolean(ficha.archivedAt);
+  // V4.2 · «Socio pendiente»: con membresía y datos presenciales por completar.
+  const datosPendientes = datosPresencialesPendientes(ficha, tenant.members?.inPersonFields ?? []);
+  const puedeEnviarAcceso =
+    puede(PERMISO.editarSocios) && !archivado && features.memberLogin === true && Boolean(ficha.email) && ficha.hasAccount === false;
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,6 +127,34 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
           <PrintButton />
         </div>
       </section>
+
+      {datosPendientes.length > 0 && !archivado && (
+        <section className="flex flex-col gap-3 rounded-[var(--t-radius-lg)] border border-action/40 bg-action/10 p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Ficha por completar">
+          <p className="flex items-start gap-3 text-[0.92rem] leading-relaxed text-ink">
+            <Icon name="idcard" size={20} className="mt-0.5 shrink-0 text-action" />
+            <span>
+              <strong className="block font-semibold">
+                {ficha.membershipId ? 'Socio pendiente: completa su ficha en persona' : 'Ficha incompleta'}
+              </strong>
+              Falta {listaDeCampos(datosPendientes)}. Pídeselo con su documento en la mano y guárdalo en «Editar».
+            </span>
+          </p>
+          {puede(PERMISO.editarSocios) && (
+            <Modal
+              titulo="Completar la ficha"
+              descripcion={`Falta ${listaDeCampos(datosPendientes)}.`}
+              anchoMaximo="lg"
+              disparador={
+                <Button variant="primary" size="md" icon="edit" iconPosition="start">
+                  Completar ficha
+                </Button>
+              }
+            >
+              <EditarSocioForm slug={slug} ficha={ficha} />
+            </Modal>
+          )}
+        </section>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -196,6 +231,23 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
               />
             </div>
           </dl>
+          {puedeEnviarAcceso && (
+            // V4.2 · El socio dado de alta aquí no tiene contraseña, y nadie se la
+            // inventa: recibe un enlace, crea la suya y su cuenta queda unida a
+            // esta ficha.
+            <div className="mt-4 flex flex-col gap-3 rounded-[var(--t-radius-md)] bg-raised px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between" data-print="hide">
+              <p className="text-[0.84rem] leading-relaxed text-muted">
+                Aún no usa la web. Envíale un enlace a <span className="text-ink">{ficha.email}</span> para que cree su contraseña.
+              </p>
+              <AccionConEstado
+                accion={enviarAccesoWebAlSocio}
+                campos={campos}
+                etiqueta="Enviar enlace de acceso"
+                icono="mail"
+                variante="secundario"
+              />
+            </div>
+          )}
           {ficha.notes && <p className="mt-4 rounded-[var(--t-radius-md)] bg-raised px-4 py-3 text-[0.86rem] text-muted">{ficha.notes}</p>}
         </section>
 
@@ -364,7 +416,11 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
               {comprobantes.map((c) => (
                 <li key={c.id} className="flex gap-3 rounded-[var(--t-radius-md)] border border-line p-3">
                   <a href={`/${slug}/panel/comprobantes/${c.id}/imagen`} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                    <img src={`/${slug}/panel/comprobantes/${c.id}/imagen`} alt={`Comprobante del ${c.receiptDate}`} loading="lazy" className="h-20 w-16 rounded-[var(--t-radius-sm)] bg-white object-cover" />
+                    <MiniaturaDeComprobante
+                      src={`/${slug}/panel/comprobantes/${c.id}/imagen`}
+                      alt={`Comprobante del ${c.receiptDate}`}
+                      className="h-20 w-16 rounded-[var(--t-radius-sm)] bg-white object-cover"
+                    />
                   </a>
                   <div className="min-w-0 text-[0.84rem]">
                     <p className="font-semibold text-ink">{importe(c.amount, c.currency)}</p>

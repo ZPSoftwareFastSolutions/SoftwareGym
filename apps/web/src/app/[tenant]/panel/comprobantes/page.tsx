@@ -38,6 +38,7 @@ import { Modal } from '@/presentation/ui/Modal';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
 import { Icon } from '@/presentation/icons/Icon';
+import { MiniaturaDeComprobante } from '@/presentation/patterns/MiniaturaDeComprobante';
 import { exigirPermiso, fechaCorta, hora, importe } from '../_datos';
 import { leerFiltros, type ParametrosDeUrl } from '../reportes/_filtros';
 
@@ -219,7 +220,11 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
                       className="relative z-10 block shrink-0 overflow-hidden rounded-[var(--t-radius-md)] border border-line bg-white"
                       aria-label={`Abrir la imagen del comprobante de ${c.customerName}`}
                     >
-                      <img src={`/${slug}/panel/comprobantes/${c.id}/imagen`} alt="" loading="lazy" className="h-32 w-24 object-cover transition-transform duration-200 hover:scale-105" />
+                      <MiniaturaDeComprobante
+                        src={`/${slug}/panel/comprobantes/${c.id}/imagen`}
+                        alt=""
+                        className="h-32 w-24 object-cover transition-transform duration-200 hover:scale-105"
+                      />
                     </a>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">

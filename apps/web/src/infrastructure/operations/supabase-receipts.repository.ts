@@ -43,6 +43,7 @@ import {
 } from '@core/domain/operations/receipts';
 import { esMetodoDePago } from '@core/domain/operations/members';
 import type { AvisoPersonal } from '@core/domain/operations/notifications';
+import { mensajeDeAltaEnLinea } from '@core/domain/operations/alta-del-socio';
 import { numero } from '@core/domain/operations/dashboard';
 
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -129,6 +130,21 @@ async function bytesVerificados(blob: Blob | null): Promise<ImagenValidada | nul
 }
 
 export class SupabaseReceiptsRepository implements ReceiptsRepositoryPort {
+  async crearMiFicha(): Promise<ResultadoDeOperacion<string>> {
+    const { data, error } = await this.supabase.rpc('crear_mi_ficha');
+    if (error) return fallo(mensajeDeAltaEnLinea(`${error.code ?? ''} ${error.message ?? ''}`));
+    const id = (data as { customer_id?: unknown } | null)?.customer_id;
+    return typeof id === 'string' ? exito(id) : fallo(mensajeDeAltaEnLinea(''));
+  }
+
+  async miFichaSinPagoAprobado(): Promise<boolean> {
+    const { data, error } = await this.supabase.rpc('mi_ficha_sin_pago_aprobado');
+    // Si no se pudo saber, se trata como «sin pago»: esconder un QR de más es
+    // un inconveniente; enseñar uno que la base no acepta, una discusión.
+    if (error) return true;
+    return data === true;
+  }
+
   async avisos(): Promise<readonly AvisoPersonal[]> {
     const { data } = await this.supabase
       .from('customer_messages')

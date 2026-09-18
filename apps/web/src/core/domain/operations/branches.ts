@@ -271,19 +271,117 @@ export function lineasDeHorario(texto: string | null): readonly string[] {
     .filter(Boolean);
 }
 
+export interface Coordenadas {
+  readonly latitude: number;
+  readonly longitude: number;
+}
+
+/**
+ * V4.2 · Hosts a los que se permite seguir un enlace de Google Maps desde el
+ * servidor. Una lista cerrada: el enlace lo pega una persona y el servidor lo
+ * pide, así que sin ella serviría para hacer peticiones a cualquier sitio.
+ */
+export function esHostDeGoogleMaps(host: string): boolean {
+  return /^(maps\.app\.goo\.gl|goo\.gl|(www\.|maps\.)?google\.[a-z]{2,3}(\.[a-z]{2})?|consent\.google\.[a-z]{2,3}(\.[a-z]{2})?)$/i.test(host);
+}
+
+/** El enlace corto de «Compartir», que hay que seguir para saber a dónde apunta. */
+export function esEnlaceCortoDeMaps(url: string): boolean {
+  return /^https:\/\/(maps\.app\.goo\.gl\/|goo\.gl\/maps\/)/i.test(url.trim());
+}
+
+function coordenadasValidas(lat: string | undefined, lng: string | undefined): Coordenadas | null {
+  if (lat === undefined || lng === undefined) return null;
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  // Ocho decimales son menos de un milímetro: lo que admite la base.
+  const redondear = (n: number) => Math.round(n * 1e7) / 1e7;
+  return { latitude: redondear(latitude), longitude: redondear(longitude) };
+}
+
+const NUMERO = '(-?\\d{1,3}(?:\\.\\d+)?)';
+
+/**
+ * Coordenadas escritas en un enlace largo de Google Maps, en orden de
+ * precisión: el marcador del lugar (`!3d…!4d…`), el centro de la vista
+ * (`@lat,lng`) y la consulta (`?q=lat,lng`, `query`, `ll`, `center`).
+ * El enlace corto no trae ninguna: primero hay que seguirlo (lo hace el servidor).
+ */
+export function coordenadasDeEnlaceDeMaps(url: string): Coordenadas | null {
+  let texto: string;
+  try {
+    texto = decodeURIComponent(url);
+  } catch {
+    texto = url;
+  }
+  const marcador = new RegExp(`!3d${NUMERO}!4d${NUMERO}`).exec(texto);
+  if (marcador) return coordenadasValidas(marcador[1], marcador[2]);
+  const vista = new RegExp(`@${NUMERO},${NUMERO}`).exec(texto);
+  if (vista) return coordenadasValidas(vista[1], vista[2]);
+  const consulta = new RegExp(`[?&](?:q|query|ll|center|destination)=(?:loc:)?${NUMERO},\\s*${NUMERO}(?:[&#]|$)`).exec(texto);
+  if (consulta) return coordenadasValidas(consulta[1], consulta[2]);
+  return null;
+}
+
+/**
+ * Enlace estable del lugar al que lleva un enlace corto: `…/maps/place/<nombre>/data=…`
+ * sin la consulta de seguimiento (`utm_source`, `g_ep`…). El enlace de
+ * «Compartir» de un negocio no trae coordenadas; su nombre sí sirve para que el
+ * mapa embebido lo encuentre, y el enlace sigue abriendo el mismo lugar.
+ * (La página del lugar declara un «centro», pero es el de la vista según quien
+ * pregunta, no el del lugar: probado, no sirve.)
+ */
+export function enlaceDelLugarDeMaps(url: string): string | null {
+  try {
+    const direccion = new URL(url);
+    if (!esHostDeGoogleMaps(direccion.hostname) || !lugarDeEnlaceDeMaps(direccion.href)) return null;
+    const conDatos = /^\/maps\/place\/[^/]+\/(data=[^/?#]+)?/.exec(direccion.pathname)?.[0];
+    const soloNombre = /^\/maps\/place\/[^/]+\//.exec(direccion.pathname)?.[0];
+    const camino = conDatos && conDatos.length <= 240 ? conDatos : soloNombre;
+    return camino ? `https://www.google.com${camino}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Nombre del lugar de un enlace `…/maps/place/<nombre>/…`, para buscarlo si no hay nada mejor. */
+export function lugarDeEnlaceDeMaps(url: string): string | null {
+  const lugar = /\/maps\/place\/([^/?#]+)/.exec(url);
+  if (!lugar?.[1]) return null;
+  try {
+    const nombre = decodeURIComponent(lugar[1].replace(/\+/g, ' ')).trim();
+    return nombre.length >= 2 ? nombre : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Dirección del mapa embebido de la sede.
  *
- * Con coordenadas, el punto exacto; sin ellas, la dirección escrita, que
- * Google resuelve solo. No se usa el enlace corto de «Compartir»: Google no
- * permite incrustarlo en un iframe.
+ * Con coordenadas, el punto exacto; sin ellas, las que traiga el enlace de
+ * Google Maps (si es largo) y después la dirección escrita, que Google resuelve
+ * solo. El enlace corto de «Compartir» no se incrusta (Google no lo permite en
+ * un iframe): al guardar la sede, el servidor lo sigue y guarda sus coordenadas.
  */
-export function urlDeMapaEmbebido(sucursal: Pick<Sucursal, 'latitude' | 'longitude' | 'address' | 'name'>, ciudad?: string): string | null {
-  if (sucursal.latitude !== null && sucursal.longitude !== null) {
-    return `https://www.google.com/maps?q=${sucursal.latitude},${sucursal.longitude}&z=17&output=embed`;
+export function urlDeMapaEmbebido(
+  sucursal: Pick<Sucursal, 'latitude' | 'longitude' | 'address' | 'name'> & { readonly googleMapsUrl?: string | null },
+  ciudad?: string,
+): string | null {
+  const enlace = sucursal.googleMapsUrl ?? null;
+  const coordenadas =
+    sucursal.latitude !== null && sucursal.longitude !== null
+      ? { latitude: sucursal.latitude, longitude: sucursal.longitude }
+      : enlace && !esEnlaceCortoDeMaps(enlace)
+        ? coordenadasDeEnlaceDeMaps(enlace)
+        : null;
+  if (coordenadas) {
+    return `https://www.google.com/maps?q=${coordenadas.latitude},${coordenadas.longitude}&z=17&output=embed`;
   }
-  if (sucursal.address) {
-    const consulta = conCiudad(sucursal.address, ciudad);
+  const consulta = sucursal.address ? conCiudad(sucursal.address, ciudad) : enlace ? lugarDeEnlaceDeMaps(enlace) : null;
+  if (consulta) {
     return `https://www.google.com/maps?q=${encodeURIComponent(consulta)}&z=17&output=embed`;
   }
   return null;

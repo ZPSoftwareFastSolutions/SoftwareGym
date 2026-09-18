@@ -69,6 +69,15 @@ export interface ReceiptsRepositoryPort {
    * quien pregunta (aprobado o rechazado). RLS solo devuelve los propios.
    */
   avisos(): Promise<readonly AvisoPersonal[]>;
+
+  /**
+   * V4.2 · Alta en línea: la cuenta de la sesión obtiene su ficha (la crea, o
+   * vincula la única ficha libre con su correo confirmado). Devuelve su id.
+   */
+  crearMiFicha(): Promise<ResultadoDeOperacion<string>>;
+
+  /** V4.2 · Si la ficha propia se creó en línea y todavía no tiene un pago aprobado. */
+  miFichaSinPagoAprobado(): Promise<boolean>;
 }
 
 export interface AjustesDeCobro {

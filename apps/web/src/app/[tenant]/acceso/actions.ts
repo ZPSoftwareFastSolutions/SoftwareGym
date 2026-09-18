@@ -18,8 +18,12 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { marcarSesionAbierta, marcarSesionCerrada } from '@infra/auth/session-hint';
+import { enviarEnlaceDeAcceso } from '@infra/auth/enlace-de-acceso';
 import {
   correoValido,
+  errorDeContrasenaNueva,
+  MENSAJE_ENLACE_DE_ACCESO_ENVIADO,
+  mensajeDeEnlaceDeAcceso,
   MENSAJE_CORREO_YA_REGISTRADO,
   MENSAJE_CUENTA_DE_OTRO_GIMNASIO,
   mensajeDeErrorDeAcceso,
@@ -46,8 +50,8 @@ export interface EstadoFormulario {
 }
 
 /** Adónde vuelve el enlace del correo. El gimnasio lo valida la ruta de retorno. */
-function retornoDelCorreo(slug: string): string {
-  return `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}`;
+function retornoDelCorreo(slug: string, activar = false): string {
+  return `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}${activar ? '&activar=1' : ''}`;
 }
 
 /** El slug solo es válido si corresponde a un gimnasio del registro. */
@@ -251,6 +255,92 @@ export async function reenviarConfirmacion(
       'Revisa también spam o promociones; si pides otro enseguida, el anterior deja de valer.',
     correoPendiente: email,
   };
+}
+
+/**
+ * V4.2 · «¿Olvidaste tu contraseña o te registró recepción?».
+ *
+ * Envía un enlace de acceso: a quien ya tiene cuenta le abre la sesión para
+ * cambiar su contraseña; a quien solo tiene ficha (alta en recepción) le crea la
+ * cuenta, que se une a su ficha al abrir el enlace. La respuesta es la misma en
+ * los dos casos, y es verdad en los dos: el correo se envía.
+ */
+export async function pedirEnlaceDeAcceso(_estadoPrevio: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  const slug = await resolverTenant(form.get('tenantSlug'));
+  if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
+  if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
+
+  const email = texto(form, 'email').trim().toLowerCase();
+  if (!correoValido(email)) return { errores: { email: 'Escribe el correo con el que te registraste.' } };
+
+  const envio = await enviarEnlaceDeAcceso({ email, slug, retorno: retornoDelCorreo(slug, true) });
+  if (!envio.ok) return { mensaje: mensajeDeEnlaceDeAcceso(envio.codigo) };
+  return { exito: `${MENSAJE_ENLACE_DE_ACCESO_ENVIADO.replace('Te enviamos un enlace', `Te enviamos un enlace a ${email}`)}` };
+}
+
+/**
+ * V4.2 · Crear la contraseña al volver del enlace de acceso.
+ *
+ * Los tokens llegan del fragmento del enlace (flujo `implicit`) y se canjean
+ * AQUÍ, en el servidor: la sesión queda en cookies HttpOnly, como la de un
+ * inicio de sesión normal, y la contraseña la guarda Supabase Auth. Después se
+ * aplica la misma puerta que al iniciar sesión: una cuenta de otro gimnasio no
+ * entra por éste.
+ */
+export async function crearContrasena(_estadoPrevio: EstadoFormulario, form: FormData): Promise<EstadoFormulario> {
+  const slug = await resolverTenant(form.get('tenantSlug'));
+  if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
+  if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
+
+  const accessToken = texto(form, 'accessToken');
+  const refreshToken = texto(form, 'refreshToken');
+  const password = texto(form, 'password');
+  const confirmacion = texto(form, 'confirmacion');
+  if (!accessToken || !refreshToken || accessToken.length > 4000 || refreshToken.length > 500) {
+    return { mensaje: 'El enlace no es válido o ya caducó. Pide uno nuevo.' };
+  }
+
+  const errorDeClave = errorDeContrasenaNueva(password);
+  if (errorDeClave) return { errores: { password: errorDeClave } };
+  if (password !== confirmacion) return { errores: { confirmacion: 'Las dos contraseñas no coinciden.' } };
+
+  const supabase = await createSupabaseServerClient();
+  const { data: sesion, error: errorDeSesion } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+  if (errorDeSesion || !sesion.user) return { mensaje: 'El enlace no es válido o ya caducó. Pide uno nuevo.' };
+
+  const correo = sesion.user.email ?? '';
+  const igualAlCorreo = errorDeContrasenaNueva(password, correo);
+  if (igualAlCorreo) {
+    await supabase.auth.signOut({ scope: 'local' });
+    return { errores: { password: igualAlCorreo } };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  // `same_password`: ya era su contraseña. No es un fallo para quien la escribe.
+  if (error && error.code !== 'same_password') {
+    await supabase.auth.signOut({ scope: 'local' });
+    return {
+      mensaje: error.code === 'weak_password' ? 'Esa contraseña es demasiado débil. Usa una más larga.' : 'No pudimos guardar tu contraseña. Pide un enlace nuevo.',
+    };
+  }
+
+  const decision = decidirLoginPorGimnasio(await cuentaRecienAutenticada(supabase), slug);
+  if (decision !== 'permitir') {
+    await supabase.auth.signOut({ scope: 'local' });
+    marcarSesionCerrada(await cookies());
+    return {
+      mensaje:
+        decision === 'otro-gimnasio'
+          ? `Tu contraseña quedó guardada, pero ${MENSAJE_CUENTA_DE_OTRO_GIMNASIO.charAt(0).toLowerCase()}${MENSAJE_CUENTA_DE_OTRO_GIMNASIO.slice(1)}`
+          : decision === 'reintentar'
+            ? 'Tu contraseña quedó guardada. No pudimos abrir tu panel ahora: inicia sesión en un momento.'
+            : 'Tu contraseña quedó guardada, pero tu cuenta todavía no está asociada a este gimnasio. Acércate a recepción.',
+    };
+  }
+
+  marcarSesionAbierta(await cookies());
+  revalidatePath(`/${slug}`, 'layout');
+  redirect(`/${slug}/panel`);
 }
 
 export async function cerrarSesion(form: FormData): Promise<void> {

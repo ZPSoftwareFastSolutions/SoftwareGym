@@ -19,8 +19,10 @@ import {
   seleccionarQrDeCobro,
   type QrDeCobro,
 } from '../src/core/domain/operations/cobro-qr.ts';
-import { AVISO_DE_CUENTA_PARA_COMPROBANTE, cuentaParaSubirComprobante } from '../src/core/domain/operations/receipts.ts';
+import { AVISO_DE_CUENTA_PARA_COMPROBANTE, cuentaParaSubirComprobante, puedeSubirComprobante } from '../src/core/domain/operations/receipts.ts';
+import { datosPresencialesPendientes, listaDeCampos, mensajeDeAltaEnLinea, qrHabilitado, situacionDelSocio } from '../src/core/domain/operations/alta-del-socio.ts';
 import { construirNotificaciones } from '../src/core/domain/operations/notifications.ts';
+import { enlaceDeWhatsApp, redactarConsulta, validarContacto } from '../src/core/domain/operations/contacto.ts';
 
 const HOY = '2026-09-11';
 const FIT = { id: 'plan-fit', price: 180 };
@@ -200,6 +202,15 @@ describe('V4.2 · quién puede subir un comprobante desde «Pagar con QR»', () 
     assert.equal(cuentaParaSubirComprobante('anonimo', null, GOLD), 'sin-sesion');
   });
 
+  it('con alta en línea, la cuenta sin ficha puede seguir a subir su comprobante', () => {
+    assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: GOLD, customerId: null }, GOLD, true), 'alta-en-linea');
+    // pero no sin sesión ni desde otro gimnasio
+    assert.equal(cuentaParaSubirComprobante('anonimo', null, GOLD, true), 'sin-sesion');
+    assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: 'mitico', customerId: null }, GOLD, true), 'otro-gimnasio');
+    assert.equal(puedeSubirComprobante('alta-en-linea'), true);
+    assert.equal(puedeSubirComprobante('sin-ficha'), false);
+  });
+
   it('con cuenta pero sin ficha (o sin gimnasio): lo resuelve recepción', () => {
     assert.equal(cuentaParaSubirComprobante('autenticado', { tenantSlug: GOLD, customerId: null }, GOLD), 'sin-ficha');
     assert.equal(cuentaParaSubirComprobante('autenticado', null, GOLD), 'sin-ficha');
@@ -238,5 +249,63 @@ describe('V4.2 · aviso de la revisión de un comprobante', () => {
   it('los avisos de reservas siguen siendo de reserva', () => {
     const [reserva] = construirNotificaciones(null, [], false, [aviso('reserva_promovida')]);
     assert.equal(reserva?.tipo, 'reserva');
+  });
+});
+
+describe('V4.2 · alta en línea y socio pendiente', () => {
+  const campos = ['documentId', 'phone', 'birthDate'] as const;
+  const vacia = { documentId: null, phone: '  ', birthDate: null };
+  const completa = { documentId: '1234567 LP', phone: '70000000', birthDate: '1995-04-02' };
+
+  it('los datos presenciales que faltan salen de lo que declara el gimnasio', () => {
+    assert.deepEqual(datosPresencialesPendientes(vacia, campos), ['documentId', 'phone', 'birthDate']);
+    assert.deepEqual(datosPresencialesPendientes(completa, campos), []);
+    // Un gimnasio que no declara campos no tiene «pendientes».
+    assert.deepEqual(datosPresencialesPendientes(vacia, []), []);
+    assert.equal(listaDeCampos(['documentId', 'phone', 'birthDate']), 'documento de identidad, teléfono y fecha de nacimiento');
+  });
+
+  it('la situación sigue la cadena: sin ficha → pago en revisión → pendiente → completo', () => {
+    const base = { tieneFicha: true, fichaSinPagoAprobado: false, comprobantesPendientes: 0, tieneMembresia: true, datosPendientes: [] as const };
+    assert.equal(situacionDelSocio({ ...base, tieneFicha: false }), 'sin-ficha');
+    assert.equal(situacionDelSocio({ ...base, fichaSinPagoAprobado: true, tieneMembresia: false, comprobantesPendientes: 1 }), 'pago-en-revision');
+    assert.equal(situacionDelSocio({ ...base, datosPendientes: ['phone'] }), 'pendiente');
+    assert.equal(situacionDelSocio(base), 'completo');
+    assert.equal(situacionDelSocio({ ...base, tieneMembresia: false }), 'sin-membresia');
+  });
+
+  it('subir un comprobante no habilita el QR: lo habilita el pago aprobado', () => {
+    assert.equal(qrHabilitado({ tieneFicha: true, fichaSinPagoAprobado: true }), false);
+    assert.equal(qrHabilitado({ tieneFicha: true, fichaSinPagoAprobado: false }), true);
+    assert.equal(qrHabilitado({ tieneFicha: false, fichaSinPagoAprobado: false }), false);
+  });
+
+  it('los errores del alta en línea dicen qué hacer', () => {
+    assert.match(mensajeDeAltaEnLinea('correo_sin_confirmar'), /Confirma tu correo/);
+    assert.match(mensajeDeAltaEnLinea('ficha_ambigua'), /recepción/);
+    assert.match(mensajeDeAltaEnLinea('ficha_de_otra_cuenta'), /recepción/);
+  });
+});
+
+describe('V4.2 · formulario de contacto por WhatsApp', () => {
+  const base = { nombre: 'Ana Pérez', telefono: '+591 70000000', email: '', interes: 'Clases grupales', mensaje: '' };
+
+  it('una consulta completa no tiene errores; el correo es opcional', () => {
+    assert.deepEqual(validarContacto(base), {});
+  });
+
+  it('exige nombre sin números, un teléfono completo y un interés de la lista', () => {
+    const e = validarContacto({ nombre: 'A1', telefono: '123', email: 'mal@', interes: 'Cualquiera', mensaje: 'x'.repeat(601) });
+    assert.deepEqual(Object.keys(e).sort(), ['email', 'interes', 'mensaje', 'nombre', 'telefono']);
+  });
+
+  it('redacta la consulta ordenada y la manda al número del gimnasio, no a otro', () => {
+    const texto = redactarConsulta({ ...base, mensaje: '¿Tienen clases de yoga?' }, 'Gimnasio Prueba');
+    assert.match(texto, /Nombre: Ana Pérez/);
+    assert.match(texto, /Me interesa: Clases grupales/);
+    const enlace = enlaceDeWhatsApp('+591 6971-0992', texto);
+    assert.ok(enlace?.startsWith('https://wa.me/59169710992?text='));
+    assert.equal(decodeURIComponent(enlace!.split('text=')[1]!), texto);
+    assert.equal(enlaceDeWhatsApp('', texto), null);
   });
 });

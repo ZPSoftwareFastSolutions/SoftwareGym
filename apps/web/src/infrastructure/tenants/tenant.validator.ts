@@ -55,6 +55,10 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('branding.typography.headingTracking debe ser una longitud CSS válida.');
   }
 
+  if (tenant.members?.onlineSignup === true && tenant.features.enablePayments !== true) {
+    issues.push('members.onlineSignup exige enablePayments: el alta en línea se paga con comprobante.');
+  }
+
   const glow = tenant.branding.shape.glowIntensity;
   if (glow < 0 || glow > 2) {
     issues.push('branding.shape.glowIntensity debe estar entre 0 y 2.');

@@ -26,6 +26,10 @@ import type { Comprobante } from '@core/domain/operations/receipts';
 import { evaluarImporte } from '@core/domain/operations/cobro-qr';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
+import { enviarEnlaceDeAcceso } from '@infra/auth/enlace-de-acceso';
+import { mensajeDeEnlaceDeAcceso } from '@core/application/auth/login.usecase';
+import { datosPresencialesPendientes, type CampoDeFichaPresencial } from '@core/domain/operations/alta-del-socio';
+import { SITE_URL } from '@/lib/site-url';
 import { importe } from '@/lib/formato';
 import {
   contextoDeAccion,
@@ -229,6 +233,37 @@ export async function desvincularCuentaDeSocio(_previo: EstadoDeFormulario, form
   );
 }
 
+/**
+ * V4.2 · Recepción envía al socio el enlace para activar su cuenta web.
+ *
+ * El socio dado de alta en el mostrador tiene ficha con correo pero no cuenta.
+ * Recepción NO crea contraseñas: Supabase le manda un enlace; al abrirlo crea su
+ * contraseña y su cuenta queda unida a esta ficha (correo confirmado + ficha
+ * única). El correo sale de la ficha leída con la sesión de quien pide, nunca
+ * del formulario.
+ */
+export async function enviarAccesoWebAlSocio(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {
+  const acceso = await contextoDeAccion(form, ['enableMemberManagement', 'memberLogin'], PERMISO.editarSocios);
+  if (!acceso.ok) return { mensaje: acceso.mensaje };
+  const { slug } = acceso.contexto;
+
+  const ficha = await (await membersRepository()).ficha(texto(form, 'customerId', 40));
+  if (!ficha) return { mensaje: 'Ese socio no existe o no es de este gimnasio.' };
+  if (!ficha.email) return { mensaje: 'La ficha no tiene correo. Agrégalo antes de enviar el enlace.' };
+  if (ficha.hasAccount) return { mensaje: 'Este socio ya tiene su cuenta web unida a la ficha.' };
+
+  const envio = await enviarEnlaceDeAcceso({
+    email: ficha.email,
+    slug,
+    nombre: ficha.fullName,
+    retorno: `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}&activar=1`,
+  });
+  if (!envio.ok) return { mensaje: mensajeDeEnlaceDeAcceso(envio.codigo) };
+  return {
+    exito: `Enviamos el enlace a ${ficha.email}. Al abrirlo, la persona crea su contraseña y entra a su cuenta, ya unida a esta ficha.`,
+  };
+}
+
 export async function venderMembresia(_previo: EstadoDeFormulario, form: FormData): Promise<EstadoDeFormulario> {
   const acceso = await contextoDeAccion(form, ['enableMemberManagement'], PERMISO.venderMembresias);
   if (!acceso.ok) return { mensaje: acceso.mensaje };
@@ -301,6 +336,8 @@ export interface FichaCompleta {
   readonly racha: ResumenDeRacha;
   readonly hoy: string;
   readonly puedeEditar: boolean;
+  /** V4.2 · Datos que el gimnasio toma en persona y faltan (vacío si no declara ninguno). */
+  readonly datosPendientes: readonly CampoDeFichaPresencial[];
 }
 
 /**
@@ -340,5 +377,6 @@ export async function obtenerFichaCompleta(tenantSlug: string, customerId: strin
     racha: calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12),
     hoy,
     puedeEditar: tienePermiso(perfil, PERMISO.editarSocios),
+    datosPendientes: datosPresencialesPendientes(ficha, tenant.members?.inPersonFields ?? []),
   };
 }

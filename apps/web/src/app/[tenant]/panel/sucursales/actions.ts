@@ -11,9 +11,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { validarSucursal, type FormularioDeSucursal } from '@core/domain/operations/branches';
+import { esEnlaceCortoDeMaps, validarSucursal, type FormularioDeSucursal } from '@core/domain/operations/branches';
 import { PERMISO } from '@core/domain/operations/workspace';
 import { branchesRepository } from '@infra/config/composition-root';
+import { ubicacionDeEnlaceDeGoogleMaps } from '@infra/maps/ubicacion-de-enlace';
 import { contextoDeAccion, texto, type EstadoDeFormulario } from '../_acciones';
 
 function formulario(form: FormData): FormularioDeSucursal {
@@ -35,6 +36,7 @@ function revalidar(slug: string) {
   // La vitrina se regenera sola (ISR), pero así el cambio se ve al instante.
   revalidatePath(`/${slug}`);
   revalidatePath(`/${slug}/contacto`);
+  revalidatePath(`/${slug}/sucursales`);
 }
 
 async function acceso(form: FormData) {
@@ -52,18 +54,38 @@ export async function guardarSucursal(_previo: EstadoDeFormulario, form: FormDat
   const validacion = validarSucursal(crudo);
   if (!validacion.ok) return { errores: validacion.errores, valores, mensaje: 'Revisa los campos marcados.' };
 
+  // V4.2 · Sin coordenadas escritas, el mapa sale del enlace de Google Maps. El
+  // enlace corto no se puede incrustar: se sigue una vez aquí y se guardan sus
+  // coordenadas o el enlace del lugar al que lleva (su nombre ubica el mapa).
+  let datos = validacion.datos;
+  let nota = '';
+  if (datos.latitude === null && datos.longitude === null && datos.googleMapsUrl) {
+    const { coordenadas, enlaceDelLugar } = await ubicacionDeEnlaceDeGoogleMaps(datos.googleMapsUrl);
+    if (coordenadas) {
+      datos = { ...datos, ...coordenadas };
+      nota = ' Tomamos el punto del mapa del enlace de Google Maps.';
+    } else if (enlaceDelLugar) {
+      datos = { ...datos, googleMapsUrl: enlaceDelLugar };
+      nota = ' Guardamos el enlace completo del lugar en Google Maps: con él se dibuja el mapa.';
+    } else if (esEnlaceCortoDeMaps(datos.googleMapsUrl)) {
+      nota = datos.address
+        ? ' No pudimos abrir el enlace de Google Maps: el mapa usará la dirección.'
+        : ' No pudimos abrir el enlace de Google Maps: escribe la dirección o las coordenadas para mostrar el mapa.';
+    }
+  }
+
   const repo = await branchesRepository();
   const id = texto(form, 'branchId', 40).trim();
 
   if (id) {
-    const resultado = await repo.actualizar(id, validacion.datos);
+    const resultado = await repo.actualizar(id, datos);
     if (!resultado.ok) return { mensaje: resultado.mensaje, valores };
     revalidar(slug);
-    return { exito: 'Sucursal actualizada.' };
+    return { exito: `Sucursal actualizada.${nota}` };
   }
 
   if (!perfil.tenantId) return { mensaje: 'Tu cuenta no pertenece a un gimnasio.' };
-  const resultado = await repo.crear(perfil.tenantId, validacion.datos);
+  const resultado = await repo.crear(perfil.tenantId, datos);
   if (!resultado.ok) return { mensaje: resultado.mensaje, valores };
   revalidar(slug);
   redirect(`/${slug}/panel/sucursales/${resultado.valor.id}`);

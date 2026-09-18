@@ -52,5 +52,6 @@ export async function GET(_peticion: Request, { params }: Contexto) {
     }
   }
 
-  return NextResponse.json({ estado: cuentaParaSubirComprobante(sesion.estado, perfil, tenant.slug) }, { headers: PRIVADO });
+  const altaEnLinea = tenant.members?.onlineSignup === true;
+  return NextResponse.json({ estado: cuentaParaSubirComprobante(sesion.estado, perfil, tenant.slug, altaEnLinea) }, { headers: PRIVADO });
 }
