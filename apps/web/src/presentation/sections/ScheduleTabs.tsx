@@ -34,7 +34,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
         <button
           onClick={() => setActiveTab('atencion')}
           className={cn(
-            'px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 border',
+            'px-4 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 border',
             activeTab === 'atencion' 
               ? 'bg-action text-black border-action shadow-[0_0_20px_rgba(57,255,20,0.3)]' 
               : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30 hover:text-white'
@@ -48,7 +48,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
         <button
           onClick={() => setActiveTab('clases')}
           className={cn(
-            'px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 border',
+            'px-4 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 border',
             activeTab === 'clases' 
               ? 'bg-action text-black border-action shadow-[0_0_20px_rgba(57,255,20,0.3)]' 
               : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30 hover:text-white'
@@ -84,12 +84,12 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
       {/* CONTENT: ATENCIÓN */}
       {activeTab === 'atencion' && (
         <Reveal>
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4">
             {currentSedeHours.map((day) => (
               <div 
                 key={day.day} 
                 className={cn(
-                  'flex flex-col items-center p-6 rounded-3xl border border-white/10 backdrop-blur-md transition-transform hover:scale-105',
+                  'flex flex-col items-center p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 backdrop-blur-md transition-transform hover:scale-105',
                   day.closed ? 'bg-red-500/10 border-red-500/20' : 'bg-black/60 hover:border-action/40'
                 )}
               >

@@ -40,7 +40,7 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
               {navigation.map((item) => (
                 <li key={item.segment || 'home'}>
                   <Link
-                    href={tenantHref(slug, `v2/${item.segment}`)}
+                    href={tenantHref(slug, item.segment)}
                     className="text-sm text-white/70 transition-colors hover:text-action"
                   >
                     {item.label}
