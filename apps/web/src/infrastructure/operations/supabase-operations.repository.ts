@@ -15,7 +15,9 @@
  * `tenantRepository()`, que no depende de quién pregunta.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
+import { createSupabaseServerClient } from '../auth/supabase.server';
+import { limpiarEmailDeTenant } from '@core/application/auth/login.usecase';
 import type {
   FiltroDeAsistencia,
   LecturaDePerfil,
@@ -170,12 +172,13 @@ export class SupabaseOperationsRepository implements OperationsRepositoryPort {
     if (error) return { estado: 'indisponible' };
     if (!data) return { estado: 'sin-perfil' };
 
+    const tenantSlug = texto(data.tenant_slug);
     const perfil: PerfilOperativo = {
       appUserId: String(data.id),
       tenantId: texto(data.tenant_id),
       fullName: texto(data.full_name) ?? 'Cuenta',
-      email: texto(data.email) ?? '',
-      tenantSlug: texto(data.tenant_slug),
+      email: tenantSlug ? limpiarEmailDeTenant(texto(data.email) ?? '', tenantSlug) : (texto(data.email) ?? ''),
+      tenantSlug,
       tenantName: texto(data.tenant_name),
       customerId: texto(data.customer_id),
       // `roles` y `permissions` llegan como arreglos de PostgreSQL. Un perfil

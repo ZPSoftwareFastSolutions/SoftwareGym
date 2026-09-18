@@ -14,6 +14,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { limpiarEmailDeTenant } from '@core/application/auth/login.usecase';
 import type {
   AltaDeSocio,
   CambiosDeMembresia,
@@ -74,7 +75,7 @@ export function mapearFicha(fila: Record<string, unknown>): FichaDeSocio {
     fullName: texto(fila.full_name) ?? 'Socio',
     documentId: texto(fila.document_id),
     phone: texto(fila.phone),
-    email: texto(fila.email),
+    email: fila.tenant_slug ? limpiarEmailDeTenant(texto(fila.email) ?? '', String(fila.tenant_slug)) : texto(fila.email),
     birthDate: texto(fila.birth_date),
     status: estadoDeSocio(fila.status),
     notes: texto(fila.notes),

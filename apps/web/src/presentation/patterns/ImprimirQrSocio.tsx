@@ -40,9 +40,29 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
 
   return (
     <>
-      {/* Se elimina CSS de window.print() nativo, usamos html2pdf con medidas exactas */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #zona-impresion, #zona-impresion * { visibility: visible; }
+          #zona-impresion {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+          }
+          @page {
+            size: ${tamano === 'carta' ? 'letter' : tamano === 'oficio' ? 'legal' : 'A4'} portrait;
+            margin: 0;
+          }
+        }
+      `}</style>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="flex flex-col gap-6 lg:flex-row print:hidden">
         {/* Controles */}
         <div className="flex flex-col gap-6 lg:w-80 shrink-0">
           <section className="surface-card p-6 border-action/40">
@@ -106,44 +126,7 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
                   fullWidth 
                   icon="download" 
                   iconPosition="start" 
-                  onClick={async () => {
-                    const btn = document.activeElement as HTMLButtonElement;
-                    if (btn) btn.disabled = true;
-                    try {
-                      const element = document.getElementById('zona-impresion');
-                      if (!element) return;
-                      
-                      // Creamos un clon para darle tamaño físico exacto sin romper la UI actual
-                      const clone = element.cloneNode(true) as HTMLElement;
-                      clone.style.width = dimension.ancho;
-                      clone.style.height = dimension.alto;
-                      clone.style.position = 'fixed';
-                      clone.style.top = '-9999px';
-                      clone.style.left = '-9999px';
-                      // Quitar bordes para impresión limpia
-                      clone.style.border = 'none';
-                      clone.style.boxShadow = 'none';
-                      document.body.appendChild(clone);
-
-                      const html2pdf = (await import('html2pdf.js')).default;
-                      const formatMap = { carta: 'letter', oficio: 'legal', a4: 'a4' };
-                      
-                      const opt = {
-                        margin:       0, // Sin margen del PDF, el grid interno ya tiene padding
-                        filename:     `Tarjeta_${gymName}_${ficha.fullName.replace(/ /g, '_')}.pdf`,
-                        image:        { type: 'jpeg' as const, quality: 1 },
-                        html2canvas:  { scale: 3, useCORS: true }, // scale 3 para máxima nitidez en el QR
-                        jsPDF:        { unit: 'mm', format: formatMap[tamano], orientation: 'portrait' as const }
-                      };
-
-                      await html2pdf().set(opt).from(clone).save();
-                      document.body.removeChild(clone);
-                    } catch (err) {
-                      console.error('Error al generar PDF de QR:', err);
-                    } finally {
-                      if (btn) btn.disabled = false;
-                    }
-                  }}
+                  onClick={() => window.print()}
                 >
                   Descargar PDF para Imprimir
                 </Button>

@@ -27,7 +27,7 @@ import { evaluarImporte } from '@core/domain/operations/cobro-qr';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { membersRepository, receiptsRepository } from '@infra/config/composition-root';
 import { enviarEnlaceDeAcceso } from '@infra/auth/enlace-de-acceso';
-import { mensajeDeEnlaceDeAcceso } from '@core/application/auth/login.usecase';
+import { mensajeDeEnlaceDeAcceso, mutarEmailParaTenant } from '@core/application/auth/login.usecase';
 import { datosPresencialesPendientes, type CampoDeFichaPresencial } from '@core/domain/operations/alta-del-socio';
 import { SITE_URL } from '@/lib/site-url';
 import { importe } from '@/lib/formato';
@@ -104,13 +104,13 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
 
   const datos: DatosDeAlta = {
     ...datosBase,
-    correo,
+    correo: correo ? mutarEmailParaTenant(correo, slug) : '',
     planId: texto(form, 'planId', 40),
     inicio: texto(form, 'inicio', 10),
     metodo: texto(form, 'metodo', 20) || 'cash',
     monto: texto(form, 'monto', 12),
   };
-  const valores = { ...datos } as Record<string, string>;
+  const valores = { ...datosBase } as Record<string, string>;
   const hoy = await repo.hoyDelGimnasio(slug);
   const errores: Record<string, string> = { ...validarAlta(datos, hoy) };
 
@@ -156,7 +156,7 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
     const adminAuth = getAdminSupabase();
     if (adminAuth) {
       const { data: authData, error: authError } = await adminAuth.auth.admin.createUser({
-        email: correo,
+        email: datos.correo,
         password: passwordGenerado,
         email_confirm: true,
         user_metadata: {
@@ -217,14 +217,18 @@ export async function actualizarSocio(_previo: EstadoDeFormulario, form: FormDat
   const { slug, repo } = acceso.contexto;
 
   const customerId = texto(form, 'customerId', 40);
-  const datos = datosDeSocio(form);
+  const datosBase = datosDeSocio(form);
+  const datos = {
+    ...datosBase,
+    correo: datosBase.correo ? mutarEmailParaTenant(datosBase.correo, slug) : '',
+  };
   const errores = validarDatosDeSocio(datos, await repo.hoyDelGimnasio(slug));
   if (Object.keys(errores).length > 0) {
-    return { errores, valores: datos as unknown as Record<string, string>, mensaje: 'Revisa los campos marcados.' };
+    return { errores, valores: datosBase as unknown as Record<string, string>, mensaje: 'Revisa los campos marcados.' };
   }
 
   const resultado = await (await membersRepository()).actualizar(customerId, normalizar(datos));
-  if (!resultado.ok) return { mensaje: resultado.mensaje, valores: datos as unknown as Record<string, string> };
+  if (!resultado.ok) return { mensaje: resultado.mensaje, valores: datosBase as unknown as Record<string, string> };
 
   revalidatePath(`/${slug}/panel`, 'layout');
   return { exito: 'Datos guardados.' };

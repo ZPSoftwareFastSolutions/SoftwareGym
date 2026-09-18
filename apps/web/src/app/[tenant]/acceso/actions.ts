@@ -30,6 +30,7 @@ import {
   resultadoDelAlta,
   validarLogin,
   validarRegistro,
+  mutarEmailParaTenant,
 } from '@core/application/auth/login.usecase';
 import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
 import { decidirLoginPorGimnasio, type CuentaAlIniciarSesion } from '@core/domain/operations/acceso-al-panel';
@@ -105,12 +106,13 @@ export async function iniciarSesion(
   if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
   if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
 
-  const email = texto(form, 'email').trim().toLowerCase();
+  const emailIngresado = texto(form, 'email').trim().toLowerCase();
   const password = texto(form, 'password');
 
-  const validacion = validarLogin({ email, password });
+  const validacion = validarLogin({ email: emailIngresado, password });
   if (!validacion.ok) return { errores: validacion.errores };
 
+  const email = mutarEmailParaTenant(emailIngresado, slug);
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -168,13 +170,14 @@ export async function registrarse(
   if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
   if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
 
-  const email = texto(form, 'email').trim().toLowerCase();
+  const emailIngresado = texto(form, 'email').trim().toLowerCase();
   const password = texto(form, 'password');
   const fullName = texto(form, 'fullName').trim();
 
-  const validacion = validarRegistro({ email, password, fullName, tenantSlug: slug });
+  const validacion = validarRegistro({ email: emailIngresado, password, fullName, tenantSlug: slug });
   if (!validacion.ok) return { errores: validacion.errores };
 
+  const email = mutarEmailParaTenant(emailIngresado, slug);
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signUp({
@@ -236,9 +239,10 @@ export async function reenviarConfirmacion(
   if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
   if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
 
-  const email = texto(form, 'email').trim().toLowerCase();
-  if (!correoValido(email)) return { mensaje: 'Ese correo no tiene un formato válido.' };
+  const emailIngresado = texto(form, 'email').trim().toLowerCase();
+  if (!correoValido(emailIngresado)) return { mensaje: 'Ese correo no tiene un formato válido.' };
 
+  const email = mutarEmailParaTenant(emailIngresado, slug);
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resend({
     type: 'signup',
@@ -270,12 +274,13 @@ export async function pedirEnlaceDeAcceso(_estadoPrevio: EstadoFormulario, form:
   if (!slug) return { mensaje: 'No se pudo determinar el gimnasio.' };
   if (!isSupabaseConfigured()) return { mensaje: ACCESO_NO_CONFIGURADO };
 
-  const email = texto(form, 'email').trim().toLowerCase();
-  if (!correoValido(email)) return { errores: { email: 'Escribe el correo con el que te registraste.' } };
+  const emailIngresado = texto(form, 'email').trim().toLowerCase();
+  if (!correoValido(emailIngresado)) return { errores: { email: 'Escribe el correo con el que te registraste.' } };
 
+  const email = mutarEmailParaTenant(emailIngresado, slug);
   const envio = await enviarEnlaceDeAcceso({ email, slug, retorno: retornoDelCorreo(slug, true) });
   if (!envio.ok) return { mensaje: mensajeDeEnlaceDeAcceso(envio.codigo) };
-  return { exito: `${MENSAJE_ENLACE_DE_ACCESO_ENVIADO.replace('Te enviamos un enlace', `Te enviamos un enlace a ${email}`)}` };
+  return { exito: `${MENSAJE_ENLACE_DE_ACCESO_ENVIADO.replace('Te enviamos un enlace', `Te enviamos un enlace a ${emailIngresado}`)}` };
 }
 
 /**

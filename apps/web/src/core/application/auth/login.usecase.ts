@@ -82,6 +82,32 @@ export function correoValido(correo: string): boolean {
 }
 
 /**
+ * V4.2.1 · Alias de Tenant (Subaddressing)
+ * Transforma un correo normal en un alias único para el gimnasio en Supabase.
+ * Permite que una misma persona use su correo en varios gimnasios independientes.
+ * Ej: `pepito@gmail.com` -> `pepito+mitico@gmail.com`
+ */
+export function mutarEmailParaTenant(email: string, tenantSlug: string): string {
+  const limpio = email.trim().toLowerCase();
+  const [localPart, domain] = limpio.split('@');
+  if (!localPart || !domain) return limpio;
+  
+  const suffix = `+${tenantSlug}`;
+  if (localPart.endsWith(suffix)) return limpio;
+  
+  return `${localPart}${suffix}@${domain}`;
+}
+
+/**
+ * Restaura el correo original para mostrárselo al usuario sin el alias del tenant.
+ * Ej: `pepito+mitico@gmail.com` -> `pepito@gmail.com`
+ */
+export function limpiarEmailDeTenant(email: string, tenantSlug: string): string {
+  const limpio = email.trim().toLowerCase();
+  return limpio.replace(`+${tenantSlug}@`, '@');
+}
+
+/**
  * Qué pasó de verdad en un alta que Supabase dio por buena.
  *
  * Con la confirmación por correo activa, `signUp` responde ÉXITO también cuando

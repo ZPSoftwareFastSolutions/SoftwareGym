@@ -108,6 +108,7 @@ export function AccionesRapidas({
                 descripcion="Con la cámara o con el lector. Se registra solo al leer el QR."
                 anchoMaximo="md"
                 montarSoloAbierto
+                prevenirCierreEnFondo
                 disparador={
                   <button type="button" className={`${CLASE_DE_TARJETA} border-action/50 bg-action/8`}>
                     <Cuerpo
