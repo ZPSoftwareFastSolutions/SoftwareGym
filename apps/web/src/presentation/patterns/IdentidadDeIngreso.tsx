@@ -102,10 +102,26 @@ export function IdentidadDeIngreso({ resultado, intento, sucursal }: IdentidadDe
       alCerrar={() => setAbierto(false)}
       titulo={desenlace === 'autorizado' ? `¡Bienvenido, ${primerNombre(identidad.nombre)}!` : identidad.nombre}
       anchoMaximo="sm"
+      prevenirCierreEnFondo={true}
     >
-      {/* Cualquier interacción cancela el cierre automático: si alguien está
-          comparando la cara con la persona, la ventana no se le va sola. */}
       <div onPointerDown={() => setCongelado(true)} onKeyDown={() => setCongelado(true)}>
+        <IdentidadDeIngresoContenido resultado={resultado} sucursal={sucursal} />
+      </div>
+    </Dialogo>
+  );
+}
+
+export function IdentidadDeIngresoContenido({ resultado, sucursal }: { readonly resultado: ResultadoDeCheckIn; readonly sucursal: string }) {
+  const identidad = identidadDelResultado(resultado);
+  if (!identidad) return null;
+  
+  const desenlace = desenlaceDe(resultado);
+  const rotulo = ROTULO[desenlace];
+  const dias = resultado.tipo === 'registrado' ? resultado.diasRestantes : null;
+  const concedido = elAccesoSeConcedio(resultado);
+
+  return (
+    <>
         <Retrato identidad={identidad} />
 
         <p className="mt-5 text-center text-[1.15rem] font-bold text-ink">{identidad.nombre}</p>
@@ -150,8 +166,7 @@ export function IdentidadDeIngreso({ resultado, intento, sucursal }: IdentidadDe
             Su plan no incluye esta sede. Ofrécele uno que valga en todas.
           </p>
         )}
-      </div>
-    </Dialogo>
+    </>
   );
 }
 

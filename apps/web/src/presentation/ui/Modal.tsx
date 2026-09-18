@@ -52,6 +52,8 @@ interface DialogoProps {
    * sin querer.
    */
   readonly montarSoloAbierto?: boolean;
+  /** Impide que la ventana se cierre al hacer clic en el fondo oscuro. */
+  readonly prevenirCierreEnFondo?: boolean;
   readonly className?: string;
 }
 
@@ -63,6 +65,7 @@ export function Dialogo({
   children,
   anchoMaximo = 'md',
   montarSoloAbierto = false,
+  prevenirCierreEnFondo = false,
   className,
 }: DialogoProps) {
   const referencia = useRef<HTMLDialogElement>(null);
@@ -94,7 +97,9 @@ export function Dialogo({
       onClick={(evento) => {
         // El ::backdrop no es un nodo del DOM: el clic llega con el <dialog>
         // como destino. Así se distingue «pulsó fuera» de «pulsó dentro».
-        if (evento.target === referencia.current) cerrarRef.current();
+        if (evento.target === referencia.current && !prevenirCierreEnFondo) {
+          cerrarRef.current();
+        }
       }}
       onKeyDown={(evento) => {
         if (evento.key === 'Escape') {

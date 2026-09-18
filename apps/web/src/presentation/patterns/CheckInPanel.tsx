@@ -80,9 +80,23 @@ export function CheckInPanel({ slug, sucursal, mostrarSucursal = false, empezarC
    * dispararía). En un mostrador eso pasa constantemente.
    */
   const [intento, setIntento] = useState(0);
+
   useEffect(() => {
-    if (resultado) setIntento((n) => n + 1);
-  }, [resultado]);
+    if (resultado) {
+      setIntento((n) => n + 1);
+
+      // V4.4: Sincronización entre pestañas locales. Sin dependencias de red ni latencia.
+      // Escribimos el resultado en localStorage; el evento 'storage' disparará el Monitor.
+      try {
+        localStorage.setItem(`gym-monitor-${slug}`, JSON.stringify({ 
+          timestamp: Date.now(), 
+          payload: resultado 
+        }));
+      } catch (e) {
+        console.error('Error sincronizando monitor local', e);
+      }
+    }
+  }, [resultado, slug]);
 
   useEffect(() => {
     if (!resultado) return;
@@ -189,6 +203,20 @@ export function CheckInPanel({ slug, sucursal, mostrarSucursal = false, empezarC
           Escanear al siguiente
         </button>
       )}
+
+      {/* V4.4: Acceso rápido para abrir el monitor en doble pantalla */}
+      <div className="mt-2 pt-4 border-t border-line/40 flex justify-center">
+        <a
+          href={`/${slug}/monitor`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full px-4 text-[0.8rem] font-medium text-muted hover:bg-raised hover:text-ink transition-colors"
+          title="Abre el monitor en una ventana separada para ponerla en otra pantalla"
+        >
+          <Icon name="eye" size={16} />
+          Abrir Monitor a 2da pantalla
+        </a>
+      </div>
     </div>
   );
 }

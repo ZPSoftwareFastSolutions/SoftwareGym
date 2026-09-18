@@ -1,16 +1,22 @@
+'use client';
+
 /**
  * CAPA: Presentation / App — 404 global.
  *
  * Sirve tanto para un slug de gimnasio inexistente como para una sección
- * apagada por feature flag. El mensaje es deliberadamente genérico: revelar
- * que la ruta existe pero está desactivada da información sobre la
- * configuración comercial de otro cliente.
+ * apagada por feature flag. El mensaje es deliberadamente genérico.
  */
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Icon } from '@/presentation/icons/Icon';
 
 export default function NotFound() {
+  const pathname = usePathname();
+  // Asumimos que la URL es /tenant-slug/algo
+  const tenant = pathname?.split('/')[1];
+  const href = tenant ? `/${tenant}/panel` : '/';
+
   return (
     <div data-theme="dark">
       <main className="relative grid min-h-svh place-items-center overflow-hidden px-6">
@@ -32,11 +38,11 @@ export default function NotFound() {
           </p>
 
           <Link
-            href="/"
+            href={href}
             className="mt-9 inline-flex min-h-12 items-center gap-2.5 rounded-[var(--t-radius-md)] bg-action px-6 font-semibold text-on-action transition-colors hover:bg-action-strong"
           >
             <Icon name="arrowRight" size={17} className="rotate-180" />
-            Volver al inicio
+            Volver al gimnasio
           </Link>
         </div>
       </main>

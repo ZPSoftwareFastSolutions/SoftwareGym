@@ -58,6 +58,9 @@ import { Badge } from '@/presentation/ui/Badge';
 import { Button, LinkButton } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPerfil, fechaCorta, hora, importe } from '../_datos';
+import { SugerenciaCambioContrasena } from '@/presentation/patterns/SugerenciaCambioContrasena';
+import { getAuthenticatedUser } from '@infra/auth/supabase.server';
+
 
 export const metadata: Metadata = { title: 'Mi panel', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -97,6 +100,8 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
   const tenant = await loadTenantPage(params, 'memberLogin');
   const { slug, name, features } = tenant;
   const { perfil, repo } = await exigirPerfil(slug);
+  const user = await getAuthenticatedUser();
+  const needsPasswordChange = user?.user_metadata?.needs_password_change === true;
 
   const consulta = await searchParams;
   const pagarCrudo = Array.isArray(consulta.pagar) ? consulta.pagar[0] : consulta.pagar;
@@ -255,6 +260,8 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
 
   return (
     <div className="flex flex-col gap-6">
+      {needsPasswordChange && <SugerenciaCambioContrasena />}
+
       <NotificationsPanel slug={slug} notificaciones={notificaciones} />
 
       {codigoAPagar && formularioDePago && (

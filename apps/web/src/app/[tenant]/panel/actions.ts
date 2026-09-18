@@ -154,6 +154,30 @@ export async function marcarAvisoLeido(form: FormData): Promise<void> {
 }
 
 /**
+ * V4.2 · Obtiene el resumen de racha de un socio para pintarlo en el Monitor de Acceso.
+ */
+export async function obtenerRachaSocio(slug: string, customerId: string) {
+  if (!isSupabaseConfigured()) return null;
+  const repo = await operationsRepository();
+  const perfil = await repo.perfil();
+  if (!perfil || perfil.tenantSlug !== slug) return null;
+
+  const { getTenantBySlug } = await import('@core/application/tenant/get-tenant.usecase');
+  const tenantRepo = await (await import('@infra/config/composition-root')).tenantRepository();
+  const tenant = await getTenantBySlug(tenantRepo, slug);
+  if (!tenant) return null;
+
+  const socios = await (await import('@infra/config/composition-root')).membersRepository();
+  const [hoy, dias] = await Promise.all([
+    repo.hoyDelGimnasio(slug),
+    socios.diasDeAsistencia(customerId, 365)
+  ]);
+
+  const { calcularRacha, diasCerradosDelHorario } = await import('@core/domain/operations/streak');
+  return calcularRacha(dias, hoy, diasCerradosDelHorario(tenant.hours.week), 12);
+}
+
+/**
  * Foto de perfil del socio (V4.2).
  *
  * POR QUÉ NO EXIGE NINGUNA CAPACIDAD. La foto la sube el propio socio sobre su

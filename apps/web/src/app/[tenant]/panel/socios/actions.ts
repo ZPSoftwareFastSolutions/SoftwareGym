@@ -48,6 +48,8 @@ export interface EstadoDeAlta extends EstadoDeFormulario {
     readonly cuentaVinculada: boolean;
     readonly membresiaActiva: boolean;
     readonly comprobante: 'ninguno' | 'pendiente' | 'aprobado' | 'error';
+    readonly correo?: string;
+    readonly passwordGenerado?: string;
   };
 }
 
@@ -75,13 +77,34 @@ function normalizar(datos: DatosDeSocio) {
   };
 }
 
+import { createClient } from '@supabase/supabase-js';
+import { supabaseConfig } from '@infra/auth/supabase.config';
+
+function getAdminSupabase() {
+  const config = supabaseConfig();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!config || !serviceKey) return null;
+  return createClient(config.url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Promise<EstadoDeAlta> {
   const acceso = await contextoDeAccion(form, ['enableMemberManagement'], PERMISO.crearSocios);
   if (!acceso.ok) return { mensaje: acceso.mensaje };
   const { slug, perfil, repo } = acceso.contexto;
 
+  const datosBase = datosDeSocio(form);
+  let correo = datosBase.correo.trim().toLowerCase();
+  const documento = datosBase.documento.trim();
+  
+  if (!correo && documento) {
+    correo = `zapasoftwarefastsolutions+${documento}@gmail.com`;
+  }
+
   const datos: DatosDeAlta = {
-    ...datosDeSocio(form),
+    ...datosBase,
+    correo,
     planId: texto(form, 'planId', 40),
     inicio: texto(form, 'inicio', 10),
     metodo: texto(form, 'metodo', 20) || 'cash',
@@ -110,16 +133,10 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
   const monto = importeDeTexto(datos.monto) ?? plan?.price ?? null;
   const metodo = esMetodoDePago(datos.metodo) ? datos.metodo : 'cash';
 
-  // Un cobro por QR no cubre el plan si es menor que su precio (la base lo
-  // rechaza igual). Se comprueba ANTES de crear la ficha: si no, el socio
-  // quedaría dado de alta con un comprobante que no se pudo guardar.
   if (plan && monto !== null && (pagaConQr || metodo === 'qr') && evaluarImporte(plan.price, monto) === 'insuficiente') {
     return { errores: { monto: `Un cobro por QR no puede ser menor que el precio del plan (${importe(plan.price, plan.currency)}).` }, valores };
   }
 
-  // PAGO POR QR: la membresía NO se crea en el alta. Se crea al aprobar el
-  // comprobante, que lleva el plan propuesto. Si se activara ya, el socio
-  // entrenaría con un pago que nadie ha verificado contra el banco.
   const resultado = await socios.registrar({
     ...normalizar(datos),
     planId: pagaConQr ? null : plan?.id ?? null,
@@ -129,6 +146,32 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
   });
 
   if (!resultado.ok) return { mensaje: resultado.mensaje, valores };
+
+  const nombreSinEspacios = datos.nombre.trim().replace(/\s+/g, '');
+  const identificador = documento || Math.floor(1000 + Math.random() * 9000).toString();
+  const passwordGenerado = `${nombreSinEspacios}${identificador}`;
+  let cuentaVinculadaAuth = resultado.valor.cuentaVinculada;
+
+  if (correo && !cuentaVinculadaAuth) {
+    const adminAuth = getAdminSupabase();
+    if (adminAuth) {
+      const { data: authData, error: authError } = await adminAuth.auth.admin.createUser({
+        email: correo,
+        password: passwordGenerado,
+        email_confirm: true,
+        user_metadata: {
+          tenant_slug: slug,
+          full_name: `${datos.nombre.trim()} ${datos.apellido.trim()}`,
+          needs_password_change: true,
+        },
+      });
+      if (!authError && authData.user) {
+        // Enlazar la cuenta
+        await adminAuth.from('app_users').update({ customer_id: resultado.valor.customerId }).eq('id', authData.user.id);
+        cuentaVinculadaAuth = true;
+      }
+    }
+  }
 
   let comprobante: 'ninguno' | 'pendiente' | 'aprobado' | 'error' = 'ninguno';
   if (pagaConQr && imagen?.ok && plan && perfil.tenantId && monto) {
@@ -145,7 +188,6 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
     });
     if (!subida.ok) comprobante = 'error';
     else if (texto(form, 'verificado') === 'si') {
-      // Quien marca «verificado» vio el pago en el banco por el importe escrito.
       const revision = await recibos.revisar(subida.valor, true, 'Verificado en el alta', monto);
       comprobante = revision.ok ? 'aprobado' : 'pendiente';
     } else comprobante = 'pendiente';
@@ -160,9 +202,11 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
       code: resultado.valor.code,
       nombre: `${datos.nombre.trim()} ${datos.apellido.trim()}`,
       token: resultado.valor.token,
-      cuentaVinculada: resultado.valor.cuentaVinculada,
+      cuentaVinculada: cuentaVinculadaAuth,
       membresiaActiva: Boolean(resultado.valor.membershipId) || comprobante === 'aprobado',
       comprobante,
+      correo: correo,
+      passwordGenerado: passwordGenerado,
     },
   };
 }

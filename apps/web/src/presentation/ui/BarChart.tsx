@@ -89,7 +89,8 @@ export function BarChart({
                 width={anchoDeBarra}
                 height={altoBarra}
                 rx={Math.min(3, anchoDeBarra / 2)}
-                fill={esUltimo ? 'var(--t-action)' : 'color-mix(in srgb, var(--t-action) 42%, transparent)'}
+                fill="var(--t-action)"
+                opacity={esUltimo ? 1 : 0.42}
               >
                 {/* El `title` da el dato al pasar el ratón sin JavaScript. */}
                 <title>{punto.detalle}</title>

@@ -24,6 +24,7 @@ import { PATRON_NOMBRE_HTML } from '@core/application/auth/login.usecase';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { Button } from '../ui/Button';
+import { PasswordInput } from '../ui/PasswordInput';
 import { CrearContrasenaForm, PedirEnlaceForm } from './AccesoConEnlace';
 
 const CAMPO = [
@@ -350,14 +351,12 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
             <label htmlFor={`${idBase}-password`} className="mb-2 block text-[0.85rem] text-muted">
               Contraseña
             </label>
-            <input
+            <PasswordInput
               id={`${idBase}-password`}
               name="password"
-              type="password"
               autoComplete="current-password"
               maxLength={72}
               required
-              className={CAMPO}
               placeholder="••••••••"
               aria-invalid={Boolean(errores.password)}
               aria-describedby={errores.password ? `${idBase}-password-error` : undefined}
@@ -443,15 +442,13 @@ export function AccessForm({ slug, gymName }: AccessFormProps) {
             >
               Contraseña
             </label>
-            <input
+            <PasswordInput
               id={`${idBase}-reg-password`}
               name="password"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               maxLength={72}
               required
-              className={CAMPO}
               placeholder="Al menos 8 caracteres"
               aria-invalid={Boolean(errores.password)}
               aria-describedby={`${idBase}-password-ayuda`}

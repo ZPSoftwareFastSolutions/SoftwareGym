@@ -53,16 +53,19 @@ export function HeatMap({ titulo, filas, columnas, valores, unidad = 'entradas',
                   <td
                     key={columna}
                     title={`${fila} ${columna}: ${valor} ${unidad}`}
-                    className="h-7 rounded-[4px] p-0 text-center text-[0.62rem] font-semibold"
+                    className="relative h-7 rounded-[4px] p-0 text-center text-[0.62rem] font-semibold overflow-hidden"
                     style={{
-                      background:
-                        valor === 0
-                          ? 'var(--t-raised)'
-                          : `color-mix(in srgb, var(--t-action) ${intensidad}%, transparent)`,
                       color: intensidad > 60 ? 'var(--t-on-action)' : 'var(--t-ink)',
                     }}
                   >
-                    <span aria-hidden={valor === 0}>{valor > 0 ? valor : ''}</span>
+                    <div 
+                      className="absolute inset-0"
+                      style={{ 
+                        background: valor === 0 ? 'var(--t-raised)' : 'var(--t-action)',
+                        opacity: valor === 0 ? 1 : intensidad / 100
+                      }}
+                    />
+                    <span className="relative z-10" aria-hidden={valor === 0}>{valor > 0 ? valor : ''}</span>
                     <span className="sr-only">
                       {fila} a las {columna}: {valor} {unidad}
                     </span>

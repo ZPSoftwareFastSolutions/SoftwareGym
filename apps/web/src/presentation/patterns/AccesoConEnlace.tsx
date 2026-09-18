@@ -14,6 +14,8 @@ import { useFormStatus } from 'react-dom';
 import { crearContrasena, pedirEnlaceDeAcceso, type EstadoFormulario } from '@/app/[tenant]/acceso/actions';
 import { Icon } from '../icons/Icon';
 import { Button } from '../ui/Button';
+import { PasswordInput } from '../ui/PasswordInput';
+
 
 const CAMPO = [
   'w-full min-h-12 rounded-[var(--t-radius-md)] border border-line bg-surface px-4 py-3',
@@ -113,15 +115,13 @@ export function CrearContrasenaForm({
         <label htmlFor="nueva-clave" className="mb-2 block text-[0.85rem] text-muted">
           Contraseña nueva
         </label>
-        <input
+        <PasswordInput
           id="nueva-clave"
           name="password"
-          type="password"
           autoComplete="new-password"
           minLength={8}
           maxLength={72}
           required
-          className={CAMPO}
           aria-invalid={Boolean(estado.errores?.password)}
         />
         {estado.errores?.password && <p className="mt-1.5 text-[0.82rem] text-action">{estado.errores.password}</p>}
@@ -130,14 +130,12 @@ export function CrearContrasenaForm({
         <label htmlFor="nueva-clave-2" className="mb-2 block text-[0.85rem] text-muted">
           Repite la contraseña
         </label>
-        <input
+        <PasswordInput
           id="nueva-clave-2"
           name="confirmacion"
-          type="password"
           autoComplete="new-password"
           maxLength={72}
           required
-          className={CAMPO}
           aria-invalid={Boolean(estado.errores?.confirmacion)}
         />
         {estado.errores?.confirmacion && <p className="mt-1.5 text-[0.82rem] text-action">{estado.errores.confirmacion}</p>}

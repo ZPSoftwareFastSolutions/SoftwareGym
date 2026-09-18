@@ -166,11 +166,8 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
               Todos los reportes
             </LinkButton>
             <PrintButton />
-            {/* Enlace normal y no botón con JavaScript: funciona con clic
-                derecho, en otra pestaña y sin que cargue ningún script. El CSV
-                lleva los MISMOS filtros que la tabla. */}
-            <LinkButton href={csv} variant="primary" size="sm" icon="download" iconPosition="start" download>
-              Descargar CSV
+            <LinkButton href={csv.replace('/csv', '/excel')} variant="primary" size="sm" icon="download" iconPosition="start" download>
+              Descargar Excel
             </LinkButton>
           </div>
         </div>

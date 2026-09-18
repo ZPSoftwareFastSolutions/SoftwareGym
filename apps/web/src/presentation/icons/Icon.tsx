@@ -91,6 +91,7 @@ const PATHS: Record<IconKey | SocialKey | UiKey, PathSet> = {
   plus: ['M12 5v14M5 12h14'],
   chart: ['M4 20V4', 'M4 20h16', 'M8 16v-4M12 16V8M16 16v-6'],
   eye: ['M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z', 'M12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6Z'],
+  eyeOff: ['M2.5 12S6 5.5 12 5.5s9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z', 'M12 14.8a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6Z', 'M3 3l18 18'],
   filter: ['M4 5h16l-6.2 7.5V19l-3.6-1.8v-4.7z'],
   image: ['M4 5h16v14H4z', 'M4 16l4.5-4.5 3.5 3.5 2.5-2.5L20 17', 'M15.5 9.5h.01'],
   chevronDown: ['M6 9l6 6 6-6'],
@@ -137,6 +138,7 @@ type UiKey =
   | 'plus'
   | 'chart'
   | 'eye'
+  | 'eyeOff'
   | 'filter'
   | 'image'
   | 'chevronDown'

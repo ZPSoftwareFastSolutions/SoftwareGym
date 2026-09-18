@@ -277,6 +277,9 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
                     <p className="font-mono text-[0.9rem] tracking-[0.14em] text-muted">{ficha.checkinToken.match(/.{1,6}/g)?.join(' ')}</p>
                   </div>
                 </Modal>
+                <LinkButton href={`/${slug}/panel/socios/${ficha.id}/imprimir-qr`} variant="secondary" size="sm" icon="printer" iconPosition="start">
+                  Imprimir Tarjeta
+                </LinkButton>
                 {puede(PERMISO.editarSocios) && (
                   <AccionConEstado
                     accion={rotarQrDeSocio}

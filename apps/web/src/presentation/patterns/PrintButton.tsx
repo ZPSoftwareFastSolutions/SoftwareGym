@@ -20,15 +20,52 @@
 import { Button } from '../ui/Button';
 
 export function PrintButton() {
+  const handlePrint = async () => {
+    // Tomamos el main principal como contenedor (el page layout).
+    const element = document.querySelector('main');
+    if (!element) {
+      window.print();
+      return;
+    }
+    
+    // Ocultar temporalmente elementos de navegación/UI al generar el PDF
+    const hideElements = document.querySelectorAll('[data-print="hide"]');
+    const originalStyles = Array.from(hideElements).map(el => (el as HTMLElement).style.display);
+    hideElements.forEach(el => (el as HTMLElement).style.display = 'none');
+
+    try {
+      // Dynamic import para que no pese en el bundle inicial
+      const html2pdf = (await import('html2pdf.js')).default;
+      const tituloReporte = document.querySelector('h1')?.textContent || 'Reporte';
+      const opt = {
+        margin:       10,
+        filename:     `${tituloReporte.replace(/ /g, '_')}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error('Error generando PDF:', err);
+      // Fallback nativo
+      window.print();
+    } finally {
+      // Restaurar visibilidad
+      hideElements.forEach((el, idx) => (el as HTMLElement).style.display = originalStyles[idx] || '');
+    }
+  };
+
   return (
     <Button
       variant="secondary"
       size="sm"
       icon="layers"
       iconPosition="start"
-      onClick={() => window.print()}
+      onClick={handlePrint}
     >
-      Imprimir o guardar PDF
+      Guardar PDF
     </Button>
   );
 }

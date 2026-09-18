@@ -79,10 +79,19 @@ function Aviso({ estado }: { readonly estado: EstadoDeFormulario }) {
 function CamposPersonales({
   valores,
   errores,
+  autoCorreoAdmin = false,
 }: {
   readonly valores: Readonly<Record<string, string>>;
   readonly errores: Readonly<Record<string, string>>;
+  readonly autoCorreoAdmin?: boolean;
 }) {
+  const [doc, setDoc] = useState(valores.documento ?? '');
+  const [correoManual, setCorreoManual] = useState(valores.correo ?? '');
+  const [correoTocado, setCorreoTocado] = useState(Boolean(valores.correo));
+
+  const correoSugerido = doc.trim() ? `zapasoftwarefastsolutions+${doc.trim()}@gmail.com` : '';
+  const correoActual = autoCorreoAdmin && !correoTocado && doc.trim() ? correoSugerido : correoManual;
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Campo id="socio-nombre" etiqueta="Nombre" error={errores.nombre} obligatorio>
@@ -92,13 +101,32 @@ function CamposPersonales({
         <input name="apellido" defaultValue={valores.apellido} required minLength={2} maxLength={80} pattern={PATRON_NOMBRE_HTML} title="Solo letras, espacios, apóstrofos y guiones" autoComplete="off" className={CLASE_DE_CONTROL} />
       </Campo>
       <Campo id="socio-documento" etiqueta="Documento (CI)" error={errores.documento} ayuda="Evita registrar dos veces a la misma persona.">
-        <input name="documento" defaultValue={valores.documento} maxLength={20} autoComplete="off" className={CLASE_DE_CONTROL} />
+        <input 
+          name="documento" 
+          value={doc} 
+          onChange={(e) => setDoc(e.target.value)} 
+          maxLength={20} 
+          autoComplete="off" 
+          className={CLASE_DE_CONTROL} 
+        />
       </Campo>
       <Campo id="socio-telefono" etiqueta="Teléfono / WhatsApp" error={errores.telefono}>
         <input name="telefono" type="tel" defaultValue={valores.telefono} maxLength={20} placeholder="70000000" className={CLASE_DE_CONTROL} />
       </Campo>
-      <Campo id="socio-correo" etiqueta="Correo" error={errores.correo} ayuda="Si se registra en la web con este correo, verá su QR y su membresía.">
-        <input name="correo" type="email" defaultValue={valores.correo} maxLength={254} autoComplete="off" className={CLASE_DE_CONTROL} />
+      <Campo id="socio-correo" etiqueta="Correo" error={errores.correo} obligatorio ayuda={autoCorreoAdmin ? "Si se deja en blanco, se usará el autogenerado." : "Requerido para acceder al panel."}>
+        <input 
+          name="correo" 
+          type="email" 
+          required 
+          value={correoActual} 
+          onChange={(e) => {
+            setCorreoTocado(true);
+            setCorreoManual(e.target.value);
+          }}
+          maxLength={254} 
+          autoComplete="off" 
+          className={CLASE_DE_CONTROL} 
+        />
       </Campo>
       <Campo id="socio-nacimiento" etiqueta="Fecha de nacimiento" error={errores.nacimiento}>
         <input name="nacimiento" type="date" defaultValue={valores.nacimiento} className={CLASE_DE_CONTROL} />
@@ -192,20 +220,32 @@ export function AltaDeSocioForm({ slug, planes, hoy, rutaDeFichas, admiteComprob
               {r.comprobante === 'error' && 'No se pudo guardar el comprobante: adjúntalo desde la ficha'}
             </li>
           )}
-          <li className="flex items-center gap-2.5 rounded-[var(--t-radius-md)] bg-raised px-4 py-3">
-            <Icon name="user" size={17} className="text-muted" />
-            {r.cuentaVinculada
-              ? 'Ya tenía cuenta web con ese correo: quedó vinculada'
-              : 'Cuando se registre en la web con su correo, su cuenta se vincula sola'}
+          <li className="flex flex-col items-start gap-1 rounded-[var(--t-radius-md)] bg-raised px-4 py-3">
+            <span className="flex items-center gap-2.5 text-ink">
+              <Icon name="user" size={17} className="text-action" />
+              <strong>Cuenta Web Creada Automáticamente</strong>
+            </span>
+            <span className="pl-7 text-muted">
+              {r.cuentaVinculada
+                ? 'Ya tenía cuenta web con ese correo: quedó vinculada.'
+                : <><strong>Correo:</strong> {r.correo} <br/> <strong>Contraseña:</strong> {r.passwordGenerado}</>}
+            </span>
           </li>
         </ul>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
-            href={`${rutaDeFichas}/${r.customerId}`}
+            href={`${rutaDeFichas}/${r.customerId}/imprimir-qr`}
             className="inline-flex h-12 items-center gap-2 rounded-[var(--t-radius-md)] bg-action px-6 font-semibold text-on-action transition-colors hover:bg-action-strong"
           >
+            <Icon name="qr" size={17} />
+            Imprimir QR en Tarjeta
+          </Link>
+          <Link
+            href={`${rutaDeFichas}/${r.customerId}`}
+            className="inline-flex h-12 items-center gap-2 rounded-[var(--t-radius-md)] border border-line px-6 font-semibold text-ink transition-colors hover:border-action hover:text-action"
+          >
             <Icon name="idcard" size={17} />
-            Ver ficha y QR
+            Ver ficha
           </Link>
           <a
             href={`${rutaDeFichas}/nuevo`}
@@ -235,7 +275,7 @@ export function AltaDeSocioForm({ slug, planes, hoy, rutaDeFichas, admiteComprob
           <Icon name="idcard" size={15} className="text-action" />
           Datos personales
         </h3>
-        <CamposPersonales valores={valores} errores={errores} />
+        <CamposPersonales valores={valores} errores={errores} autoCorreoAdmin={true} />
       </section>
 
       <section className="flex flex-col gap-4 border-t border-line pt-6" aria-labelledby="alta-plan">
