@@ -93,6 +93,8 @@ export interface BranchShowcase {
   readonly highlights: readonly string[];
   /** Semilla de la composición gráfica mientras no haya fotografía. */
   readonly seed?: number;
+  /** Enlace directo de inserción de Google Maps (src del iframe), sobreescribe el mapa dinámico. */
+  readonly mapEmbedUrl?: string;
 }
 
 /** Sección de sucursales del sitio. Solo tiene efecto con `enableMultiBranch`. */

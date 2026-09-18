@@ -424,7 +424,7 @@ function FilaDeDetalle({
   tenantName,
   conMapa,
 }: PiezaProps & { readonly indice: number; readonly conMapa: boolean }) {
-  const mapa = conMapa ? urlDeMapaEmbebido(sucursal, contact.city) : null;
+  const mapa = conMapa ? (texto?.mapEmbedUrl ?? urlDeMapaEmbebido(sucursal, contact.city)) : null;
   const ubicacion = urlDeUbicacion(sucursal, contact.city);
   // Alterna el lado de la imagen: dos filas iguales seguidas se leen como una lista.
   const invertida = indice % 2 === 1;
@@ -477,7 +477,7 @@ function FilaDeDetalle({
 }
 
 function TarjetaConMapa({ sucursal, texto, varias, contact, tenantName, conMapa }: PiezaProps & { readonly conMapa: boolean }) {
-  const mapa = conMapa ? urlDeMapaEmbebido(sucursal, contact.city) : null;
+  const mapa = conMapa ? (texto?.mapEmbedUrl ?? urlDeMapaEmbebido(sucursal, contact.city)) : null;
   const ubicacion = urlDeUbicacion(sucursal, contact.city);
 
   return (

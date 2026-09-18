@@ -645,6 +645,7 @@ export const goldsGymPremiumTenant: TenantConfig = {
           // PENDIENTE: dirección y características propias de esta sede.
           highlights: [],
           seed: 39,
+          mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d604.2363266344745!2d-68.14715510463752!3d-16.495946634514826!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x915edf4b559ba919%3A0x62636013ad8ca940!2sCENTENARIO%20GOLD!5e0!3m2!1ses!2sbo!4v1789736504491!5m2!1ses!2sbo',
         },
         {
           code: 'CRUCEVILLAS',
@@ -653,14 +654,16 @@ export const goldsGymPremiumTenant: TenantConfig = {
           // PENDIENTE: dirección y características propias de esta sede.
           highlights: [],
           seed: 61,
+          mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d239.10016853448386!2d-68.11600443065473!3d-16.495643364996667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x915f210078c8f967%3A0x1ba86b25ff7acc3b!2sGold\'s%20Gym%20Body%20cruce!5e0!3m2!1ses!2sbo!4v1789734420585!5m2!1ses!2sbo',
         },
         {
           code: 'ELALTO',
-          tagline: 'Golden Gym',
+          tagline: 'GOLD\'S GYM EL ALTO',
           description: 'Nuestra sucursal de El Alto.',
           // PENDIENTE: dirección y características propias de esta sede.
           highlights: [],
           seed: 83,
+          mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d5716.43399282623!2d-68.16290328400687!3d-16.507768763604112!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x915edf875372f037%3A0xa934b515afed9297!2sGOLD%C2%B4S%20GYM%20BODDY!5e0!3m2!1ses!2sbo!4v1789734502907!5m2!1ses!2sbo',
         },
       ],
     },
