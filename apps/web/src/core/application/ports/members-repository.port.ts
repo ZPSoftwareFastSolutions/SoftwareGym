@@ -84,6 +84,9 @@ export interface MembersRepositoryPort {
   /** Accesos rápidos (activos, por vencer, sin venir…) en una sola consulta. */
   conteos(): Promise<ConteoDeSocios>;
 
+  /** Socios pendientes (ficha creada online sin datos completos presenciales) */
+  contarPendientes(): Promise<number>;
+
   /** Socios no archivados para un desplegable: solo id, código y nombre. */
   opciones(): Promise<readonly OpcionDeSocio[]>;
 

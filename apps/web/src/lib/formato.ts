@@ -99,3 +99,43 @@ export function hoyEnZona(zona: string): string {
     return new Date().toISOString().slice(0, 10);
   }
 }
+
+/**
+ * Normaliza un número de teléfono forzando el formato +591 internamente
+ * y mostrando +591 XXXXXXXX para la visualización.
+ */
+export function formatoTelefono(telefono: string | null | undefined): string {
+  if (!telefono) return '—';
+  
+  // Limpiamos todo lo que no sea número o +
+  const limpio = telefono.replace(/[^\d+]/g, '');
+  if (!limpio) return '—';
+
+  // Si ya tiene el +591, lo separamos bonito
+  if (limpio.startsWith('+591')) {
+    const resto = limpio.slice(4).trim();
+    return `+591 ${resto}`;
+  }
+
+  // Si empieza con 591 sin el +, asumimos que es el código de país
+  if (limpio.startsWith('591') && limpio.length >= 10) {
+    const resto = limpio.slice(3).trim();
+    return `+591 ${resto}`;
+  }
+
+  // Si no tiene código y parece un celular o teléfono fijo boliviano (empieza por 6, 7 o 2-4)
+  const esNumeroLocal = /^[2-7]/.test(limpio);
+  
+  // Si tiene un + y no es 591, lo dejamos tal cual (extranjero)
+  if (limpio.startsWith('+')) {
+    return limpio;
+  }
+
+  // Por defecto, si parece local y no tiene +, le ponemos el +591
+  if (esNumeroLocal) {
+    return `+591 ${limpio}`;
+  }
+
+  return limpio;
+}
+

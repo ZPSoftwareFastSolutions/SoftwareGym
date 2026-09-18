@@ -37,6 +37,7 @@ const ICONO: Readonly<Record<ClaveDeAccionRapida, AnyIconKey>> = {
   accesos: 'key',
   personal: 'shield',
   anuncios: 'sparkle',
+  inventario: 'archive',
 };
 
 /** Segmento del panel al que lleva cada acción, con el filtro que la hace útil. */
@@ -51,6 +52,7 @@ const DESTINO: Readonly<Record<ClaveDeAccionRapida, string>> = {
   accesos: 'panel/accesos',
   personal: 'panel/personal',
   anuncios: 'panel/anuncios',
+  inventario: 'panel/inventario',
 };
 
 const CLASE_DE_TARJETA =

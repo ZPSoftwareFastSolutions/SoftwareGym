@@ -18,9 +18,10 @@ interface PageHeroProps {
   readonly title: string;
   readonly lead?: string;
   readonly breadcrumb: string;
+  readonly children?: React.ReactNode;
 }
 
-export function PageHero({ slug, eyebrow, title, lead, breadcrumb }: PageHeroProps) {
+export function PageHero({ slug, eyebrow, title, lead, breadcrumb, children }: PageHeroProps) {
   return (
     <section className="relative overflow-hidden pt-[calc(var(--header-height)+3.5rem)] pb-14 lg:pb-20">
       <div aria-hidden="true" className="bg-aura opacity-70" />
@@ -49,6 +50,7 @@ export function PageHero({ slug, eyebrow, title, lead, breadcrumb }: PageHeroPro
         <p className="t-eyebrow">{eyebrow}</p>
         <h1 className="t-h1 mt-5 max-w-4xl">{title}</h1>
         {lead && <p className="t-lead mt-6 max-w-2xl">{lead}</p>}
+        {children}
       </div>
     </section>
   );

@@ -23,6 +23,7 @@ import {
 import { PERMISO } from '@core/domain/operations/workspace';
 import { validarAdmision, type DatosDeAdmision } from '@core/domain/operations/admissions';
 import { classesRepository } from '@infra/config/composition-root';
+import { formatoTelefono } from '@/lib/formato';
 import { contextoDeAccion, texto, type EstadoDeFormulario } from '../_acciones';
 
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -310,7 +311,7 @@ export async function autorizarEnSesion(_previo: EstadoDeFormulario, form: FormD
     customerId: socio === '' ? null : socio,
     nombre: texto(form, 'nombre', 150),
     documento: texto(form, 'documento', 40),
-    telefono: texto(form, 'telefono', 40),
+    telefono: texto(form, 'telefono', 40) ? (formatoTelefono(texto(form, 'telefono', 40)) === '—' ? '' : formatoTelefono(texto(form, 'telefono', 40))) : '',
     motivo: texto(form, 'motivo', 220),
   };
 

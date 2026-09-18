@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { cn } from '@/lib/cn';
-import { fechaCorta, importe } from '@/lib/formato';
+import { fechaCorta, importe, formatoTelefono } from '@/lib/formato';
 import type { EstadoDeFormulario } from '@/app/[tenant]/panel/_acciones';
 import {
   actualizarMembresia,
@@ -111,7 +111,15 @@ function CamposPersonales({
         />
       </Campo>
       <Campo id="socio-telefono" etiqueta="Teléfono / WhatsApp" error={errores.telefono}>
-        <input name="telefono" type="tel" defaultValue={valores.telefono} maxLength={20} placeholder="70000000" className={CLASE_DE_CONTROL} />
+        <input 
+          name="telefono" 
+          type="tel" 
+          defaultValue={valores.telefono ? (formatoTelefono(valores.telefono) === '—' ? valores.telefono : formatoTelefono(valores.telefono)) : ''}
+          maxLength={20} 
+          placeholder="+591 7…" 
+          className={CLASE_DE_CONTROL}
+          onBlur={(e) => { e.target.value = formatoTelefono(e.target.value) === '—' ? '' : formatoTelefono(e.target.value); }} 
+        />
       </Campo>
       <Campo id="socio-correo" etiqueta="Correo" error={errores.correo} obligatorio ayuda={autoCorreoAdmin ? "Si se deja en blanco, se usará el autogenerado." : "Requerido para acceder al panel."}>
         <input 

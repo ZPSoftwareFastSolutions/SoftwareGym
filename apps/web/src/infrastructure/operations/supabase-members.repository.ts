@@ -199,6 +199,17 @@ export class SupabaseMembersRepository implements MembersRepositoryPort {
     };
   }
 
+  async contarPendientes(): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('customers')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .ilike('notes', '%Completar datos en recepción%');
+      
+    if (error) console.error('[socios] contarPendientes', error.code, error.message);
+    return count ?? 0;
+  }
+
   async conMembresiaVigente(): Promise<readonly SocioDeLista[]> {
     const { data } = await this.supabase
       .from('v_customer_list')

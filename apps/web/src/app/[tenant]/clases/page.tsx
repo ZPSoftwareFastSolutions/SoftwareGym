@@ -23,6 +23,7 @@ import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 import { CatalogoDeClases, HorarioSemanalDeClases } from '@/presentation/sections/ClassesShowcase';
 import { LinkButton } from '@/presentation/ui/Button';
 import { SectionHeading } from '@/presentation/ui/SectionHeading';
+import { BotonReservaVitrina } from '@/presentation/sections/BotonReservaVitrina';
 
 export const revalidate = 300;
 
@@ -54,7 +55,11 @@ export default async function ClasesPublicasPage({ params }: TenantPageParams) {
         title="Entrena en grupo"
         lead={`Las clases de ${name}, con su horario de cada semana${multisede ? ' y la sede donde se dan' : ''}. Mira qué paquete incluye la que te gusta.`}
         breadcrumb={breadcrumb}
-      />
+      >
+        {features.enableReservations && features.memberLogin && (
+          <BotonReservaVitrina slug={slug} />
+        )}
+      </PageHero>
 
       {clases.length === 0 ? (
         <section className="section">

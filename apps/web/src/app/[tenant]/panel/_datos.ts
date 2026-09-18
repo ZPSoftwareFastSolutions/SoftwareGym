@@ -177,4 +177,4 @@ export async function exigirPermiso(slug: string, permiso: string): Promise<Cont
 // El formato vive en `lib/formato.ts` para poder usarlo también desde
 // componentes de cliente —la ficha de socio, la descarga en ZIP— sin arrastrar
 // hasta el navegador este módulo, que importa el composition root.
-export { fechaCorta, hora, importe } from '@/lib/formato';
+export { fechaCorta, hora, importe, formatoTelefono } from '@/lib/formato';

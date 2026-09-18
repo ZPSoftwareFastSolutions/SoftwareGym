@@ -106,7 +106,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const repoDeSocios = gestionSocios ? await membersRepository() : null;
   // V4: los contadores de socios salen de la base en una fila; antes se traían
   // TODAS las fichas (cada una con siete subconsultas) solo para contarlas aquí.
-  const [kpis, serieGimnasio, ingresos, vencimientos, ultimos, conteo, cumpleaneros, pendientes, ajustes, porSede, serieDeSedes] = await Promise.all([
+  const [kpis, serieGimnasio, ingresos, vencimientos, ultimos, conteo, cumpleaneros, pendientes, sociosPendientes, ajustes, porSede, serieDeSedes] = await Promise.all([
     repo.indicadores(slug),
     repo.asistenciaDiaria(30),
     puedeVerReportes ? repo.ingresosMensuales() : Promise.resolve([]),
@@ -115,6 +115,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
     repoDeSocios ? repoDeSocios.conteos() : Promise.resolve(CONTEO_DE_SOCIOS_VACIO),
     repoDeSocios ? repoDeSocios.listar({ cumpleMes: true }, 1, 2).then((p) => p.filas) : Promise.resolve([]),
     conComprobantes ? (await receiptsRepository()).contarPendientes() : Promise.resolve(0),
+    repoDeSocios ? repoDeSocios.contarPendientes() : Promise.resolve(0),
     features.enablePayments && puede(PERMISO.configurar) ? resumenDeCobroQr(slug) : Promise.resolve(null),
     sucursales ? sucursales.indicadores() : Promise.resolve([]),
     sucursales && sedeVista ? sucursales.serieDiaria(30) : Promise.resolve([]),
@@ -308,17 +309,6 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           ) : (
             <StatCard href={aSocios('estado=active', 'membresias', '#membresias')} etiqueta="Membresías activas" valor={`${kpis.membresiasActivas}`} icono="shield" comparacion={`de ${totalMembresias} registradas`} accion="Ver socios" />
           )}
-          {conComprobantes && (
-            <StatCard
-              href={`${tenantHref(slug, 'panel/comprobantes')}?estado=pendiente&preset=todo`}
-              etiqueta="Comprobantes por revisar"
-              valor={`${pendientes}`}
-              icono="receipt"
-              tono={pendientes > 0 ? 'alerta' : 'neutro'}
-              comparacion={pendientes > 0 ? 'pagos QR esperando aprobación' : 'todo revisado'}
-              accion="Revisar"
-            />
-          )}
           {puedeVerReportes && (
             <StatCard
               href={`${tenantHref(slug, 'panel/reportes/ingresos-por-plan')}?preset=mes`}
@@ -388,8 +378,16 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
             subirEsMalo
             accion="A quién llamar"
           />
-          {gestionSocios && puede(PERMISO.crearSocios) && (
-            <StatCard href={`${socios}/nuevo`} etiqueta="Nuevo socio" valor="+" icono="plus" tono="accion" comparacion={`${sinMembresia} sin membresía todavía`} accion="Registrar socio" />
+          {gestionSocios && (
+            <StatCard
+              href={`${socios}?q=Completar datos en recepción`}
+              etiqueta="Faltan datos presenciales"
+              valor={`${sociosPendientes}`}
+              icono="alert"
+              tono={sociosPendientes > 0 ? 'alerta' : 'neutro'}
+              comparacion="pagaron en línea pero no completaron su alta en recepción"
+              accion="Ver pendientes"
+            />
           )}
           {gestionSocios && (
             <StatCard

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { QrCode } from '../ui/QrCode';
 import { matrizQr } from '@infra/operations/qr';
 import { Button } from '../ui/Button';
@@ -29,6 +31,7 @@ type Tamano = keyof typeof TAMAÑOS;
 export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) {
   const [tamano, setTamano] = useState<Tamano>('carta');
   const [posicion, setPosicion] = useState<{ fila: number; col: number }>({ fila: 0, col: 0 });
+  const [descargando, setDescargando] = useState(false);
 
   const matriz = ficha.checkinToken ? matrizQr(ficha.checkinToken) : null;
   const dimension = TAMAÑOS[tamano];
@@ -36,33 +39,45 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
   const filas = 4;
   const columnas = 3;
 
+  const descargarPDF = async () => {
+    const elemento = document.getElementById('zona-impresion-pdf');
+    if (!elemento) return;
+    
+    setDescargando(true);
+    try {
+      const canvas = await html2canvas(elemento, {
+        scale: 4, // Alta resolución para impresión
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const formato = tamano === 'carta' ? 'letter' : tamano === 'oficio' ? 'legal' : 'a4';
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: formato
+      });
+      
+      const width = pdf.internal.pageSize.getWidth();
+      const height = pdf.internal.pageSize.getHeight();
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+      pdf.save(`QR_${ficha.fullName.replace(/\s+/g, '_')}.pdf`);
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      alert('Hubo un error al generar el PDF. Intenta de nuevo.');
+    } finally {
+      setDescargando(false);
+    }
+  };
+
   if (!matriz) return <p>No hay código QR para este socio.</p>;
 
   return (
     <>
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #zona-impresion, #zona-impresion * { visibility: visible; }
-          #zona-impresion {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            height: 100% !important;
-            max-width: none !important;
-            border: none !important;
-            box-shadow: none !important;
-            background: white !important;
-          }
-          @page {
-            size: ${tamano === 'carta' ? 'letter' : tamano === 'oficio' ? 'legal' : 'A4'} portrait;
-            margin: 0;
-          }
-        }
-      `}</style>
-
-      <div className="flex flex-col gap-6 lg:flex-row print:hidden">
+      <div className="flex flex-col gap-6 lg:flex-row">
         {/* Controles */}
         <div className="flex flex-col gap-6 lg:w-80 shrink-0">
           <section className="surface-card p-6 border-action/40">
@@ -124,11 +139,12 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
                   variant="primary" 
                   size="lg" 
                   fullWidth 
-                  icon="download" 
+                  icon={descargando ? 'refresh' : 'download'}
                   iconPosition="start" 
-                  onClick={() => window.print()}
+                  onClick={descargarPDF}
+                  disabled={descargando}
                 >
-                  Descargar PDF para Imprimir
+                  {descargando ? 'Generando PDF...' : 'Descargar PDF para Imprimir'}
                 </Button>
               </div>
             </div>
@@ -138,7 +154,7 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
         {/* Vista Previa */}
         <div className="flex-1 flex justify-center items-start overflow-hidden bg-raised/30 p-4 rounded-[var(--t-radius-lg)] border border-line">
           <div 
-            id="zona-impresion"
+            id="zona-impresion-pdf"
             className="bg-white shadow-sm border border-line relative overflow-hidden"
             style={{
               width: '100%',

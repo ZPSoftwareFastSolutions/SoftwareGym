@@ -92,7 +92,8 @@ export type ClaveDeAccionRapida =
   | 'ingresos'
   | 'accesos'
   | 'personal'
-  | 'anuncios';
+  | 'anuncios'
+  | 'inventario';
 
 /**
  * Una acción de la primera fila del tablero, con lo que hace falta para verla.
@@ -142,6 +143,14 @@ export const ACCIONES_RAPIDAS: readonly AccionRapida[] = [
     descripcion: 'Comprobantes de pago por QR esperando aprobación',
     capacidad: 'enablePayments',
     permiso: 'payments.read',
+    enfoques: OPERACION,
+  },
+  {
+    clave: 'inventario',
+    etiqueta: 'Gestionar Inventario',
+    descripcion: 'Control de productos y stock de esta sucursal',
+    capacidad: null,
+    permiso: 'attendance.create',
     enfoques: OPERACION,
   },
   {

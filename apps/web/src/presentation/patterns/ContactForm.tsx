@@ -21,6 +21,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { prepararConsultaPorWhatsApp, type EstadoDeContacto } from '@/app/[tenant]/contacto/actions';
 import { INTERESES_DE_CONTACTO, LARGO_MAXIMO_DE_MENSAJE, validarContacto } from '@core/domain/operations/contacto';
+import { formatoTelefono } from '@/lib/formato';
 import { cn } from '@/lib/cn';
 import { Icon } from '../icons/Icon';
 import { Button } from '../ui/Button';
@@ -163,6 +164,7 @@ export function ContactForm({ slug, gimnasio }: { readonly slug: string; readonl
             required
             placeholder="+591 7…"
             className={CAMPO}
+            onBlur={(e) => { e.target.value = formatoTelefono(e.target.value) === '—' ? '' : formatoTelefono(e.target.value); }}
             aria-invalid={Boolean(errores.telefono)}
             aria-describedby={errores.telefono ? 'contacto-telefono-error' : undefined}
           />

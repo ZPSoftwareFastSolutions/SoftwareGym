@@ -35,6 +35,7 @@ import {
   resumirAdmisiones,
   type Admision,
 } from '@core/domain/operations/admissions';
+import { formatoTelefono } from '@/lib/formato';
 import { cn } from '@/lib/cn';
 import { Campo, CLASE_DE_CONTROL } from '../ui/Campo';
 import { EmptyState } from '../ui/EmptyState';
@@ -237,9 +238,10 @@ export function AdmisionForms({ slug, sessionId, admisiones, socios, sePuedeAuto
                   <Campo id="adm-telefono" etiqueta="Teléfono" ayuda="Opcional.">
                     <input
                       name="telefono"
-                      defaultValue={previos.telefono ?? ''}
+                      defaultValue={previos.telefono ? (formatoTelefono(previos.telefono) === '—' ? previos.telefono : formatoTelefono(previos.telefono)) : ''}
                       maxLength={40}
                       className={CLASE_DE_CONTROL}
+                      onBlur={(e) => { e.target.value = formatoTelefono(e.target.value) === '—' ? '' : formatoTelefono(e.target.value); }}
                     />
                   </Campo>
                 </div>

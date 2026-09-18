@@ -34,6 +34,7 @@ import type { StaffRepositoryPort } from '@core/application/ports/staff-reposito
 import type { TrainersRepositoryPort } from '@core/application/ports/trainers-repository.port';
 import type { TrainingRepositoryPort } from '@core/application/ports/training-repository.port';
 import type { TenantRepositoryPort } from '@core/application/ports/tenant-repository.port';
+import type { InventoryRepositoryPort } from '@core/application/ports/inventory-repository.port';
 import { StaticTenantRepository } from '../tenants/static-tenant.repository';
 
 let cachedRepository: TenantRepositoryPort | null = null;
@@ -92,6 +93,13 @@ export async function branchesRepository(): Promise<BranchesRepositoryPort> {
   const { createSupabaseServerClient } = await import('../auth/supabase.server');
   const { SupabaseBranchesRepository } = await import('../operations/supabase-branches.repository');
   return new SupabaseBranchesRepository(await createSupabaseServerClient());
+}
+
+/** Inventario por sucursal (V4.3), con la sesión de quien pregunta. */
+export async function inventoryRepository(): Promise<InventoryRepositoryPort> {
+  const { createSupabaseServerClient } = await import('../auth/supabase.server');
+  const { SupabaseInventoryRepository } = await import('../operations/supabase-inventory.repository');
+  return new SupabaseInventoryRepository(await createSupabaseServerClient());
 }
 
 /** Entrenadores (V3.1), con la sesión de quien pregunta. */

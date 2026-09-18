@@ -30,7 +30,7 @@ import { enviarEnlaceDeAcceso } from '@infra/auth/enlace-de-acceso';
 import { mensajeDeEnlaceDeAcceso, mutarEmailParaTenant } from '@core/application/auth/login.usecase';
 import { datosPresencialesPendientes, type CampoDeFichaPresencial } from '@core/domain/operations/alta-del-socio';
 import { SITE_URL } from '@/lib/site-url';
-import { importe } from '@/lib/formato';
+import { importe, formatoTelefono } from '@/lib/formato';
 import {
   contextoDeAccion,
   imagenDeFormulario,
@@ -66,11 +66,14 @@ function datosDeSocio(form: FormData): DatosDeSocio {
 }
 
 function normalizar(datos: DatosDeSocio) {
+  const telLimpio = nulo(datos.telefono);
+  const telefonoNormalizado = telLimpio ? formatoTelefono(telLimpio) : null;
+  
   return {
     nombre: datos.nombre.trim(),
     apellido: datos.apellido.trim(),
     documento: nulo(datos.documento),
-    telefono: nulo(datos.telefono),
+    telefono: telefonoNormalizado === '—' ? null : telefonoNormalizado,
     correo: nulo(datos.correo)?.toLowerCase() ?? null,
     nacimiento: nulo(datos.nacimiento),
     nota: nulo(datos.nota),
