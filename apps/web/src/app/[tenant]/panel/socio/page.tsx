@@ -331,14 +331,14 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
           <section className="surface-card overflow-hidden" aria-labelledby="titulo-tarjeta-de-socio">
             <h2 id="titulo-tarjeta-de-socio" className="sr-only">Tu tarjeta de socio</h2>
             <div className="grid md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-              <div className="flex flex-col items-center gap-3 border-b border-line bg-raised/50 p-6 text-center sm:p-7 md:border-b-0 md:border-e">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted">Tu QR de entrada</p>
+              <div className="flex flex-col items-center gap-4 border-b border-line bg-raised/50 p-8 text-center sm:p-10 md:border-b-0 md:border-e">
+                <p className="text-[0.8rem] font-bold uppercase tracking-[0.16em] text-action">Tu QR de entrada</p>
                 {conQr && matriz && token ? (
                   <>
-                    <div className="w-full max-w-[17rem] rounded-[var(--t-radius-md)] bg-white p-3">
+                    <div className="w-full max-w-[20rem] rounded-[var(--t-radius-lg)] bg-white p-5 shadow-sm">
                       <QrCode matriz={matriz} descripcion="Código QR personal para registrar tu entrada al gimnasio" className="max-w-none" />
                     </div>
-                    <p className="break-all font-mono text-[0.74rem] tracking-[0.12em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
+                    <p className="break-all font-mono text-[0.85rem] tracking-[0.12em] text-muted">{token.match(/.{1,6}/g)?.join(' ')}</p>
                     {/* Mismo QR a pantalla casi completa: en el mostrador, con el
                         brillo bajo o el teléfono lejos, uno pequeño no se lee. */}
                     <Modal

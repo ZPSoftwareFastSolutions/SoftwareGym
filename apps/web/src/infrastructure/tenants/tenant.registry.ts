@@ -15,13 +15,9 @@
  */
 
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
-import { auroraFitTenant } from '@tenants/aurora-fit.tenant';
 import { goldsGymPremiumTenant } from '@tenants/golds-gym-premium.tenant';
-import { miticoTenant } from '@tenants/mitico.tenant';
 
 export const TENANT_REGISTRY: readonly TenantConfig[] = [
-  miticoTenant,
-  auroraFitTenant,
   goldsGymPremiumTenant,
 ];
 
@@ -31,4 +27,4 @@ export const TENANT_REGISTRY: readonly TenantConfig[] = [
  * entorno.
  */
 export const DEFAULT_TENANT_SLUG =
-  process.env.NEXT_PUBLIC_DEFAULT_TENANT?.trim() || 'mitico';
+  process.env.NEXT_PUBLIC_DEFAULT_TENANT?.trim() || 'golds-gym-premium';

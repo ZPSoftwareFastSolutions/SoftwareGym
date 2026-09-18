@@ -104,11 +104,11 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
   const precioVigente = datos?.plan ? importe(datos.plan.precio, datos.plan.moneda) : precio;
 
   return (
-    <div className="flex flex-col items-center gap-5 text-center">
-      <div className="flex flex-col items-center gap-1.5">
-        <p className="text-[2.1rem] font-bold leading-none text-action">{precioVigente}</p>
+    <div className="flex flex-col items-center gap-6 px-2 text-center sm:px-4">
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-[2.3rem] font-bold leading-none text-action">{precioVigente}</p>
         {conQr && datos && (
-          <p className="max-w-[36ch] text-[0.8rem] leading-relaxed text-muted">
+          <p className="max-w-[36ch] text-[0.85rem] leading-relaxed text-muted">
             {datos.montoExacto !== null
               ? 'Este QR ya trae el importe: solo confirma el pago en tu app.'
               : `Escribe exactamente ${precioVigente} en tu app. Un pago menor no activa el plan.`}
@@ -179,7 +179,7 @@ export function ContenidoDePagoQr({ slug, codigoDePlan, precio, respaldo, whatsa
         </div>
       )}
 
-      <div className="flex w-full flex-col gap-2.5">
+      <div className="mt-2 flex w-full flex-col gap-3.5">
         <Button
           variant="primary"
           size="md"
