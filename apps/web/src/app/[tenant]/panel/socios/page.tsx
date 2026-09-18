@@ -184,7 +184,7 @@ export default async function SociosPage({ params, searchParams }: SociosPagePro
                 clave: 'socio',
                 titulo: 'Socio',
                 celda: (f) => {
-                  const camposFaltantes = datosPresencialesPendientes(f, features.enableMemberManagement ? features.inPersonFields ?? [] : []);
+                  const camposFaltantes = datosPresencialesPendientes(f, tenant.members?.inPersonFields ?? []);
                   const esPendiente = f.membershipStatus && camposFaltantes.length > 0;
                   
                   return (
