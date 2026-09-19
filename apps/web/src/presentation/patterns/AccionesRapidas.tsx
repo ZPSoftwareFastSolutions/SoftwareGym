@@ -77,11 +77,11 @@ function Cuerpo({ accion, detalle, isPrincipal = false }: { readonly accion: Acc
   if (isPrincipal) {
     return (
       <>
-        <span className="flex items-center justify-center rounded-[var(--t-radius-md)] bg-white/20 p-4 text-white shadow-inner">
+        <span className="flex items-center justify-center rounded-[var(--t-radius-md)] bg-ink/5 p-4 text-ink shadow-inner">
           <Icon name={ICONO[accion.clave]} size={38} />
         </span>
-        <span className="mt-3 font-bold text-white text-[1.3rem] tracking-wide">{accion.etiqueta}</span>
-        <span className="text-white/80 text-[0.95rem] leading-snug">{detalle ?? accion.descripcion}</span>
+        <span className="mt-3 font-bold text-ink text-[1.3rem] tracking-wide">{accion.etiqueta}</span>
+        <span className="text-ink/80 text-[0.95rem] leading-snug">{detalle ?? accion.descripcion}</span>
       </>
     );
   }

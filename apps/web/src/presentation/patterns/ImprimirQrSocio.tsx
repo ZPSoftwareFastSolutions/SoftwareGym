@@ -155,8 +155,10 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
         <div className="flex-1 flex justify-center items-start overflow-hidden bg-raised/30 p-4 rounded-[var(--t-radius-lg)] border border-line">
           <div 
             id="zona-impresion-pdf"
-            className="bg-white shadow-sm border border-line relative overflow-hidden"
+            className="shadow-sm relative overflow-hidden"
             style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e5e5',
               width: '100%',
               maxWidth: '500px', // Escala visual en pantalla
               aspectRatio: '210/297'
@@ -171,22 +173,36 @@ export function ImprimirQrSocio({ slug, gymName, ficha }: ImprimirQrSocioProps) 
               }}
             >
               <div 
-                className="flex flex-col items-center justify-center text-center p-2 border border-dashed border-action/40"
+                className="flex flex-col items-center justify-center text-center p-2"
                 style={{
                   gridRowStart: posicion.fila + 1,
-                  gridColumnStart: posicion.col + 1
+                  gridColumnStart: posicion.col + 1,
+                  border: '1px dashed #999999'
                 }}
               >
-                <p className="text-[0.6rem] font-bold text-black uppercase mb-1 whitespace-nowrap overflow-hidden text-ellipsis w-full">
+                <p 
+                  className="text-[0.6rem] font-bold uppercase mb-1 whitespace-nowrap overflow-hidden text-ellipsis w-full"
+                  style={{ color: '#000000' }}
+                >
                   {gymName}
                 </p>
                 <div className="w-full max-w-[80%] aspect-square">
                   <QrCode matriz={matriz} descripcion="QR del socio" className="w-full h-full" />
                 </div>
-                <p className="text-[0.6rem] font-bold text-black mt-1 whitespace-nowrap overflow-hidden text-ellipsis w-full">
+                <p 
+                  className="text-[0.6rem] font-bold mt-1 whitespace-nowrap overflow-hidden text-ellipsis w-full"
+                  style={{ color: '#000000' }}
+                >
                   {ficha.fullName}
                 </p>
-                {ficha.code && <p className="text-[0.5rem] text-black/80">{ficha.code}</p>}
+                {ficha.checkinToken && (
+                  <p 
+                    className="text-[0.6rem] tracking-[0.15em] font-medium"
+                    style={{ color: '#333333' }}
+                  >
+                    {ficha.checkinToken}
+                  </p>
+                )}
               </div>
             </div>
           </div>
