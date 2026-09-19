@@ -579,73 +579,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
               )}
             </section>
 
-          {/* §6 · «Horarios» está en la lista de lo que el socio necesita a
-              diario, justo después de su membresía y su QR. Se enseña la semana
-              entera con HOY destacado: saber a qué hora cierran hoy es la
-              pregunta real; el resto de la semana es para planificar. */}
-          {tenant.hours.week.length > 0 && (
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-horario-socio">
-              <h2 id="titulo-horario-socio" className="flex items-center gap-2 t-h3">
-                <Icon name="clock" size={18} className="text-action" />
-                Horario del gimnasio
-              </h2>
-              <p className="mt-1.5 text-[0.86rem] text-muted">
-                {horarioDeHoy === null
-                  ? 'Consulta en recepción el horario de hoy.'
-                  : horarioDeHoy.closed
-                    ? `Hoy (${horarioDeHoy.day.toLowerCase()}) el gimnasio no abre. Los días cerrados no cortan tu racha.`
-                    : `Hoy (${horarioDeHoy.day.toLowerCase()}) abrimos de ${horarioDeHoy.open} a ${horarioDeHoy.close}.`}
-              </p>
-              <ul className="mt-5 grid gap-1.5 sm:grid-cols-2">
-                {tenant.hours.week.map((dia) => {
-                  const esHoy = horarioDeHoy !== null && dia.day === horarioDeHoy.day;
-                  return (
-                    <li
-                      key={dia.day}
-                      className={
-                        esHoy
-                          ? 'flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] border border-action/50 bg-action/8 px-3 py-2 text-[0.86rem] text-ink'
-                          : 'flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] px-3 py-2 text-[0.86rem] text-muted'
-                      }
-                    >
-                      <span className={esHoy ? 'font-semibold text-ink' : ''}>{dia.day}</span>
-                      <span>{dia.closed ? 'Cerrado' : `${dia.open} – ${dia.close}`}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-              {tenant.hours.holidayNote && <p className="mt-4 text-[0.8rem] text-muted">{tenant.hours.holidayNote}</p>}
-            </section>
-          )}
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-constancia">
-              <h2 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
-                <Icon name="fire" size={18} className="text-action" />
-                Tu constancia
-              </h2>
-              <RachaCalendario racha={racha} />
-            </section>
-
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-datos">
-              <h2 id="titulo-datos" className="flex items-center gap-2 t-h3">
-                <Icon name="idcard" size={18} className="text-action" />
-                Información personal
-              </h2>
-              <dl className="mt-4">
-                <Dato etiqueta="Nombre" valor={ficha?.fullName ?? perfil.fullName} />
-                <Dato etiqueta="Código de socio" valor={ficha?.code} />
-                <Dato etiqueta="Documento" valor={ficha?.documentId} />
-                <Dato etiqueta="Teléfono" valor={ficha?.phone} />
-                <Dato etiqueta="Correo de la ficha" valor={ficha?.email} />
-                <Dato etiqueta="Nacimiento" valor={ficha?.birthDate ? `${fechaCorta(ficha.birthDate)} ${ficha.birthDate.slice(0, 4)}${años !== null ? ` · ${años} años` : ''}` : null} />
-                <Dato etiqueta="Socio desde" valor={ficha ? `${fechaCorta(ficha.createdAt.slice(0, 10))} ${ficha.createdAt.slice(0, 4)}` : null} />
-                <Dato etiqueta="Cuenta de acceso" valor={perfil.email} />
-                <Dato etiqueta="Gimnasio" valor={perfil.tenantName ?? name} />
-              </dl>
-              <p className="mt-4 text-[0.78rem] text-muted">¿Algún dato está mal? Pide en recepción que lo corrijan: tu ficha la gestiona el gimnasio.</p>
-            </section>
-          </div>
 
           {rutinas.length > 0 && (
             <section id="mi-rutina" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mi-rutina">
@@ -848,6 +782,81 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
               />
             </section>
           </div>
+          <details className="group surface-card">
+            <summary className="flex cursor-pointer items-center justify-between p-6 font-semibold text-ink marker:content-none sm:p-7 hover:bg-raised/30 transition-colors">
+              <span className="flex items-center gap-2 t-h3">
+                <Icon name="plus" size={18} className="text-action" />
+                Información adicional (Horarios, Datos y Constancia)
+              </span>
+              <Icon name="chevronDown" size={20} className="text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            
+            <div className="flex flex-col gap-6 border-t border-line/60 p-6 sm:p-7 bg-raised/10">
+              {tenant.hours.week.length > 0 && (
+                <section aria-labelledby="titulo-horario-socio">
+                  <h2 id="titulo-horario-socio" className="flex items-center gap-2 t-h3">
+                    <Icon name="clock" size={18} className="text-action" />
+                    Horario del gimnasio
+                  </h2>
+                  <p className="mt-1.5 text-[0.86rem] text-muted">
+                    {horarioDeHoy === null
+                      ? 'Consulta en recepción el horario de hoy.'
+                      : horarioDeHoy.closed
+                        ? `Hoy (${horarioDeHoy.day.toLowerCase()}) el gimnasio no abre. Los días cerrados no cortan tu racha.`
+                        : `Hoy (${horarioDeHoy.day.toLowerCase()}) abrimos de ${horarioDeHoy.open} a ${horarioDeHoy.close}.`}
+                  </p>
+                  <ul className="mt-5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
+                    {tenant.hours.week.map((dia) => {
+                      const esHoy = horarioDeHoy !== null && dia.day === horarioDeHoy.day;
+                      return (
+                        <li
+                          key={dia.day}
+                          className={
+                            esHoy
+                              ? 'flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] border border-action/50 bg-action/8 px-3 py-2 text-[0.86rem] text-ink'
+                              : 'flex flex-wrap items-center justify-between gap-2 rounded-[var(--t-radius-md)] px-3 py-2 text-[0.86rem] text-muted bg-raised/50'
+                          }
+                        >
+                          <span className={esHoy ? 'font-semibold text-ink' : ''}>{dia.day}</span>
+                          <span>{dia.closed ? 'Cerrado' : `${dia.open} – ${dia.close}`}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {tenant.hours.holidayNote && <p className="mt-4 text-[0.8rem] text-muted">{tenant.hours.holidayNote}</p>}
+                </section>
+              )}
+
+              <div className="grid gap-6 lg:grid-cols-2 pt-6 border-t border-line/60">
+                <section aria-labelledby="titulo-constancia">
+                  <h2 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
+                    <Icon name="fire" size={18} className="text-action" />
+                    Tu constancia
+                  </h2>
+                  <RachaCalendario racha={racha} />
+                </section>
+
+                <section aria-labelledby="titulo-datos">
+                  <h2 id="titulo-datos" className="flex items-center gap-2 t-h3">
+                    <Icon name="idcard" size={18} className="text-action" />
+                    Información personal
+                  </h2>
+                  <dl className="mt-4">
+                    <Dato etiqueta="Nombre" valor={ficha?.fullName ?? perfil.fullName} />
+                    <Dato etiqueta="Código de socio" valor={ficha?.code} />
+                    <Dato etiqueta="Documento" valor={ficha?.documentId} />
+                    <Dato etiqueta="Teléfono" valor={ficha?.phone} />
+                    <Dato etiqueta="Correo de la ficha" valor={ficha?.email} />
+                    <Dato etiqueta="Nacimiento" valor={ficha?.birthDate ? `${fechaCorta(ficha.birthDate)} ${ficha.birthDate.slice(0, 4)}${años !== null ? ` · ${años} años` : ''}` : null} />
+                    <Dato etiqueta="Socio desde" valor={ficha ? `${fechaCorta(ficha.createdAt.slice(0, 10))} ${ficha.createdAt.slice(0, 4)}` : null} />
+                    <Dato etiqueta="Cuenta de acceso" valor={perfil.email} />
+                    <Dato etiqueta="Gimnasio" valor={perfil.tenantName ?? name} />
+                  </dl>
+                  <p className="mt-4 text-[0.78rem] text-muted">¿Algún dato está mal? Pide en recepción que lo corrijan: tu ficha la gestiona el gimnasio.</p>
+                </section>
+              </div>
+            </div>
+          </details>
         </>
       )}
     </div>

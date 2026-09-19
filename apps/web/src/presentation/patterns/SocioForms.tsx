@@ -79,18 +79,11 @@ function Aviso({ estado }: { readonly estado: EstadoDeFormulario }) {
 function CamposPersonales({
   valores,
   errores,
-  autoCorreoAdmin = false,
 }: {
   readonly valores: Readonly<Record<string, string>>;
   readonly errores: Readonly<Record<string, string>>;
-  readonly autoCorreoAdmin?: boolean;
 }) {
   const [doc, setDoc] = useState(valores.documento ?? '');
-  const [correoManual, setCorreoManual] = useState(valores.correo ?? '');
-  const [correoTocado, setCorreoTocado] = useState(Boolean(valores.correo));
-
-  const correoSugerido = doc.trim() ? `zapasoftwarefastsolutions+${doc.trim()}@gmail.com` : '';
-  const correoActual = autoCorreoAdmin && !correoTocado && doc.trim() ? correoSugerido : correoManual;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -121,16 +114,11 @@ function CamposPersonales({
           onBlur={(e) => { e.target.value = formatoTelefono(e.target.value) === '—' ? '' : formatoTelefono(e.target.value); }} 
         />
       </Campo>
-      <Campo id="socio-correo" etiqueta="Correo" error={errores.correo} obligatorio ayuda={autoCorreoAdmin ? "Si se deja en blanco, se usará el autogenerado." : "Requerido para acceder al panel."}>
+      <Campo id="socio-correo" etiqueta="Correo" error={errores.correo} ayuda="Opcional. Necesario si el socio quiere acceder al panel web.">
         <input 
           name="correo" 
           type="email" 
-          required 
-          value={correoActual} 
-          onChange={(e) => {
-            setCorreoTocado(true);
-            setCorreoManual(e.target.value);
-          }}
+          defaultValue={valores.correo} 
           maxLength={254} 
           autoComplete="off" 
           className={CLASE_DE_CONTROL} 
@@ -228,17 +216,19 @@ export function AltaDeSocioForm({ slug, planes, hoy, rutaDeFichas, admiteComprob
               {r.comprobante === 'error' && 'No se pudo guardar el comprobante: adjúntalo desde la ficha'}
             </li>
           )}
-          <li className="flex flex-col items-start gap-1 rounded-[var(--t-radius-md)] bg-raised px-4 py-3">
-            <span className="flex items-center gap-2.5 text-ink">
-              <Icon name="user" size={17} className="text-action" />
-              <strong>Cuenta Web Creada Automáticamente</strong>
-            </span>
-            <span className="pl-7 text-muted">
-              {r.cuentaVinculada
-                ? 'Ya tenía cuenta web con ese correo: quedó vinculada.'
-                : <><strong>Correo:</strong> {r.correo} <br/> <strong>Contraseña:</strong> {r.passwordGenerado}</>}
-            </span>
-          </li>
+          {r.correo && (
+            <li className="flex flex-col items-start gap-1 rounded-[var(--t-radius-md)] bg-raised px-4 py-3">
+              <span className="flex items-center gap-2.5 text-ink">
+                <Icon name="user" size={17} className="text-action" />
+                <strong>Cuenta de Acceso Web</strong>
+              </span>
+              <span className="pl-7 text-muted">
+                {r.cuentaVinculada
+                  ? 'La ficha se vinculó a su cuenta web existente.'
+                  : `Se registró con el correo ${r.correo}. Puedes enviarle el enlace de acceso web después desde su ficha.`}
+              </span>
+            </li>
+          )}
         </ul>
         <div className="flex flex-wrap justify-center gap-3">
           <Link
@@ -283,7 +273,7 @@ export function AltaDeSocioForm({ slug, planes, hoy, rutaDeFichas, admiteComprob
           <Icon name="idcard" size={15} className="text-action" />
           Datos personales
         </h3>
-        <CamposPersonales valores={valores} errores={errores} autoCorreoAdmin={true} />
+        <CamposPersonales valores={valores} errores={errores} />
       </section>
 
       <section className="flex flex-col gap-4 border-t border-line pt-6" aria-labelledby="alta-plan">

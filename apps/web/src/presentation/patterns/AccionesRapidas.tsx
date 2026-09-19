@@ -56,7 +56,10 @@ const DESTINO: Readonly<Record<ClaveDeAccionRapida, string>> = {
   inventario: 'panel/inventario',
 };
 
-const CLASE_DE_TARJETA =
+const CLASE_DE_TARJETA_PRINCIPAL =
+  'group flex min-h-[10rem] w-full flex-col items-center justify-center gap-2 rounded-[var(--t-radius-lg)] border border-transparent bg-action p-6 text-center shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2';
+
+const CLASE_DE_TARJETA_SECUNDARIA =
   'group flex min-h-[7.5rem] w-full flex-col items-start gap-2 rounded-[var(--t-radius-lg)] border border-line bg-raised p-5 text-start transition-colors hover:border-action focus-visible:border-action';
 
 interface AccionesRapidasProps {
@@ -71,13 +74,25 @@ interface AccionesRapidasProps {
 }
 
 function Cuerpo({ accion, detalle, isPrincipal = false }: { readonly accion: AccionRapida; readonly detalle?: string; readonly isPrincipal?: boolean }) {
+  if (isPrincipal) {
+    return (
+      <>
+        <span className="flex items-center justify-center rounded-[var(--t-radius-md)] bg-white/20 p-4 text-white shadow-inner">
+          <Icon name={ICONO[accion.clave]} size={38} />
+        </span>
+        <span className="mt-3 font-bold text-white text-[1.3rem] tracking-wide">{accion.etiqueta}</span>
+        <span className="text-white/80 text-[0.95rem] leading-snug">{detalle ?? accion.descripcion}</span>
+      </>
+    );
+  }
+
   return (
     <>
-      <span className={cn("flex items-center justify-center rounded-[var(--t-radius-md)] bg-action/12 text-action", isPrincipal ? "size-14" : "size-10")}>
-        <Icon name={ICONO[accion.clave]} size={isPrincipal ? 28 : 20} />
+      <span className="flex size-10 items-center justify-center rounded-[var(--t-radius-md)] bg-action/12 text-action">
+        <Icon name={ICONO[accion.clave]} size={20} />
       </span>
-      <span className={cn("font-semibold text-ink", isPrincipal ? "text-[1.2rem] mt-2" : "text-[1.02rem]")}>{accion.etiqueta}</span>
-      <span className={cn("leading-snug text-muted", isPrincipal ? "text-[0.9rem]" : "text-[0.82rem]")}>{detalle ?? accion.descripcion}</span>
+      <span className="font-semibold text-ink text-[1.02rem]">{accion.etiqueta}</span>
+      <span className="leading-snug text-muted text-[0.82rem]">{detalle ?? accion.descripcion}</span>
     </>
   );
 }
@@ -105,14 +120,7 @@ export function AccionesRapidas({
           montarSoloAbierto
           prevenirCierreEnFondo
           disparador={
-            <button
-              type="button"
-              className={cn(
-                CLASE_DE_TARJETA,
-                'border-action/50 bg-action/8',
-                isPrincipal && 'sm:items-center sm:text-center sm:py-8'
-              )}
-            >
+            <button type="button" className={isPrincipal ? CLASE_DE_TARJETA_PRINCIPAL : CLASE_DE_TARJETA_SECUNDARIA}>
               <Cuerpo
                 accion={accion}
                 detalle={mostrarSucursal ? `Registra en ${sucursalDelMostrador.name}` : accion.descripcion}
@@ -137,7 +145,7 @@ export function AccionesRapidas({
       <Link
         key={accion.clave}
         href={tenantHref(slug, DESTINO[accion.clave])}
-        className={cn(CLASE_DE_TARJETA, isPrincipal && 'sm:items-center sm:text-center sm:py-8')}
+        className={isPrincipal ? CLASE_DE_TARJETA_PRINCIPAL : CLASE_DE_TARJETA_SECUNDARIA}
       >
         <Cuerpo accion={accion} isPrincipal={isPrincipal} {...(detalle ? { detalle } : {})} />
       </Link>

@@ -49,7 +49,6 @@ export interface EstadoDeAlta extends EstadoDeFormulario {
     readonly membresiaActiva: boolean;
     readonly comprobante: 'ninguno' | 'pendiente' | 'aprobado' | 'error';
     readonly correo?: string;
-    readonly passwordGenerado?: string;
   };
 }
 
@@ -83,15 +82,6 @@ function normalizar(datos: DatosDeSocio) {
 import { createClient } from '@supabase/supabase-js';
 import { supabaseConfig } from '@infra/auth/supabase.config';
 
-function getAdminSupabase() {
-  const config = supabaseConfig();
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!config || !serviceKey) return null;
-  return createClient(config.url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-
 export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Promise<EstadoDeAlta> {
   const acceso = await contextoDeAccion(form, ['enableMemberManagement'], PERMISO.crearSocios);
   if (!acceso.ok) return { mensaje: acceso.mensaje };
@@ -100,10 +90,6 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
   const datosBase = datosDeSocio(form);
   let correo = datosBase.correo.trim().toLowerCase();
   const documento = datosBase.documento.trim();
-  
-  if (!correo && documento) {
-    correo = `zapasoftwarefastsolutions+${documento}@gmail.com`;
-  }
 
   const datos: DatosDeAlta = {
     ...datosBase,
@@ -150,32 +136,6 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
 
   if (!resultado.ok) return { mensaje: resultado.mensaje, valores };
 
-  const nombreSinEspacios = datos.nombre.trim().replace(/\s+/g, '');
-  const identificador = documento || Math.floor(1000 + Math.random() * 9000).toString();
-  const passwordGenerado = `${nombreSinEspacios}${identificador}`;
-  let cuentaVinculadaAuth = resultado.valor.cuentaVinculada;
-
-  if (correo && !cuentaVinculadaAuth) {
-    const adminAuth = getAdminSupabase();
-    if (adminAuth) {
-      const { data: authData, error: authError } = await adminAuth.auth.admin.createUser({
-        email: datos.correo,
-        password: passwordGenerado,
-        email_confirm: true,
-        user_metadata: {
-          tenant_slug: slug,
-          full_name: `${datos.nombre.trim()} ${datos.apellido.trim()}`,
-          needs_password_change: true,
-        },
-      });
-      if (!authError && authData.user) {
-        // Enlazar la cuenta
-        await adminAuth.from('app_users').update({ customer_id: resultado.valor.customerId }).eq('id', authData.user.id);
-        cuentaVinculadaAuth = true;
-      }
-    }
-  }
-
   let comprobante: 'ninguno' | 'pendiente' | 'aprobado' | 'error' = 'ninguno';
   if (pagaConQr && imagen?.ok && plan && perfil.tenantId && monto) {
     const recibos = await receiptsRepository();
@@ -205,11 +165,10 @@ export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Pro
       code: resultado.valor.code,
       nombre: `${datos.nombre.trim()} ${datos.apellido.trim()}`,
       token: resultado.valor.token,
-      cuentaVinculada: cuentaVinculadaAuth,
+      cuentaVinculada: resultado.valor.cuentaVinculada,
       membresiaActiva: Boolean(resultado.valor.membershipId) || comprobante === 'aprobado',
       comprobante,
       correo: correo,
-      passwordGenerado: passwordGenerado,
     },
   };
 }
