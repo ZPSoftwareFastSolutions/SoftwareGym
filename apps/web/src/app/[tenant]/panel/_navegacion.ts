@@ -126,6 +126,12 @@ export async function entradasDelPanel(
     entradas.push({ href: tenantHref(slug, 'panel/sucursales'), etiqueta: 'Sucursales', icono: 'pin', grupo: 'gestion' });
   }
 
+  // V4.3: inventario de la sede. Es día a día del mostrador, no gestión: se
+  // consulta con el socio delante («¿queda proteína?»), como la asistencia.
+  if (esPersonal && features.enableInventory && puede(PERMISO.verInventario)) {
+    entradas.push({ href: tenantHref(slug, 'panel/inventario'), etiqueta: 'Inventario', icono: 'archive', grupo: 'dia' });
+  }
+
   if (esPersonal && features.enablePayments && puede(PERMISO.configurar)) {
     entradas.push({ href: tenantHref(slug, 'panel/cobros'), etiqueta: 'Cobro QR', icono: 'qr', grupo: 'gestion' });
   }

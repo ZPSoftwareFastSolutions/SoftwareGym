@@ -74,6 +74,16 @@ export interface FeatureFlags {
    * el carrusel pasa a ser lo primero que se lee bajo la portada.
    */
   readonly enableAnnouncements: boolean;
+
+  // --- V4.3 ---
+  /**
+   * Inventario por sucursal: qué se vende o se presta EN cada sede
+   * (suplementos, bebidas, ropa, candados) con su existencia y su precio.
+   *
+   * Apagada, `/panel/inventario` responde 404 y la acción rápida no aparece: un
+   * gimnasio que no vende nada en el mostrador no tiene por qué ver la sección.
+   */
+  readonly enableInventory: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -105,6 +115,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   enableMemberManagement: false,
   enableExercises: false,
   enableAnnouncements: false,
+  enableInventory: false,
 };
 
 export type FeatureFlagKey = keyof FeatureFlags;

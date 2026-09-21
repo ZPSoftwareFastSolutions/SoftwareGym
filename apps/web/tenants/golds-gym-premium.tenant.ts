@@ -278,6 +278,10 @@ export const goldsGymPremiumTenant: TenantConfig = {
     enableReports: true,
     enableReservations: true,
 
+    // V4.3 · El mostrador vende suplementos y bebidas en cada sede: el
+    // inventario es por sucursal, como las existencias reales.
+    enableInventory: true,
+
     // Siguen apagados porque V1 no los pidió: entrenadores, catálogo de
     // ejercicios y rutinas. Apagados, sus rutas responden 404; no es que estén
     // escondidas.

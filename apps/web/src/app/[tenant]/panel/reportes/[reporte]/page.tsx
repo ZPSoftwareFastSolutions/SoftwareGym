@@ -141,7 +141,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
     if (total) totales[columna.clave] = total.moneda ? importe(total.valor, moneda) : total.valor.toLocaleString('es-BO');
   }
 
-  const csv = `${tenantHref(slug, `panel/reportes/${definicion.clave}/csv`)}${consulta ? `?${consulta}` : ''}`;
+  const excel = `${tenantHref(slug, `panel/reportes/${definicion.clave}/excel`)}${consulta ? `?${consulta}` : ''}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -166,7 +166,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
               Todos los reportes
             </LinkButton>
             <PrintButton />
-            <LinkButton href={csv.replace('/csv', '/excel')} variant="primary" size="sm" icon="download" iconPosition="start" download>
+            <LinkButton href={excel} variant="primary" size="sm" icon="download" iconPosition="start" download>
               Descargar Excel
             </LinkButton>
           </div>

@@ -48,10 +48,18 @@ export async function GET(peticion: Request, { params }: Contexto) {
   const repo = await operationsRepository();
   const perfil = await repo.perfil();
 
+  // Sin perfil, de otro gimnasio, sin reportes o sin el permiso del reporte: la
+  // misma respuesta en los cuatro casos. Distinguirlos convertiría esta ruta en
+  // un mapa de qué existe y quién es quién.
+  //
+  // Administración entra igual que Gerencia: su espacio es `administracion`
+  // (V4) y comprobar solo `gimnasio` le devolvía 403 en TODAS las descargas,
+  // teniendo `reports.read`. Lo que autoriza es el permiso, no el espacio.
+  const espacio = perfil ? espacioDeTrabajo(perfil) : null;
   const autorizado =
     perfil !== null &&
     perfil.tenantSlug === tenant.slug &&
-    espacioDeTrabajo(perfil) === 'gimnasio' &&
+    (espacio === 'gimnasio' || espacio === 'administracion') &&
     tienePermiso(perfil, PERMISO.verReportes) &&
     tienePermiso(perfil, definicion.permiso);
 
@@ -103,7 +111,7 @@ export async function GET(peticion: Request, { params }: Contexto) {
     const row = sheet.addRow(valores);
     
     // Aplicar formatos a las celdas añadidas
-    row.eachCell((cell: any, colNumber: number) => {
+    row.eachCell((cell: ExcelJS.Cell, colNumber: number) => {
       const colDef = definicion.columnas[colNumber - 1];
       if (colDef?.moneda) {
         cell.numFmt = '"Bs" #,##0.00';
@@ -115,13 +123,13 @@ export async function GET(peticion: Request, { params }: Contexto) {
   }
 
   // Autoajuste final de columnas
-  sheet.columns.forEach((column: any, i: number) => {
+  sheet.columns.forEach((column: Partial<ExcelJS.Column>, i: number) => {
     const colDef = definicion.columnas[i];
     if (!colDef) return;
     
     let maxLength = colDef.titulo.length;
     
-    sheet.getColumn(i + 1).eachCell({ includeEmpty: false }, (cell: any) => {
+    sheet.getColumn(i + 1).eachCell({ includeEmpty: false }, (cell: ExcelJS.Cell) => {
       // Si es numérico/moneda, el valor crudo es corto (ej: 150) pero formateado es largo ("Bs 150.00")
       let textLength = cell.value ? cell.value.toString().length : 0;
       if (colDef.moneda && typeof cell.value === 'number') {

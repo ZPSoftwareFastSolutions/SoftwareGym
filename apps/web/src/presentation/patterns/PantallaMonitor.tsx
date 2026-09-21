@@ -12,7 +12,6 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { cn } from '@/lib/cn';
-import { createSupabaseBrowserClient } from '@infra/auth/supabase.browser';
 import { IdentidadDeIngresoContenido } from './IdentidadDeIngreso';
 import { RachaCalendario } from './RachaCalendario';
 import type { ResultadoDeCheckIn } from '@core/domain/operations/attendance';

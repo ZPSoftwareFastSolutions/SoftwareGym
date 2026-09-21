@@ -147,10 +147,10 @@ export const ACCIONES_RAPIDAS: readonly AccionRapida[] = [
   },
   {
     clave: 'inventario',
-    etiqueta: 'Gestionar Inventario',
-    descripcion: 'Control de productos y stock de esta sucursal',
-    capacidad: null,
-    permiso: 'attendance.create',
+    etiqueta: 'Inventario',
+    descripcion: 'Qué queda en el mostrador de esta sede',
+    capacidad: 'enableInventory',
+    permiso: 'inventory.read',
     enfoques: OPERACION,
   },
   {

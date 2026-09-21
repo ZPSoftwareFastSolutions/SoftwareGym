@@ -1,22 +1,21 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { guardarProducto } from '@core/application/operations/inventory.actions';
+import { guardarProducto } from './actions';
 import { Dialogo } from '@/presentation/ui/Modal';
 import { Button } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
 import { Campo, CLASE_DE_CONTROL } from '@/presentation/ui/Campo';
-import type { InventoryProduct } from '@core/application/ports/inventory-repository.port';
+import type { ProductoDeInventario } from '@core/domain/operations/inventario';
 import type { EstadoDeFormulario } from '@/app/[tenant]/panel/_acciones';
 import { cn } from '@/lib/cn';
 
 interface ModalNuevoProductoProps {
   readonly slug: string;
-  readonly branchId: string;
-  readonly producto?: InventoryProduct;
+  readonly producto?: ProductoDeInventario;
 }
 
-export function ModalNuevoProducto({ slug, branchId, producto }: ModalNuevoProductoProps) {
+export function ModalNuevoProducto({ slug, producto }: ModalNuevoProductoProps) {
   const [abierto, setAbierto] = useState(false);
   const editando = !!producto;
   
@@ -53,9 +52,8 @@ export function ModalNuevoProducto({ slug, branchId, producto }: ModalNuevoProdu
       >
         <form action={action} className="mt-5 flex flex-col gap-4">
           <input type="hidden" name="tenantSlug" value={slug} />
-          <input type="hidden" name="branchId" value={branchId} />
           {producto && <input type="hidden" name="id" value={producto.id} />}
-          <Campo id={`prod-name-${producto?.id ?? 'new'}`} etiqueta="Nombre del producto" obligatorio>
+          <Campo id={`prod-name-${producto?.id ?? 'new'}`} etiqueta="Nombre del producto" obligatorio error={estado?.errores?.name}>
             <input
               name="name"
               type="text"
@@ -65,7 +63,7 @@ export function ModalNuevoProducto({ slug, branchId, producto }: ModalNuevoProdu
               className={CLASE_DE_CONTROL}
             />
           </Campo>
-          <Campo id={`prod-category-${producto?.id ?? 'new'}`} etiqueta="Categoría (Opcional)">
+          <Campo id={`prod-category-${producto?.id ?? 'new'}`} etiqueta="Categoría (opcional)" error={estado?.errores?.category}>
             <input
               name="category"
               type="text"
@@ -75,7 +73,7 @@ export function ModalNuevoProducto({ slug, branchId, producto }: ModalNuevoProdu
             />
           </Campo>
           <div className="grid grid-cols-2 gap-4">
-            <Campo id={`prod-quantity-${producto?.id ?? 'new'}`} etiqueta="Stock" obligatorio>
+            <Campo id={`prod-quantity-${producto?.id ?? 'new'}`} etiqueta="Existencias" obligatorio error={estado?.errores?.quantity}>
               <input
                 name="quantity"
                 type="number"
@@ -86,7 +84,7 @@ export function ModalNuevoProducto({ slug, branchId, producto }: ModalNuevoProdu
                 className={CLASE_DE_CONTROL}
               />
             </Campo>
-            <Campo id={`prod-price-${producto?.id ?? 'new'}`} etiqueta="Precio" obligatorio>
+            <Campo id={`prod-price-${producto?.id ?? 'new'}`} etiqueta="Precio" obligatorio error={estado?.errores?.price}>
               <input
                 name="price"
                 type="number"

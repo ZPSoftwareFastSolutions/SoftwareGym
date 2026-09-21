@@ -218,3 +218,21 @@ en el borde → 23514, Recepción → 0 filas, el anónimo lee las columnas nuev
 Los comprobantes sembrados **no tienen archivo en Storage** (no se puede subir un binario desde SQL): la bandeja y la
 ficha muestran «Sin imagen» en vez del icono roto del navegador (`MiniaturaDeComprobante`). Para retirar la
 demostración basta con borrar lo que cuelga de los socios con correo `@demo.gymplatform.bo`.
+
+### V4.3 · Inventario por sucursal (2026-09-21, aplicada con autorización del usuario)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260921100000_v4_3_inventario_de_la_sucursal.sql` | `branch_inventory_products`: qué se vende o se presta EN cada sede, con existencias y precio. Permisos propios `inventory.read` (Administración, Gerencia y Recepción: el mostrador consulta) e `inventory.manage` (Administración y Gerencia: corrigen). FK **compuesta** `(tenant_id, branch_id) → branches`, índice único por sede y nombre sin distinguir mayúsculas, `app.touch_row` para `updated_at`/`version`, RLS con el contexto en `(select …)` y la sede comprobada solo al ESCRIBIR, y grants por columna (`updated_at`, `version` y `created_by` los pone la base) |
+
+**Sustituye a `20260918000000_v4_3_inventario_y_normalizacion.sql`, que se retiró del repositorio.** Esa migración
+llegó con la rama `goldgym-v5` pero **nunca se aplicó y no podía aplicarse**: llamaba a `app.is_admin()` y a
+`public.moddatetime`, que no existen en esta base; sus políticas evaluaban el contexto y `app.puede_operar_sucursal`
+por fila (el patrón que V4 tuvo que corregir); no tenía permiso propio —la pantalla usaba `attendance.create`— ni
+clave foránea compuesta. Mientras tanto `/panel/inventario` consultaba una tabla inexistente y se veía vacío.
+
+Batería con sesión simulada (2026-09-21, revertida): Gerencia da de alta, corrige y retira en su sede; la autoría y
+`version` las pone la base; el mismo producto repetido en la misma sede → 23505; escribir en la sede de otro gimnasio
+→ 42501; reescribir `tenant_id` → 42501; Administración corrige; **Recepción ve pero no borra (0 filas)**; el socio ve
+0 y no inserta; el anónimo, 42501. Advisors: solo el aviso aceptado de contraseñas filtradas, y el inventario no
+aparece en claves foráneas sin índice ni en políticas permisivas múltiples.

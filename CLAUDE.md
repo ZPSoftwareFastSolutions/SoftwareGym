@@ -4,8 +4,8 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-16 · **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
-> - **Rama de trabajo vigente:** `feat/goldgym-v1` (sale de `feat/v4-seradmingym`). Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
+> - **Última actualización:** 2026-09-21 · **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada** (ver §13e). Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
+> - **Rama de trabajo vigente:** `goldgym-v5` (cadena `feat/goldgym-v1` -> `goldgym-v2` -> ... -> `goldgym-v5`). **Esta rama sirve SOLO a GOLD**: los archivos de Mitico y Aurora se retiraron del registro de tenants (sus landings viven en `miticogym-v3`). El producto sigue siendo enlatado —nada en `src` nombra a un cliente—, pero un despliegue de esta rama ya no responde `/mitico` ni `/aurora-fit`. Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
 > - **Historia completa** (cada fase, cada defecto con su prueba, cada decisión
@@ -469,6 +469,7 @@ negocio: `repo.hoyDelGimnasio(slug)` (base, `app.hoy_del_gimnasio`) o
 | `enableRoutines` | **V3.2**: `/panel/rutinas`, `/panel/entrenamiento`, rutina del socio y marca de ejercicios | ✅ | ❌ |
 | `enableClasses` | **V3.3**: `/panel/clases` (agenda, catálogo, horarios, sesiones, asistencia y métricas), «Tus clases» del socio y del entrenador, página pública `/clases` (entrada de menú que exige la flag; el validador lo comprueba) | ✅ | ❌ |
 | `enableReservations` | **V3.4** (exige `enableClasses`, lo comprueba el validador): reservar desde «Tus clases», lista de reservas y «Vino»/«Cerrar lista» en la sesión, reglas y faltas en `/panel/clases`, avisos personales, reporte `reservas-de-clases` | ✅ | ❌ |
+| `enableInventory` | **V4.3**: `/panel/inventario` (productos y existencias de la sede donde se opera) y su accion rapida en el tablero. **Encendida en GOLD** | ❌ | ❌ |
 | `enableAnnouncements` | **V4.1**: carrusel de anuncios con su detalle en el inicio y `/panel/anuncios` para publicarlos (`content.manage`). Sin anuncios publicados la sección no se dibuja, así que encenderla antes de publicar no se nota. **Encendida en GOLD**, apagada en Mítico y Aurora | ❌ | ❌ |
 
 ¹ Ambos parten de `...DEFAULT_FEATURE_FLAGS`. Mítico tiene `showGallery` y
@@ -733,6 +734,8 @@ gimnasio) · `manager` 30 · `receptionist` 20 · `trainer` 10 · `customer` 0.
 | `classes.manage` (clases, planes que las incluyen, horarios, generar y cancelar sesiones, métricas) | | ✅ | ✅ | | | |
 | `classes.attend` (registrar y quitar asistencia: recepción en SUS sedes, el entrenador en SUS sesiones; desde V3.4 también reservar por un socio y cerrar la lista ahí) | | ✅ | ✅ | ✅ | ✅ | |
 | **`content.manage`** (V4.1: publicar y editar los anuncios del sitio) | | ✅ | ✅ | | | |
+| **`inventory.read`** (V4.3: consultar el inventario de la sede) | | ✅ | ✅ | ✅ | | |
+| **`inventory.manage`** (V4.3: alta, correccion y retirada de productos) | | ✅ | ✅ | | | |
 
 **Quién otorga qué (V4):** Administración otorga y quita `admin`, `manager` y `receptionist` a cuentas de nivel ≤ 40
 (no a sí misma). Gerencia solo `receptionist` y a cuentas por debajo de su nivel (**ya no nombra gerentes**).
@@ -2119,24 +2122,65 @@ Los 5 anuncios salen en la portada (prioridad: mayor `sort_order` primero) y el 
 4. Las etapas 5 y 6 **no añaden tablas, políticas ni RPC**: la batería V4.2 las cubre tal cual está. Si se toca la
    base otra vez, volver a pasarla.
 
-## 13e. V4.3 / V5 · Módulo de Inventario y mejoras
+## 13e. V5 · inventario, monitor, Excel y QR en PDF (rama `goldgym-v5`)
 
-**Lo nuevo (2026-09-18):**
-- **Módulo de Inventario**: Nueva capacidad para gestionar el catálogo de productos físicos del gimnasio en `/panel/inventario`.
-- Integración de **Supabase Inventory Repository** (`inventory.actions.ts`, `supabase-inventory.repository.ts`).
-- Nueva interfaz de usuario para inventario con `ModalNuevoProducto.tsx`.
-- **Reservas en vitrina**: Nuevo botón de reserva directa en la vitrina (`BotonReservaVitrina.tsx`).
-- **Mejoras UI/UX**: Mejoras en la presentación y flujo de las `AccionesRapidas.tsx`, `QrCode.tsx` y la impresión de código QR del socio (`ImprimirQrSocio.tsx`).
-- **Correcciones y Tipado**: Corrección de errores de tipo en las páginas del panel (socio, gimnasio, clases, socios).
-- **Despliegue**: Ajustes en `vercel.json` con reintroducción de override de framework para prevenir errores 404 en compilaciones Vercel.
-- Migración de base de datos añadida y lista para aplicarse: `v4_3_inventario_y_normalizacion.sql`.
+Lo que traen `goldgym-v2` … `goldgym-v5`, revisado el 2026-09-21 contra las reglas del proyecto.
+
+**Lo nuevo que funciona tal cual llegó:**
+- **Monitor de ingresos** (`/[tenant]/monitor`): pantalla de recepción que muestra a quién acaba de entrar, con su
+  foto, su estado y su racha. Se comunica por eventos de `localStorage` entre pestañas del MISMO navegador (no hay
+  WebSocket: el cliente de navegador que se importaba estaba sin usar y se retiró).
+- **Reportes en Excel** (`/panel/reportes/[reporte]/excel`, exceljs en servidor) en lugar del CSV.
+- **QR del socio en PDF** (`/panel/socios/[id]/imprimir-qr`, jspdf + html2canvas).
+- **Alias de correo por gimnasio** (`mutarEmailParaTenant`): la misma persona puede ser socia de dos gimnasios con su
+  correo, porque en Auth se guarda `nombre+slug@dominio`. **Cambia la decisión de V4.2** («una cuenta por correo para
+  toda la plataforma»); la ficha guarda el correo con alias y las pantallas lo muestran limpio.
+- **Catch-all `[...catchAll]` y `not-found` por tenant**: una ruta inventada dentro de un gimnasio ya da 404 con su marca.
+- **Mapas de sede por enlace incrustado** (`BranchShowcase.mapEmbedUrl`), que conviven con las coordenadas y la
+  dirección que ya resolvía el dominio.
+
+**Lo que se corrigió el 2026-09-21 (esta rama venía con la arquitectura torcida):**
+1. **`service_role` en el código.** `panel/socio/actions.ts` creaba un cliente con `SUPABASE_SERVICE_ROLE_KEY` para
+   cambiar la contraseña del socio. Esa clave tiene BYPASSRLS: con ella en el servidor web, cualquier fallo de
+   cualquier ruta pasa de «ver lo tuyo» a «ver todo, de todos los gimnasios». Ahora se usa `auth.updateUser` con la
+   sesión del propio socio, que es lo que hacía falta desde el principio (regla 4).
+2. **Inventario contra la Dependency Rule.** Su Server Action vivía en `core/application/operations/` e importaba
+   `@infra` y `@/app`. Se movió a `panel/inventario/actions.ts` con `contextoDeAccion`, validación de dominio
+   (`operations/inventario.ts`, con pruebas) y la sede resuelta por la sesión, no por el formulario.
+3. **La migración del inventario nunca se aplicó y no podía aplicarse** (§4.7 y el README de migraciones). Se
+   reescribió y se aplicó: `/panel/inventario` consultaba una tabla inexistente y se veía siempre vacío.
+4. **El inventario no era una capacidad contratada:** entraba por `memberLogin` y se autorizaba con
+   `attendance.create`, así que «puede registrar entradas» significaba «puede borrar productos». Ahora tiene
+   `enableInventory`, `inventory.read` / `inventory.manage` y su entrada de navegación.
+5. **Administración no podía descargar ningún reporte:** la ruta exigía espacio `gimnasio` y el suyo es
+   `administracion` (defecto heredado del CSV de V4). Ahora autoriza el permiso, no el espacio.
+6. **Dependencias con `^` y `npm audit` en rojo** (exceljs arrastra `uuid` 8, con aviso moderado): versiones fijadas y
+   `overrides` de `uuid` a 11.1.1, comprobando que exceljs sigue generando el `.xlsx`.
+7. **Código muerto retirado:** `supabase.browser.ts` (cliente de navegador sin uso), los imports de `createClient` y
+   `supabaseConfig` en `socios/actions.ts` y el enlace `/csv` del reporte, que ya apuntaba a `/excel`.
+8. **Una prueba en rojo** (el tablero de recepción) que la rama traía sin actualizar: pasa sola al devolverle su
+   capacidad y su permiso a la acción de inventario.
+
+**Estado (2026-09-21):** typecheck limpio · **344 pruebas** (10 nuevas de inventario) · build de 40 páginas (solo
+GOLD) · `npm audit` 0 · greps de arquitectura vacíos · batería RLS del inventario pasada y revertida · advisors con
+solo el aviso aceptado.
+
+**Pendiente de esta rama:**
+1. **Revisión humana con sesión** del inventario, el monitor de ingresos, el Excel de reportes y el QR en PDF.
+2. **Decidir si Recepción debe CORREGIR existencias** (hoy consulta; corregir es de Gerencia y Administración): es
+   una fila en `role_permissions`, no un cambio de código.
+3. **El alias de correo por gimnasio** conviene probarlo con un proveedor que no admita `+` en la parte local, y
+   decidir qué pasa con los correos que ya tienen `+` antes del alias.
+4. `jspdf`, `html2canvas` y `exceljs` pesan y contradicen la decisión 15 («PDF = impresión del navegador»): si el PDF
+   del QR y el Excel se quedan, conviene anotarlo como decisión revisada en vez de dejarla contradicha.
 
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
-| V4.3 Inventario | 2026-09-18 | `e7ac79c`, `fedd507`, `29f5a8f` | **Módulo de Inventario y Mejoras**: Creación de la página `/panel/inventario` y `ModalNuevoProducto` para gestionar productos. Adición del botón de reserva en la vitrina, mejoras en el layout de `AccionesRapidas` y la impresión de QR del socio. Ajustes menores en tipos, componentes del panel y el despliegue con `vercel.json`. Migración de BD `v4_3_inventario_y_normalizacion` aplicada. |
+| V5 revisión | 2026-09-21 | (rama `goldgym-v5`) | **Revisión de arquitectura de V5**: `service_role` fuera del código (la contraseña del socio se cambia con su propia sesión), inventario devuelto a su capa con capacidad y permisos propios (`enableInventory`, `inventory.read`/`inventory.manage`), su migración reescrita y **aplicada de verdad** (la anterior nunca se aplicó ni podía), Administración recupera la descarga de reportes, dependencias fijadas y `npm audit` a 0, código muerto retirado. 344 pruebas, batería RLS del inventario pasada |
+| V4.3 Inventario | 2026-09-18 | `e7ac79c`, `fedd507`, `29f5a8f` | **Módulo de Inventario y mejoras**: página `/panel/inventario` con `ModalNuevoProducto`, botón de reserva en la vitrina, monitor de ingresos, reportes en Excel, QR del socio en PDF y alias de correo por gimnasio. **Su migración se añadió pero NO se aplicó** (ver §13e: se reescribió y se aplicó el 2026-09-21) |
 | V4.2 GOLD V1 | 2026-09-16 | `cca427d` → `7600d75` (rama `feat/goldgym-v1`, en GitHub) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, `dpl_4w5XedNhQ68ED1Vs5eckJ67KEH8o`) | Encargo «GOLD'S GYM PREMIUM — V1», seis etapas. **Dos conflictos se resolvieron CON el usuario en vez de sobrescribir reglas**: los 3 accesos diarios contra «una entrada por socio y día» (decisión 20) → tabla `access_passes` aparte, `attendance_records` intacta; y el acceso multisede contra «la membresía vale en todas las sedes» (decisiones 19 y 24) → `membership_plans.branch_scope`, por defecto `todas`, con la migración comprobando que ningún plan existente cambió. Además: **foto de perfil** del socio en Storage privado (no un blob en Postgres) y **modal de identidad** al escanear, con todo el contenido venido del backend; **autorización nominal de clases** (`access_mode = 'autorizados'` + `class_session_admissions`) para eventos con invitados que no son socios; **historial de ingresos** filtrable y paginado en la base; **tableros por puesto** (el orden cambia, el contenido no); **clases del socio** con sus seis situaciones y agenda día → clase → hora → sede → disponibilidad → reservar; **correo de confirmación generado por marca** desde el registro de gimnasios. §18/§19/§20: confirmar el correo deja la sesión abierta en el panel, un fallo de red ya no cierra sesión y el 403 existe de verdad (`forbidden()` de Next 16). 5 migraciones aplicadas con autorización; batería RLS V4.2 (una corrección la encontró ella: la guarda de la foto bloqueaba también a quien no tiene sesión); 280 pruebas; build de 102 páginas |
 | V4.1 GOLD | 2026-09-15 | `9332021` (rama `feat/goldgym-v1`, en GitHub) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, despliegue `gold-6mgw9bczz…`) | **Tercer cliente de la plataforma, sin código propio.** Capacidad genérica de **anuncios** (tabla `announcements` con RLS y lectura anónima solo de lo publicado, bucket `anuncios`, `v_announcements_public`, permiso `content.manage`, flag `enableAnnouncements`, carrusel con detalle en `<dialog>` y `/panel/anuncios`) y **instalaciones repartidas por sucursal** (`FacilityItem.branchCode` unido a `branches.code` + `ui/Pestanas.tsx` genérico; sin reparto, comportamiento idéntico al anterior). Alta de **Gold's Gym Premium**: 4 sucursales, 7 planes, 15 clases y 60 horarios, todo sobre el modelo que ya existía. Un correo vacío pasa a ser válido y la vitrina lo omite; las áreas sin superficie ni fichas no pintan huecos. 2 migraciones; ADR 0011; batería RLS V4.1 (el anónimo ve 1 de 4 anuncios sembrados: ni borrador, ni programado, ni vencido); 199 pruebas; build de 99 páginas. Verificada sobre el dominio: públicas 200, panel 307, capacidad apagada 404, `/no-existe` 404, los tres gimnasios vivos, sin `service_role` en 11 chunks |
 | V4 administración | 2026-09-14 | `1860fda`, `f54ce26` (rama `feat/v4-seradmingym`) · **producción** Vercel `web` (`web-rust-xi-23.vercel.app`, despliegue `web-gu4lr6b3e…`) | Rol `admin` de gimnasio con jerarquía `roles.level` (cierra que `users.manage` otorgara cualquier rol), Personal y roles, resumen de Administración, designación desde la plataforma; políticas RLS evaluadas una vez por consulta (contar 50 000 entradas: > 20 s → 18 ms; KPIs: timeout → 54 ms), lista y conteos de socios, patrones de asistencia y paginación en la base; rutinas sin el día repetido (causa en datos); navegación agrupada sin scroll horizontal; indicador de carga en el enlace pulsado. 7 migraciones (2 de ellas encontradas por la batería: vistas con función por fila y `cambiar_estado_de_cuenta` sin grant de `updated_at`); ADR 0010; batería RLS V4; 174 pruebas. Verificada sobre el dominio: públicas 200, panel 307, CSV 401, capacidad apagada 404, sin `service_role` |

@@ -126,6 +126,11 @@ export const PERMISO = {
   /** Otorgar y quitar roles hasta el propio nivel (Administración). */
   gestionarRoles: 'roles.manage',
   verAuditoria: 'audit.read',
+  // --- V4.3 · inventario de la sucursal ---
+  /** Ver el inventario de la sede en la que se opera. */
+  verInventario: 'inventory.read',
+  /** Dar de alta, corregir y retirar productos del inventario. */
+  gestionarInventario: 'inventory.manage',
   // --- V3.0 · multisucursal ---
   /** Alta, edición, activación, primaria y asignación de personal a sedes. */
   gestionarSucursales: 'branches.manage',

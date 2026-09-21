@@ -79,9 +79,6 @@ function normalizar(datos: DatosDeSocio) {
   };
 }
 
-import { createClient } from '@supabase/supabase-js';
-import { supabaseConfig } from '@infra/auth/supabase.config';
-
 export async function registrarSocio(_previo: EstadoDeAlta, form: FormData): Promise<EstadoDeAlta> {
   const acceso = await contextoDeAccion(form, ['enableMemberManagement'], PERMISO.crearSocios);
   if (!acceso.ok) return { mensaje: acceso.mensaje };

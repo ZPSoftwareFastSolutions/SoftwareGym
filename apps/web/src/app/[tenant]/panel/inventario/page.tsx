@@ -1,3 +1,13 @@
+/**
+ * CAPA: Presentation / App — inventario de la sucursal (V4.3).
+ *
+ * El inventario es DE LA SEDE en la que se opera, no del gimnasio: cada
+ * mostrador tiene sus existencias. Por eso la sucursal sale de
+ * `contextoDeSucursal` (la cookie de sede, re-comprobada contra la base) y no
+ * de la URL: quien no está operando en ninguna no ve un inventario vacío sino
+ * el aviso de que elija sede.
+ */
+
 import type { Metadata } from 'next';
 import { loadTenantPage } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
@@ -14,9 +24,10 @@ import { EmptyState } from '@/presentation/ui/EmptyState';
 import { CLASE_DE_CONTROL } from '@/presentation/ui/Campo';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso, importe } from '../_datos';
-import { eliminarProducto } from '@core/application/operations/inventory.actions';
+import { eliminarProducto } from './actions';
 import { ModalNuevoProducto } from './ModalNuevoProducto';
-import type { InventoryProduct } from '@core/application/ports/inventory-repository.port';
+import { nivelDeExistencias, NOMBRE_DE_NIVEL, valorDelInventario, type ProductoDeInventario } from '@core/domain/operations/inventario';
+import { Badge } from '@/presentation/ui/Badge';
 
 export const metadata: Metadata = { title: 'Gestión de Inventario', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -27,10 +38,9 @@ interface InventarioPageProps {
 }
 
 export default async function InventarioPage({ params, searchParams }: InventarioPageProps) {
-  const tenant = await loadTenantPage(params, 'memberLogin');
+  const tenant = await loadTenantPage(params, 'enableInventory');
   const { slug } = tenant;
-  // Utiliza attendance.create como permiso para inventario según lo decidido en V4.
-  const { perfil, repo } = await exigirPermiso(slug, PERMISO.registrarAsistencia);
+  const { perfil, repo } = await exigirPermiso(slug, PERMISO.verInventario);
 
   const kpis = await repo.indicadores(slug);
   const moneda = kpis?.currency ?? 'BOB';
@@ -61,10 +71,11 @@ export default async function InventarioPage({ params, searchParams }: Inventari
         <div className="min-w-0">
           <h2 className="t-h3">Inventario · {sucursal.name}</h2>
           <p className="mt-1.5 max-w-[70ch] text-[0.88rem] leading-relaxed text-muted">
-            Control de productos y stock disponibles en esta sede.
+            Lo que se vende en el mostrador de esta sede, con lo que queda y a qué precio.
+            {productos.total > 0 && ` En esta página: ${importe(valorDelInventario(productos.filas), moneda)} en existencias.`}
           </p>
         </div>
-        <ModalNuevoProducto slug={slug} branchId={sucursal.id} />
+        <ModalNuevoProducto slug={slug} />
       </section>
 
       <section id="productos" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-productos">
@@ -79,7 +90,7 @@ export default async function InventarioPage({ params, searchParams }: Inventari
           <BotonDeFiltrar texto="Buscar" icono="search" />
         </FormularioDeFiltro>
 
-        <DataTable<InventoryProduct>
+        <DataTable<ProductoDeInventario>
           titulo="Productos del inventario"
           tituloOculto
           className="mt-5"
@@ -94,17 +105,32 @@ export default async function InventarioPage({ params, searchParams }: Inventari
                 </span>
               ),
             },
-            { clave: 'quantity', titulo: 'Stock', numerica: true, celda: (p) => `${p.quantity}` },
+            {
+              clave: 'quantity',
+              titulo: 'Existencias',
+              numerica: true,
+              celda: (p) => {
+                const nivel = nivelDeExistencias(p.quantity);
+                return (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="tabular-nums">{p.quantity}</span>
+                    {nivel !== 'disponible' && (
+                      <Badge tone={nivel === 'agotado' ? 'neutral' : 'structural'}>{NOMBRE_DE_NIVEL[nivel]}</Badge>
+                    )}
+                  </span>
+                );
+              },
+            },
             { clave: 'price', titulo: 'Precio', numerica: true, celda: (p) => importe(p.price, moneda) },
             {
               clave: 'acciones',
               titulo: 'Acciones',
               celda: (p) => (
                 <div className="flex flex-wrap gap-2">
-                  <ModalNuevoProducto slug={slug} branchId={sucursal.id} producto={p} />
+                  <ModalNuevoProducto slug={slug} producto={p} />
                   <AccionConEstado
                     accion={eliminarProducto}
-                    campos={{ slug, branchId: sucursal.id, id: p.id }}
+                    campos={{ tenantSlug: slug, id: p.id }}
                     etiqueta="Eliminar"
                     icono="close"
                     variante="peligro"
@@ -120,7 +146,7 @@ export default async function InventarioPage({ params, searchParams }: Inventari
             <EmptyState
               icono="archive"
               titulo={q ? 'Ningún producto coincide con la búsqueda' : 'El inventario está vacío'}
-              descripcion={q ? 'Prueba con otro nombre.' : 'Añade tu primer producto usando el botón superior.'}
+              descripcion={q ? 'Prueba con otro nombre.' : 'Agrega el primero con el botón de arriba.'}
             />
           }
         />
