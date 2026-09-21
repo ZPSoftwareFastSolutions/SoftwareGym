@@ -30,6 +30,7 @@ import {
   resultadoDelAlta,
   validarLogin,
   validarRegistro,
+  correosParaIniciarSesion,
   mutarEmailParaTenant,
 } from '@core/application/auth/login.usecase';
 import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
@@ -112,9 +113,19 @@ export async function iniciarSesion(
   const validacion = validarLogin({ email: emailIngresado, password });
   if (!validacion.ok) return { errores: validacion.errores };
 
-  const email = mutarEmailParaTenant(emailIngresado, slug);
+  // Se prueba el alias del gimnasio y, si no existe esa cuenta, el correo tal
+  // cual: las cuentas anteriores a V5 se registraron sin alias y con un solo
+  // intento quedaban fuera para siempre (ver `correosParaIniciarSesion`).
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  let error: { readonly code?: string } | null = null;
+  for (const candidato of correosParaIniciarSesion(emailIngresado, slug)) {
+    const intento = await supabase.auth.signInWithPassword({ email: candidato, password });
+    error = intento.error;
+    if (!intento.error) break;
+    // Solo se sigue probando cuando la respuesta es «no coinciden». Un límite
+    // de intentos o una caída no se reintentan con otra dirección.
+    if (intento.error.code !== 'invalid_credentials') break;
+  }
 
   if (error) {
     // El código del proveedor no se expone: solo un mensaje neutro. Devolver
@@ -277,8 +288,15 @@ export async function pedirEnlaceDeAcceso(_estadoPrevio: EstadoFormulario, form:
   const emailIngresado = texto(form, 'email').trim().toLowerCase();
   if (!correoValido(emailIngresado)) return { errores: { email: 'Escribe el correo con el que te registraste.' } };
 
-  const email = mutarEmailParaTenant(emailIngresado, slug);
-  const envio = await enviarEnlaceDeAcceso({ email, slug, retorno: retornoDelCorreo(slug, true) });
+  // `crearSiNoExiste`: este formulario es también el primer acceso de quien se
+  // dio de alta en recepción y nunca entró a la web. Si ya tiene cuenta —con
+  // alias o sin él— el enlace va a ESA; si no tiene ninguna, se crea.
+  const envio = await enviarEnlaceDeAcceso({
+    email: emailIngresado,
+    slug,
+    retorno: retornoDelCorreo(slug, true),
+    crearSiNoExiste: true,
+  });
   if (!envio.ok) return { mensaje: mensajeDeEnlaceDeAcceso(envio.codigo) };
   return { exito: `${MENSAJE_ENLACE_DE_ACCESO_ENVIADO.replace('Te enviamos un enlace', `Te enviamos un enlace a ${emailIngresado}`)}` };
 }

@@ -236,3 +236,19 @@ Batería con sesión simulada (2026-09-21, revertida): Gerencia da de alta, corr
 → 42501; reescribir `tenant_id` → 42501; Administración corrige; **Recepción ve pero no borra (0 filas)**; el socio ve
 0 y no inserta; el anónimo, 42501. Advisors: solo el aviso aceptado de contraseñas filtradas, y el inventario no
 aparece en claves foráneas sin índice ni en políticas permisivas múltiples.
+
+### V5 · Cuenta y ficha con el alias de correo (2026-09-21, aplicada con autorizacion del usuario)
+
+| Archivo | Que hace |
+|---|---|
+| `20260921110000_v5_emparejar_cuenta_y_ficha_con_alias_de_correo.sql` | `app.correo_base(text)` quita la etiqueta `+algo` de la parte local, y las tres funciones que emparejan cuenta y ficha comparan por ahi: `vincular_cuenta_confirmada` (la cuenta confirma y busca su ficha), `vincular_ficha_por_correo` (recepcion guarda la ficha y busca la cuenta) y `crear_ficha_propia` (el socio crea su ficha al pagar en linea). Ademas, `v_customer_detail` gana `tenant_slug` para que el panel muestre el correo sin el alias |
+
+**Por que.** V5 guarda en Auth y en la ficha `juan+golds-gym-premium@gmail.com` para que la misma persona pueda ser
+socia de dos gimnasios. Las cuentas y fichas anteriores a V5 no llevan alias, asi que la comparacion exacta dejaba
+tres agujeros: una cuenta nueva no encontraba su ficha antigua, recepcion no encontraba la cuenta del socio, y
+`crear_ficha_propia` **creaba una segunda ficha** para alguien que ya la tenia. Comparar por correo base cierra los
+tres sin reescribir el correo de nadie. Si dos fichas comparten correo base, las funciones siguen exigiendo UN solo
+candidato y no vinculan nada: lo resuelve una persona.
+
+Comprobado sobre la base (revertido): `app.correo_base` empareja las dos formas del mismo correo y no toca un correo
+normal; con la sesion de gerencia, `v_customer_detail` devuelve las 20 fichas y su `tenant_slug`.

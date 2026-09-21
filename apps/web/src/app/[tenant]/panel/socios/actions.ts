@@ -264,10 +264,11 @@ export async function enviarAccesoWebAlSocio(_previo: EstadoDeFormulario, form: 
     slug,
     nombre: ficha.fullName,
     retorno: `${SITE_URL}/auth/confirmar?gimnasio=${encodeURIComponent(slug)}&activar=1`,
+    crearSiNoExiste: true,
   });
   if (!envio.ok) return { mensaje: mensajeDeEnlaceDeAcceso(envio.codigo) };
   return {
-    exito: `Enviamos el enlace a ${ficha.email}. Al abrirlo, la persona crea su contraseña y entra a su cuenta, ya unida a esta ficha.`,
+    exito: `Enviamos el enlace a ${ficha.email}. Al abrirlo crea su contraseña y entra a su cuenta, ya unida a esta ficha. El enlace vale una hora; si no llega, revisa la carpeta de correo no deseado.`,
   };
 }
 

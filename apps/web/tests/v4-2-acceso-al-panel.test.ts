@@ -25,6 +25,9 @@ import {
   MENSAJE_CORREO_YA_REGISTRADO,
   MENSAJE_CUENTA_DE_OTRO_GIMNASIO,
   resultadoDelAlta,
+  correosParaIniciarSesion,
+  limpiarEmailDeTenant,
+  mutarEmailParaTenant,
 } from '../src/core/application/auth/login.usecase.ts';
 
 const TODAS: readonly SituacionDeAcceso[] = [
@@ -152,5 +155,41 @@ describe('V4.2 · alta con un correo que ya existe y cuenta de otro gimnasio', (
     assert.equal(correoValido('socio@gmail.com'), true);
     assert.equal(correoValido('  '), false);
     assert.equal(correoValido('sin-arroba'), false);
+  });
+});
+
+describe('V5 · el alias de correo por gimnasio no puede dejar a nadie fuera', () => {
+  it('escribe el alias del gimnasio en el correo de la persona', () => {
+    assert.equal(mutarEmailParaTenant('Juan@Gmail.com', 'golds-gym-premium'), 'juan+golds-gym-premium@gmail.com');
+    // Repetirlo no encadena alias.
+    assert.equal(
+      mutarEmailParaTenant('juan+golds-gym-premium@gmail.com', 'golds-gym-premium'),
+      'juan+golds-gym-premium@gmail.com',
+    );
+  });
+
+  it('lo quita para enseñárselo a una persona', () => {
+    assert.equal(limpiarEmailDeTenant('juan+golds-gym-premium@gmail.com', 'golds-gym-premium'), 'juan@gmail.com');
+    // La etiqueta que puso la propia persona no se toca.
+    assert.equal(limpiarEmailDeTenant('juan+casa+golds-gym-premium@gmail.com', 'golds-gym-premium'), 'juan+casa@gmail.com');
+  });
+
+  it('al entrar se prueba el alias y, después, el correo tal cual', () => {
+    // Las cuentas anteriores a V5 se registraron sin alias: si solo se probara
+    // el alias, su contraseña correcta daría «datos incorrectos» para siempre.
+    assert.deepEqual(correosParaIniciarSesion('juan@gmail.com', 'golds-gym-premium'), [
+      'juan+golds-gym-premium@gmail.com',
+      'juan@gmail.com',
+    ]);
+  });
+
+  it('quien ya escribe su alias no genera un intento repetido', () => {
+    assert.deepEqual(correosParaIniciarSesion('juan+golds-gym-premium@gmail.com', 'golds-gym-premium'), [
+      'juan+golds-gym-premium@gmail.com',
+    ]);
+  });
+
+  it('un correo sin arroba no se convierte en otra cosa', () => {
+    assert.deepEqual(correosParaIniciarSesion('sin-arroba', 'golds-gym-premium'), ['sin-arroba']);
   });
 });

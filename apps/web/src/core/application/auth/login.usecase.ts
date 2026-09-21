@@ -82,9 +82,14 @@ export function correoValido(correo: string): boolean {
 }
 
 /**
- * V4.2.1 · Alias de Tenant (Subaddressing)
- * Transforma un correo normal en un alias único para el gimnasio en Supabase.
- * Permite que una misma persona use su correo en varios gimnasios independientes.
+ * V5 · ALIAS DE CORREO POR GIMNASIO.
+ *
+ * Supabase Auth es UNO para todos los gimnasios y no admite dos cuentas con el
+ * mismo correo. Para que la misma persona pueda ser socia de dos gimnasios, en
+ * Auth se guarda `pepito+<gimnasio>@dominio`: el servidor de correo entrega
+ * igual a `pepito@dominio` (subdireccionamiento), y la persona nunca escribe el
+ * alias, lo pone el sistema.
+ *
  * Ej: `pepito@gmail.com` -> `pepito+mitico@gmail.com`
  */
 export function mutarEmailParaTenant(email: string, tenantSlug: string): string {
@@ -96,6 +101,25 @@ export function mutarEmailParaTenant(email: string, tenantSlug: string): string 
   if (localPart.endsWith(suffix)) return limpio;
   
   return `${localPart}${suffix}@${domain}`;
+}
+
+/**
+ * Las direcciones con las que hay que intentar entrar, EN ORDEN.
+ *
+ * El alias llegó en V5, y las cuentas anteriores se registraron con el correo
+ * tal cual. Si el formulario solo probara el alias, toda persona con cuenta
+ * anterior a V5 quedaría fuera de su propio gimnasio escribiendo su correo
+ * correcto —pasó con cuatro cuentas reales de GOLD—. Se prueba primero el
+ * alias, que es la forma canónica de hoy, y después el correo tal cual.
+ *
+ * Probar dos veces no abre ninguna puerta nueva: cada intento sigue exigiendo
+ * la contraseña, y después del acceso `decidirLoginPorGimnasio` comprueba
+ * contra la base que la cuenta sea de ESTE gimnasio.
+ */
+export function correosParaIniciarSesion(email: string, tenantSlug: string): readonly string[] {
+  const limpio = email.trim().toLowerCase();
+  const alias = mutarEmailParaTenant(limpio, tenantSlug);
+  return alias === limpio ? [limpio] : [alias, limpio];
 }
 
 /**
@@ -150,6 +174,11 @@ export const MENSAJE_ENLACE_DE_ACCESO_ENVIADO =
 
 /** Errores de pedir el enlace: el límite de envíos es el único que la persona puede resolver esperando. */
 export function mensajeDeEnlaceDeAcceso(codigo: string): string {
+  // V5: la recuperación no crea cuentas, así que puede no encontrar ninguna.
+  // Se dice qué hacer, sin confirmar ni negar que ese correo esté registrado.
+  if (codigo === 'sin_cuenta') {
+    return 'Si ese correo está registrado, te llegará el enlace en un minuto. Si te diste de alta en recepción, pídeles que te lo envíen desde tu ficha.';
+  }
   if (codigo.includes('rate_limit') || codigo === '429') return 'Ya te enviamos un enlace hace poco. Espera un minuto y vuelve a pedirlo.';
   if (codigo.includes('email_address_invalid')) return 'Ese correo no parece válido. Revisa que el dominio esté bien escrito.';
   if (codigo.includes('signup_disabled') || codigo.includes('otp_disabled')) return 'El acceso por enlace está desactivado. Acércate a recepción.';

@@ -237,7 +237,8 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
             // esta ficha.
             <div className="mt-4 flex flex-col gap-3 rounded-[var(--t-radius-md)] bg-raised px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between" data-print="hide">
               <p className="text-[0.84rem] leading-relaxed text-muted">
-                Aún no usa la web. Envíale un enlace a <span className="text-ink">{ficha.email}</span> para que cree su contraseña.
+                Aún no usa la web. Envíale un enlace a <span className="text-ink">{ficha.email}</span> para que cree su
+                contraseña. No es obligatorio: con su QR ya puede entrenar.
               </p>
               <AccionConEstado
                 accion={enviarAccesoWebAlSocio}
@@ -247,6 +248,18 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
                 variante="secundario"
               />
             </div>
+          )}
+          {/* V5 · Sin correo NO le falta nada: su QR, su membresía y sus entradas
+              funcionan igual. Se dice, para que nadie en el mostrador crea que
+              la ficha está incompleta o presione a alguien a abrir un correo. */}
+          {!ficha.email && !archivado && features.memberLogin === true && (
+            <p className="mt-4 flex items-start gap-2.5 rounded-[var(--t-radius-md)] bg-raised px-4 py-3.5 text-[0.84rem] leading-relaxed text-muted" data-print="hide">
+              <Icon name="idcard" size={16} className="mt-0.5 shrink-0 text-action" />
+              <span>
+                Este socio entrena sin cuenta web: su QR y su membresía funcionan igual. Si algún día quiere ver su
+                panel, agrega su correo en «Editar datos» y desde aquí se le envía el enlace.
+              </span>
+            </p>
           )}
           {ficha.notes && <p className="mt-4 rounded-[var(--t-radius-md)] bg-raised px-4 py-3 text-[0.86rem] text-muted">{ficha.notes}</p>}
         </section>

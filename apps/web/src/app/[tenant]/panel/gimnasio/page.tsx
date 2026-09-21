@@ -32,7 +32,16 @@ import Link from 'next/link';
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
 import { tenantHref } from '@/lib/tenant-links';
 import { PERMISO, espacioDeTrabajo, tienePermiso } from '@core/domain/operations/workspace';
-import { accionesRapidas, enfoqueDeTablero, ordenDelTablero, type BloqueDeTablero } from '@core/domain/operations/tablero';
+import {
+  accionesRapidas,
+  asuntosDelDia,
+  enfoqueDeTablero,
+  NOMBRE_DE_ENFOQUE,
+  ordenDelTablero,
+  profundidadDelBloque,
+  saludoDelTablero,
+  type BloqueDeTablero,
+} from '@core/domain/operations/tablero';
 import { variacion, type PuntoDeSerie } from '@core/domain/operations/dashboard';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { CONTEO_DE_SOCIOS_VACIO } from '@core/domain/operations/members';
@@ -41,6 +50,7 @@ import { estadoDeQr, NOMBRE_DE_MODO_DE_QR } from '@core/domain/operations/cobro-
 import { branchesRepository, membersRepository, paymentSettingsRepository, receiptsRepository } from '@infra/config/composition-root';
 import { TarjetaDeSucursal } from '@/presentation/patterns/TarjetaDeSucursal';
 import { AccionesRapidas } from '@/presentation/patterns/AccionesRapidas';
+import { ResumenDelDia } from '@/presentation/patterns/ResumenDelDia';
 import { Icon } from '@/presentation/icons/Icon';
 import { contextoDeSucursal } from '../_sucursal';
 import { BotonFicha, FichaDeSocioProvider } from '@/presentation/patterns/FichaDeSocio';
@@ -52,6 +62,8 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Badge } from '@/presentation/ui/Badge';
 import { LinkButton } from '@/presentation/ui/Button';
 import { exigirPermiso, fechaCorta, hora, importe } from '../_datos';
+import { fechaLarga, horaEnZona } from '@/lib/formato';
+import { cn } from '@/lib/cn';
 
 export const metadata: Metadata = { title: 'Resumen del gimnasio', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -64,6 +76,17 @@ const TITULO_DE_BLOQUE: Readonly<Record<BloqueDeTablero, string>> = {
   dinero: 'Dinero',
   socios: 'Socios y membresías',
   sucursales: 'Sucursales',
+};
+
+/**
+ * Lo que hay dentro de un bloque plegado. Un «Ver más» a secas obliga a abrirlo
+ * para saber si sirve; esto lo dice antes.
+ */
+const RESUMEN_DE_BLOQUE: Readonly<Record<BloqueDeTablero, string>> = {
+  operacion: 'entradas, ingresos del día y clases',
+  dinero: 'cobrado este mes, comprobantes y estado del QR',
+  socios: 'activos, por vencer, vencidos y cumpleaños',
+  sucursales: 'comparativa entre sedes',
 };
 
 /** Modalidad y QR guardados, para la tarjeta de cobro de gerencia. */
@@ -196,6 +219,24 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
   const qrVigentes = ajustes ? ajustes.qrs.filter((qr) => estadoDeQr(qr, null, hoy) === 'vigente').length : 0;
   const qrVencidos = ajustes ? ajustes.qrs.length - qrVigentes : 0;
 
+  // V5 · Lo que alguien tiene que HACER hoy, en una lista corta y ordenada. Solo
+  // entran los contadores que esta persona ya podía ver: sin gestión de socios
+  // no hay listas que ofrecer, y sin comprobantes no hay bandeja que revisar.
+  const asuntos = asuntosDelDia({
+    comprobantesPendientes: conComprobantes ? pendientes : 0,
+    porVencer: gestionSocios || puedeVerReportes ? porVencerPronto.length : 0,
+    vencidas: gestionSocios ? conteo.vencidos : 0,
+    sinMembresia: gestionSocios ? sinMembresia : 0,
+    sinVenir7d: gestionSocios ? inactivos : 0,
+  });
+  const enlacesDeAtencion = {
+    ...(conComprobantes ? { comprobantes: tenantHref(slug, 'panel/comprobantes') } : {}),
+    'por-vencer': aSocios('vista=por-vencer', 'vencimientos', '#vencimientos'),
+    vencidas: aSocios('estado=expired', 'membresias', '#membresias'),
+    'sin-membresia': aSocios('vista=sin-membresia', 'clientes', '#membresias'),
+    'sin-venir': gestionSocios ? `${socios}?vista=inactivos` : '#',
+  };
+
   const bloques: Readonly<Record<BloqueDeTablero, ReactNode>> = {
     operacion: (
       <>
@@ -238,8 +279,16 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           )}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] items-start">
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-asistencia">
+        <div
+          className={cn(
+            'grid items-start gap-6',
+            enfoque === 'mostrador'
+              ? // Recepción mira quién acaba de entrar, no la tendencia del mes.
+                'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]'
+              : 'xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]',
+          )}
+        >
+          <section className={cn('surface-card p-6 sm:p-7', enfoque === 'mostrador' && 'xl:order-2')} aria-labelledby="titulo-asistencia">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 id="titulo-asistencia" className="t-h3">Entradas de los últimos 30 días{sedeVista ? ` · ${sedeVista.name}` : ''}</h3>
@@ -498,6 +547,16 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           </p>
         )}
 
+        <ResumenDelDia
+          saludo={saludoDelTablero(Number(horaEnZona(tenant.hours.timezone).slice(0, 2)))}
+          nombre={perfil.fullName.trim().split(' ')[0] ?? 'Hola'}
+          puesto={NOMBRE_DE_ENFOQUE[enfoque]}
+          fecha={fechaLarga(hoy)}
+          sucursal={sedeDelMostrador?.name ?? sede.actual?.name}
+          asuntos={asuntos}
+          enlaces={enlacesDeAtencion}
+        />
+
         <AccionesRapidas
           slug={slug}
           acciones={acciones}
@@ -509,6 +568,29 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
         {ordenDelTablero(enfoque).map((bloque) => {
           const contenido = bloques[bloque];
           if (contenido === null) return null;
+
+          // Plegado NO es escondido: el título se lee igual, dice qué hay dentro
+          // y se abre con un clic. Es `<details>` nativo, así que funciona sin
+          // JavaScript y el buscador del navegador lo encuentra.
+          if (profundidadDelBloque(enfoque, bloque) === 'plegado') {
+            return (
+              <details key={bloque} className="surface-card group overflow-hidden p-0">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-raised sm:px-7 [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0">
+                    <span className="block t-h3">{TITULO_DE_BLOQUE[bloque]}</span>
+                    <span className="mt-1 block text-[0.85rem] text-muted">{RESUMEN_DE_BLOQUE[bloque]}</span>
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-2 text-[0.86rem] font-semibold text-action">
+                    <span className="hidden sm:inline group-open:hidden">Ver</span>
+                    <span className="hidden group-open:sm:inline">Ocultar</span>
+                    <Icon name="chevronDown" size={18} className="transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                <div className="flex flex-col gap-4 border-t border-line px-6 py-6 sm:px-7">{contenido}</div>
+              </details>
+            );
+          }
+
           return (
             <section key={bloque} aria-labelledby={`bloque-${bloque}`} className="flex flex-col gap-4">
               <h2 id={`bloque-${bloque}`} className="t-h3">

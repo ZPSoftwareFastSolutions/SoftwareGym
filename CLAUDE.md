@@ -2165,8 +2165,31 @@ Lo que traen `goldgym-v2` … `goldgym-v5`, revisado el 2026-09-21 contra las re
 GOLD) · `npm audit` 0 · greps de arquitectura vacíos · batería RLS del inventario pasada y revertida · advisors con
 solo el aviso aceptado.
 
+**Alta por recepción y tablero del mostrador (2026-09-21).** El cliente pidió dos cosas: que el socio dado de alta en
+recepción pueda entrar a la web sin fricción —y que quien nunca la abra no pierda nada—, y que el tablero de
+recepción sea agradable en vez de una pared de números.
+
+- **El alias de correo había dejado fuera a cuatro cuentas reales de GOLD.** Al entrar, el formulario convertía lo
+  escrito en `juan+golds-gym-premium@gmail.com`, y las cuentas anteriores a V5 están guardadas sin alias: su
+  contraseña correcta respondía «datos incorrectos» para siempre. Ahora se prueban las dos formas
+  (`correosParaIniciarSesion`), en ese orden, y después sigue decidiendo `decidirLoginPorGimnasio`.
+- **El enlace de acceso podía crear una segunda cuenta.** Manda el enlace a la cuenta que YA existe —probando las dos
+  formas sin permitir altas— y solo crea una cuando no hay ninguna. Recepción y el formulario público usan el mismo
+  camino, así que «me registraron en recepción y nunca entré» y «olvidé mi contraseña» son la misma puerta.
+- **La base empareja por correo base** (migración `20260921110000`): una ficha sin alias encuentra su cuenta con alias
+  y al revés. Sin esto, `crear_ficha_propia` habría creado una segunda ficha para quien ya tenía una.
+- **Sin correo no hay desventaja, y ahora se dice.** La ficha de quien no tiene correo explica que su QR y su
+  membresía funcionan igual y que el correo se puede agregar cuando quiera. El alta nunca exigió correo.
+- **Tablero por profundidad, no por recorte** (`profundidadDelBloque`): recepción abre con la operación del día y el
+  resto queda plegado en un `<details>` que dice qué hay dentro; gerencia y administración abren también con el
+  dinero. **Ningún bloque se deja de dibujar**: plegar no es quitar, y una prueba lo afirma.
+- **`ResumenDelDia`**: saludo con la hora DEL GIMNASIO, puesto, sede y fecha, y debajo «Para hoy», una lista corta
+  ordenada por urgencia (`asuntosDelDia`) con lo que alguien tiene que hacer. Sin nada pendiente dice «Todo al día»,
+  que es una respuesta; un hueco no lo es.
+
 **Pendiente de esta rama:**
-1. **Revisión humana con sesión** del inventario, el monitor de ingresos, el Excel de reportes y el QR en PDF.
+1. **Revisión humana con sesión** del tablero de recepción (es lo único que no puede ver el asistente), del
+   inventario, el monitor de ingresos, el Excel de reportes y el QR en PDF.
 2. **Decidir si Recepción debe CORREGIR existencias** (hoy consulta; corregir es de Gerencia y Administración): es
    una fila en `role_permissions`, no un cambio de código.
 3. **El alias de correo por gimnasio** conviene probarlo con un proveedor que no admita `+` en la parte local, y
@@ -2179,6 +2202,7 @@ solo el aviso aceptado.
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
+| V5 alta y tablero | 2026-09-21 | (rama `goldgym-v5`) | **Alta por recepción de punta a punta y tablero del mostrador**: el login acepta las cuentas anteriores al alias de correo (cuatro cuentas reales de GOLD no podían entrar), el enlace de acceso va a la cuenta que ya existe en vez de crear otra, la base empareja cuenta y ficha por correo base (migración `20260921110000`), la ficha explica que sin correo no falta nada, y el tablero abre con «Para hoy» y pliega lo que no es del turno sin quitar ningún bloque. 356 pruebas |
 | V5 revisión | 2026-09-21 | (rama `goldgym-v5`) | **Revisión de arquitectura de V5**: `service_role` fuera del código (la contraseña del socio se cambia con su propia sesión), inventario devuelto a su capa con capacidad y permisos propios (`enableInventory`, `inventory.read`/`inventory.manage`), su migración reescrita y **aplicada de verdad** (la anterior nunca se aplicó ni podía), Administración recupera la descarga de reportes, dependencias fijadas y `npm audit` a 0, código muerto retirado. 344 pruebas, batería RLS del inventario pasada |
 | V4.3 Inventario | 2026-09-18 | `e7ac79c`, `fedd507`, `29f5a8f` | **Módulo de Inventario y mejoras**: página `/panel/inventario` con `ModalNuevoProducto`, botón de reserva en la vitrina, monitor de ingresos, reportes en Excel, QR del socio en PDF y alias de correo por gimnasio. **Su migración se añadió pero NO se aplicó** (ver §13e: se reescribió y se aplicó el 2026-09-21) |
 | V4.2 GOLD V1 | 2026-09-16 | `cca427d` → `7600d75` (rama `feat/goldgym-v1`, en GitHub) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, `dpl_4w5XedNhQ68ED1Vs5eckJ67KEH8o`) | Encargo «GOLD'S GYM PREMIUM — V1», seis etapas. **Dos conflictos se resolvieron CON el usuario en vez de sobrescribir reglas**: los 3 accesos diarios contra «una entrada por socio y día» (decisión 20) → tabla `access_passes` aparte, `attendance_records` intacta; y el acceso multisede contra «la membresía vale en todas las sedes» (decisiones 19 y 24) → `membership_plans.branch_scope`, por defecto `todas`, con la migración comprobando que ningún plan existente cambió. Además: **foto de perfil** del socio en Storage privado (no un blob en Postgres) y **modal de identidad** al escanear, con todo el contenido venido del backend; **autorización nominal de clases** (`access_mode = 'autorizados'` + `class_session_admissions`) para eventos con invitados que no son socios; **historial de ingresos** filtrable y paginado en la base; **tableros por puesto** (el orden cambia, el contenido no); **clases del socio** con sus seis situaciones y agenda día → clase → hora → sede → disponibilidad → reservar; **correo de confirmación generado por marca** desde el registro de gimnasios. §18/§19/§20: confirmar el correo deja la sesión abierta en el panel, un fallo de red ya no cierra sesión y el 403 existe de verdad (`forbidden()` de Next 16). 5 migraciones aplicadas con autorización; batería RLS V4.2 (una corrección la encontró ella: la guarda de la foto bloqueaba también a quien no tiene sesión); 280 pruebas; build de 102 páginas |

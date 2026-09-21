@@ -78,8 +78,101 @@ const ORDEN: Readonly<Record<EnfoqueDeTablero, readonly BloqueDeTablero[]>> = {
   plataforma: ['socios', 'operacion', 'dinero', 'sucursales'],
 };
 
+/** Cómo se nombra cada puesto en pantalla. El enfoque sale de permisos, no del rol. */
+export const NOMBRE_DE_ENFOQUE: Readonly<Record<EnfoqueDeTablero, string>> = {
+  mostrador: 'Recepcion',
+  gerencia: 'Gerencia',
+  administracion: 'Administracion',
+  socio: 'Socio',
+  entrenador: 'Entrenador',
+  plataforma: 'Plataforma',
+};
+
 export function ordenDelTablero(enfoque: EnfoqueDeTablero): readonly BloqueDeTablero[] {
   return ORDEN[enfoque];
+}
+
+/**
+ * V5 · CUÁNTO SE ENSEÑA DE CADA BLOQUE AL ABRIR LA PÁGINA.
+ *
+ * El encargo del cliente fue claro: el tablero de recepción tiene que ser
+ * agradable y no saturar a quien no es del área. Pero «quitar» tampoco vale:
+ * recepción cobra, así que necesita el dinero a mano.
+ *
+ * La salida es la misma que usa cualquier panel de mostrador serio: lo del
+ * turno, abierto; lo demás, a un clic y con su título a la vista. Nada
+ * desaparece —ningún bloque se deja de dibujar— y quien quiera el detalle lo
+ * abre. Un plegado no es seguridad: lo de dentro es lo mismo que antes.
+ */
+export type ProfundidadDeBloque = 'abierto' | 'plegado';
+
+const PROFUNDIDAD: Readonly<Record<EnfoqueDeTablero, Readonly<Record<BloqueDeTablero, ProfundidadDeBloque>>>> = {
+  // Recepción: el turno. El dinero y las personas quedan a un clic.
+  mostrador: { operacion: 'abierto', dinero: 'plegado', socios: 'plegado', sucursales: 'plegado' },
+  // Gerencia responde por el dinero y por el día; el resto, a un clic.
+  gerencia: { dinero: 'abierto', operacion: 'abierto', socios: 'plegado', sucursales: 'plegado' },
+  // Administración mira el gimnasio entero, pero tampoco necesita todo abierto.
+  administracion: { dinero: 'abierto', operacion: 'abierto', socios: 'plegado', sucursales: 'plegado' },
+  socio: { operacion: 'abierto', dinero: 'abierto', socios: 'abierto', sucursales: 'abierto' },
+  entrenador: { operacion: 'abierto', dinero: 'abierto', socios: 'abierto', sucursales: 'abierto' },
+  plataforma: { socios: 'abierto', operacion: 'abierto', dinero: 'abierto', sucursales: 'abierto' },
+};
+
+export function profundidadDelBloque(enfoque: EnfoqueDeTablero, bloque: BloqueDeTablero): ProfundidadDeBloque {
+  return PROFUNDIDAD[enfoque][bloque];
+}
+
+/**
+ * El saludo de la cabecera, con la hora LOCAL DEL GIMNASIO (nunca la del
+ * servidor: a las 23:00 de La Paz el servidor ya está en el día siguiente).
+ */
+export function saludoDelTablero(hora: number): string {
+  if (hora < 12) return 'Buenos días';
+  if (hora < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+/**
+ * LO QUE NECESITA ATENCIÓN HOY.
+ *
+ * Un tablero que enseña doce números obliga a la persona a decidir cuál importa.
+ * Esto lo decide antes: convierte los contadores en una lista corta de cosas que
+ * alguien tiene que hacer, ordenada por urgencia, y vacía cuando no hay nada
+ * —que es una respuesta, no un hueco—.
+ */
+export type ClaveDeAtencion = 'comprobantes' | 'por-vencer' | 'vencidas' | 'sin-membresia' | 'sin-venir';
+
+export interface AsuntoDeAtencion {
+  readonly clave: ClaveDeAtencion;
+  readonly cantidad: number;
+  /** `urgente` se pinta con el color de acción; `aviso`, sin gritar. */
+  readonly tono: 'urgente' | 'aviso';
+}
+
+export interface ConteosDelDia {
+  /** Comprobantes subidos esperando revisión. */
+  readonly comprobantesPendientes: number;
+  /** Membresías que vencen en los próximos días. */
+  readonly porVencer: number;
+  readonly vencidas: number;
+  readonly sinMembresia: number;
+  readonly sinVenir7d: number;
+}
+
+/**
+ * Orden: primero lo que tiene a alguien esperando (un comprobante sin revisar
+ * es un socio que pagó y no puede entrenar), después lo que se pierde si nadie
+ * llama, y al final lo que conviene mirar.
+ */
+export function asuntosDelDia(conteos: ConteosDelDia): readonly AsuntoDeAtencion[] {
+  const asuntos: AsuntoDeAtencion[] = [
+    { clave: 'comprobantes', cantidad: conteos.comprobantesPendientes, tono: 'urgente' },
+    { clave: 'por-vencer', cantidad: conteos.porVencer, tono: 'urgente' },
+    { clave: 'vencidas', cantidad: conteos.vencidas, tono: 'aviso' },
+    { clave: 'sin-membresia', cantidad: conteos.sinMembresia, tono: 'aviso' },
+    { clave: 'sin-venir', cantidad: conteos.sinVenir7d, tono: 'aviso' },
+  ];
+  return asuntos.filter((asunto) => asunto.cantidad > 0);
 }
 
 export type ClaveDeAccionRapida =

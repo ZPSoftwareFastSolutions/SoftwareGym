@@ -19,6 +19,9 @@ import {
   enfoqueDeTablero,
   ordenDelTablero,
   type ContextoDeTablero,
+  asuntosDelDia,
+  profundidadDelBloque,
+  saludoDelTablero,
 } from '../src/core/domain/operations/tablero.ts';
 import {
   agruparPorDia,
@@ -251,5 +254,65 @@ describe('V4.2 · el horario del día que le toca a una fecha', () => {
   it('un día que el horario no nombra devuelve null, sin inventar horario', () => {
     assert.equal(diaDelHorario(semana, '2026-09-19'), null); // sábado, no declarado
     assert.equal(diaDelHorario(semana, 'no-es-una-fecha'), null);
+  });
+});
+
+describe('V5 · el tablero no satura: lo del turno abierto, el resto a un clic', () => {
+  it('recepción abre solo con la operación del día', () => {
+    assert.equal(profundidadDelBloque('mostrador', 'operacion'), 'abierto');
+    assert.equal(profundidadDelBloque('mostrador', 'dinero'), 'plegado');
+    assert.equal(profundidadDelBloque('mostrador', 'socios'), 'plegado');
+    assert.equal(profundidadDelBloque('mostrador', 'sucursales'), 'plegado');
+  });
+
+  it('gerencia y administración abren con el dinero Y la operación', () => {
+    for (const enfoque of ['gerencia', 'administracion'] as const) {
+      assert.equal(profundidadDelBloque(enfoque, 'dinero'), 'abierto');
+      assert.equal(profundidadDelBloque(enfoque, 'operacion'), 'abierto');
+    }
+  });
+
+  it('ningún bloque desaparece para nadie: plegar no es quitar', () => {
+    for (const enfoque of ['mostrador', 'gerencia', 'administracion'] as const) {
+      const bloques = ordenDelTablero(enfoque);
+      assert.equal(bloques.length, 4);
+      for (const bloque of bloques) {
+        assert.ok(['abierto', 'plegado'].includes(profundidadDelBloque(enfoque, bloque)));
+      }
+    }
+  });
+
+  it('el saludo va con la hora del gimnasio, no con la del servidor', () => {
+    assert.equal(saludoDelTablero(7), 'Buenos días');
+    assert.equal(saludoDelTablero(11), 'Buenos días');
+    assert.equal(saludoDelTablero(12), 'Buenas tardes');
+    assert.equal(saludoDelTablero(18), 'Buenas tardes');
+    assert.equal(saludoDelTablero(19), 'Buenas noches');
+    assert.equal(saludoDelTablero(23), 'Buenas noches');
+  });
+});
+
+describe('V5 · lo que necesita atención hoy', () => {
+  const NADA = { comprobantesPendientes: 0, porVencer: 0, vencidas: 0, sinMembresia: 0, sinVenir7d: 0 };
+
+  it('sin nada pendiente devuelve una lista vacía, que la pantalla sabe contestar', () => {
+    assert.deepEqual(asuntosDelDia(NADA), []);
+  });
+
+  it('solo aparece lo que tiene cantidad', () => {
+    const asuntos = asuntosDelDia({ ...NADA, comprobantesPendientes: 2, sinVenir7d: 5 });
+    assert.deepEqual(asuntos.map((a) => a.clave), ['comprobantes', 'sin-venir']);
+    assert.deepEqual(asuntos.map((a) => a.cantidad), [2, 5]);
+  });
+
+  it('primero lo que tiene a alguien esperando', () => {
+    // Un comprobante sin revisar es un socio que pagó y no puede entrenar:
+    // va antes que cualquier lista de seguimiento.
+    const asuntos = asuntosDelDia({ comprobantesPendientes: 1, porVencer: 3, vencidas: 4, sinMembresia: 2, sinVenir7d: 9 });
+    assert.deepEqual(asuntos.map((a) => a.clave), ['comprobantes', 'por-vencer', 'vencidas', 'sin-membresia', 'sin-venir']);
+    assert.deepEqual(
+      asuntos.filter((a) => a.tono === 'urgente').map((a) => a.clave),
+      ['comprobantes', 'por-vencer'],
+    );
   });
 });
