@@ -36,7 +36,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
           className={cn(
             'px-4 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 border',
             activeTab === 'atencion' 
-              ? 'bg-action text-black border-action shadow-[0_0_20px_rgba(57,255,20,0.3)]' 
+              ? 'bg-action text-black border-action shadow-[0_0_20px_rgb(var(--t-action-rgb)/0.3)]' 
               : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30 hover:text-white'
           )}
         >
@@ -50,7 +50,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
           className={cn(
             'px-4 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 border',
             activeTab === 'clases' 
-              ? 'bg-action text-black border-action shadow-[0_0_20px_rgba(57,255,20,0.3)]' 
+              ? 'bg-action text-black border-action shadow-[0_0_20px_rgb(var(--t-action-rgb)/0.3)]' 
               : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30 hover:text-white'
           )}
         >

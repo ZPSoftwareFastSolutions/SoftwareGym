@@ -37,7 +37,7 @@ export function AboutSection({ about }: AboutProps) {
                         isEven ? "md:flex-row-reverse" : ""
                       )}>
                         {/* Punto central */}
-                        <div className="absolute left-0 md:left-1/2 w-4 h-4 rounded-full bg-action -translate-x-[9px] md:-translate-x-1/2 shadow-[0_0_15px_rgba(57,255,20,0.8)] z-10" />
+                        <div className="absolute left-0 md:left-1/2 w-4 h-4 rounded-full bg-action -translate-x-[9px] md:-translate-x-1/2 shadow-[0_0_15px_rgb(var(--t-action-rgb)/0.8)] z-10" />
                         
                         {/* Contenido */}
                         <div className={cn(
@@ -76,7 +76,7 @@ export function AboutSection({ about }: AboutProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {about.values.map((value, index) => (
               <Reveal key={value.title} delay={index * 100} className="h-full">
-                <article className="group h-full bg-black/40 backdrop-blur-md border border-white/10 p-8 rounded-[2rem] transition-all duration-300 hover:border-action/40 hover:bg-black/60 hover:shadow-[0_0_30px_rgba(57,255,20,0.1)]">
+                <article className="group h-full bg-black/40 backdrop-blur-md border border-white/10 p-8 rounded-[2rem] transition-all duration-300 hover:border-action/40 hover:bg-black/60 hover:shadow-[0_0_30px_rgb(var(--t-action-rgb)/0.1)]">
                   <div className="w-14 h-14 bg-action/10 text-action rounded-2xl flex items-center justify-center mb-6 group-hover:bg-action group-hover:text-black transition-colors">
                     <Icon name={hasIcon(value.icon) ? value.icon : 'sparkle'} size={24} />
                   </div>

@@ -6,12 +6,19 @@
  * específica de este cliente, y en esta versión tampoco existe ninguna base de
  * datos: la landing entera se prerenderiza a partir de lo que hay aquí.
  *
- * Paleta oficial (manual de marca):
- *   Neón Eléctrico    #39FF14  — acción, foco, énfasis
+ * Paleta, derivada del LOGOTIPO OFICIAL que entregó el CEO (brand/mitico/):
+ *   Verde Mítico      #00FA2D  — el verde exacto del logo (90 % de sus píxeles
+ *                                verdes). Acción, foco, énfasis.
+ *   Verde Profundo    #00D126  — hover del botón principal
+ *   Verde Estructural #137224  — bloques y tarjetas (mismo matiz, 131°)
+ *   Verde de Barra    #0F3E17  — barras y controles superiores
  *   Negro Carbón      #1A1C1E  — superficie de tarjeta
- *   Verde Estructural #38761D  — bloques y tarjetas de servicio
- *   Verde de Barra    #1E5128  — barras de título y controles superiores
- *   Blanco / Gris     #FFFFFF / #C1C1C1 — texto y detalles sutiles
+ *   Blanco / Gris     #FFFFFF / #D1D1D1 — el contorno y el gris del logo
+ *
+ * Hasta la V3 el sitio usaba #39FF14, un neón más amarillento que el del logo.
+ * Con el logo en la cabecera la diferencia se veía lado a lado; todos los
+ * verdes se movieron al matiz del logo y conservan contraste AA o mejor
+ * (13,5:1 el texto del botón; 6:1 el blanco sobre el verde estructural).
  *
  * ─────────────────────────────────────────────────────────────────────────
  * ORIGEN DE LOS DATOS
@@ -79,19 +86,29 @@ export const miticoTenant: TenantConfig = {
       wordmark: 'Mítico',
       subMark: 'Fitness',
       monogram: 'M',
+      // Logotipo oficial (versión plana). Los archivos salen de
+      // `node scripts/generar-marca.mjs mitico` a partir de
+      // `brand/mitico/logo-plano.png`: no se editan a mano.
+      mark: { src: '/tenants/mitico/isotipo.png', width: 252, height: 192 },
+      full: { src: '/tenants/mitico/logo.png', width: 640, height: 637 },
+      icons: {
+        favicon: '/tenants/mitico/favicon.ico',
+        icon: '/tenants/mitico/icon-192.png',
+        apple: '/tenants/mitico/apple-icon.png',
+      },
     },
     palette: {
-      primary: '#39FF14',
-      primaryStrong: '#2BD40D',
-      structural: '#38761D',
-      structuralDeep: '#1E5128',
+      primary: '#00FA2D',
+      primaryStrong: '#00D126',
+      structural: '#137224',
+      structuralDeep: '#0F3E17',
       surface: '#0C0E0F',
       surfaceRaised: '#131617',
       surfaceCard: '#1A1C1E',
       text: '#FFFFFF',
-      textMuted: '#9BA49B',
-      border: '#252A26',
-      accent: '#C1C1C1',
+      textMuted: '#98A49A',
+      border: '#252C26',
+      accent: '#D1D1D1',
     },
     typography: {
       display: 'var(--font-display-condensed), "Arial Narrow", sans-serif',

@@ -47,7 +47,7 @@ export function ServicesSection({ services }: ServicesProps) {
                   className={cn(
                     'group relative h-full flex flex-col justify-between overflow-hidden rounded-[32px]',
                     'bg-white/5 backdrop-blur-xl border border-white/10',
-                    'transition-all duration-500 hover:border-action/50 hover:bg-white/10 hover:shadow-[0_0_40px_rgba(57,255,20,0.1)]',
+                    'transition-all duration-500 hover:border-action/50 hover:bg-white/10 hover:shadow-[0_0_40px_rgb(var(--t-action-rgb)/0.1)]',
                     isFeatured ? 'p-10' : 'p-8'
                   )}
                 >

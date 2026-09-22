@@ -18,6 +18,7 @@ import { notFound } from 'next/navigation';
 import { browserColorScheme, buildThemeVariables } from '@core/application/theming/build-theme';
 import { getTenantBySlug, listTenantSlugs, visibleNavigation } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
+import { iconosDeMarca } from '@/lib/brand-icons';
 import { SiteFooter } from '@/presentation/patterns/SiteFooter';
 import { SiteHeader } from '@/presentation/patterns/SiteHeader';
 import { WhatsAppFab } from '@/presentation/patterns/WhatsAppFab';
@@ -53,6 +54,7 @@ export async function generateMetadata({ params }: TenantLayoutProps): Promise<M
 
   return {
     title: { default: seo.title, template: seo.titleTemplate },
+    icons: iconosDeMarca(tenant.branding.logo),
     description: seo.description,
     keywords: [...seo.keywords],
     applicationName: name,

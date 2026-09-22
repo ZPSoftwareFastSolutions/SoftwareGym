@@ -32,7 +32,7 @@ export function MarqueeStrip({ items }: MarqueeStripProps) {
   return (
     <div
       data-print="hide"
-      className="relative overflow-hidden py-10 my-10 perspective-[1000px] border-y border-white/5 bg-black/40 backdrop-blur-md shadow-[0_0_50px_rgba(57,255,20,0.05)]"
+      className="relative overflow-hidden py-10 my-10 perspective-[1000px] border-y border-white/5 bg-black/40 backdrop-blur-md shadow-[0_0_50px_rgb(var(--t-action-rgb)/0.05)]"
       style={{
         maskImage: 'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent)',
         WebkitMaskImage: 'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent)',

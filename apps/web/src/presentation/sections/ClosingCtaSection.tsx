@@ -37,7 +37,7 @@ export function ClosingCtaSection({ cta, contact, slug }: ClosingCtaProps) {
                 <LinkButton
                   href={tenantHref(slug, 'contacto')}
                   size="lg"
-                  className="bg-action text-black hover:bg-action/90 hover:scale-105 hover:shadow-[0_0_30px_rgba(57,255,20,0.4)] h-16 px-10 text-lg font-bold border-none transition-all duration-300"
+                  className="bg-action text-black hover:bg-action/90 hover:scale-105 hover:shadow-[0_0_30px_rgb(var(--t-action-rgb)/0.4)] h-16 px-10 text-lg font-bold border-none transition-all duration-300"
                 >
                   {cta.label || 'VAMOS CON TODO'}
                 </LinkButton>

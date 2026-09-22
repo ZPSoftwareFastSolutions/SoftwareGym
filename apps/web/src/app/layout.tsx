@@ -14,6 +14,10 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Bebas_Neue, Fraunces, Inter } from 'next/font/google';
+import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
+import { tenantRepository } from '@infra/config/composition-root';
+import { DEFAULT_TENANT_SLUG } from '@infra/tenants/tenant.registry';
+import { iconosDeMarca } from '@/lib/brand-icons';
 import '@/styles/globals.css';
 
 const bodySans = Inter({
@@ -45,10 +49,17 @@ const displaySerif = Fraunces({
  * del producto. El título lo pone el layout del gimnasio, que es quien sabe
  * cómo se llama el sitio; esta capa solo aporta lo que no depende del cliente.
  */
-export const metadata: Metadata = {
-  authors: [{ name: 'ZP Software Fast Solutions' }],
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // La 404 global queda fuera del layout del gimnasio. Sin esto, es la única
+  // página del sitio que aparece en la pestaña con el icono genérico.
+  const porDefecto = await getTenantBySlug(tenantRepository(), DEFAULT_TENANT_SLUG);
+
+  return {
+    authors: [{ name: 'ZP Software Fast Solutions' }],
+    robots: { index: true, follow: true },
+    icons: porDefecto ? iconosDeMarca(porDefecto.branding.logo) : undefined,
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',

@@ -186,7 +186,7 @@ export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
 
         <button
           type="submit"
-          className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-action px-6 font-bold text-black transition-all hover:scale-[1.02] hover:bg-action/90 hover:shadow-[0_0_20px_rgba(57,255,20,0.3)] disabled:opacity-50"
+          className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-action px-6 font-bold text-black transition-all hover:scale-[1.02] hover:bg-action/90 hover:shadow-[0_0_20px_rgb(var(--t-action-rgb)/0.3)] disabled:opacity-50"
         >
           <Icon name="whatsapp" size={20} />
           Enviar por WhatsApp

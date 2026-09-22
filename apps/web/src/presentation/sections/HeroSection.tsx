@@ -20,7 +20,7 @@ export function HeroSection({ hero, slug, sedes }: HeroProps) {
         <div className="flex flex-col items-center text-center space-y-8">
           
           <Reveal delay={0}>
-            <div className="inline-flex items-center gap-2 rounded-full border border-action/40 bg-action/10 px-5 py-2 text-sm font-medium text-action backdrop-blur-md shadow-[0_0_15px_rgba(57,255,20,0.2)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-action/40 bg-action/10 px-5 py-2 text-sm font-medium text-action backdrop-blur-md shadow-[0_0_15px_rgb(var(--t-action-rgb)/0.2)]">
               <Icon name="sparkle" size={16} />
               <span>{sedes && sedes.length > 0 ? sedes.join(' • ') : 'El olimpo del fitness'}</span>
             </div>
@@ -50,7 +50,7 @@ export function HeroSection({ hero, slug, sedes }: HeroProps) {
               <LinkButton
                 href={tenantHref(slug, `${hero.primaryCta.segment}`)}
                 size="lg"
-                className="bg-action text-black hover:bg-action/90 hover:scale-105 hover:shadow-[0_0_30px_rgba(57,255,20,0.4)] h-14 px-8 text-lg font-bold border-none transition-all duration-300"
+                className="bg-action text-black hover:bg-action/90 hover:scale-105 hover:shadow-[0_0_30px_rgb(var(--t-action-rgb)/0.4)] h-14 px-8 text-lg font-bold border-none transition-all duration-300"
               >
                 {hero.primaryCta.label}
               </LinkButton>

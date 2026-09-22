@@ -19,7 +19,7 @@ export function PlanCard({ plan, href }: PlanCardProps) {
         'relative flex flex-col h-full w-full max-w-[400px] mx-auto rounded-[32px] overflow-hidden',
         'backdrop-blur-xl border transition-all duration-500',
         featured
-          ? 'bg-[#121a14]/80 border-action/50 shadow-[0_0_50px_rgba(57,255,20,0.15)] z-20 md:-translate-y-4 md:scale-[1.05]'
+          ? 'bg-[#121a14]/80 border-action/50 shadow-[0_0_50px_rgb(var(--t-action-rgb)/0.15)] z-20 md:-translate-y-4 md:scale-[1.05]'
           : 'bg-black/60 border-white/10 hover:border-white/30 z-10'
       )}
     >

@@ -25,7 +25,7 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
       <div className="shell relative py-10 lg:py-12">
         <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr_1fr] items-start">
           <div className="flex flex-col gap-4">
-            <Logo logo={branding.logo} href={tenantHref(slug, 'v2')} name={name} />
+            <Logo logo={branding.logo} href={tenantHref(slug)} name={name} />
             <p className="text-white/60 text-sm max-w-sm leading-relaxed">{tenant.tagline}.</p>
             <div className="mt-2">
               <SocialLinks social={social} name={name} />

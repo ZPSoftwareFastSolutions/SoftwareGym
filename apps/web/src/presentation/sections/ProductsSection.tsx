@@ -22,7 +22,7 @@ export function ProductsSection({ categories, contact, slug }: ProductsProps) {
         <div className="flex overflow-x-auto pb-8 -mx-6 px-6 snap-x snap-mandatory hide-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-8 md:overflow-visible md:pb-0 md:mx-0 md:px-0">
           {categories.map((cat, idx) => (
             <Reveal key={cat.name} delay={idx * 150} className="w-[85vw] min-w-[300px] max-w-[350px] snap-center shrink-0 md:w-auto md:min-w-0 md:max-w-none md:h-full">
-              <article className="group relative flex flex-col h-full bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-8 transition-all duration-500 hover:scale-105 hover:bg-white/10 hover:border-action/30 hover:shadow-[0_0_40px_rgba(57,255,20,0.1)]">
+              <article className="group relative flex flex-col h-full bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-8 transition-all duration-500 hover:scale-105 hover:bg-white/10 hover:border-action/30 hover:shadow-[0_0_40px_rgb(var(--t-action-rgb)/0.1)]">
                 <h4 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>
                   {cat.name}
                 </h4>

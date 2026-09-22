@@ -10,8 +10,30 @@
  * Esta función es la puerta: si un tenant está mal configurado, el build falla.
  */
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseCssColor, parseTenantSlug } from '@core/domain/shared/branding.types';
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
+
+/**
+ * Ruta de un recurso de marca: absoluta dentro del sitio, sin `..`, sin
+ * protocolo y con una extensión de imagen. Termina en un atributo `src` o en un
+ * `<link rel="icon">`: una ruta `//otro-dominio` o `javascript:` ahí sería
+ * cargar contenido ajeno con la identidad del gimnasio.
+ */
+const RUTA_DE_MARCA = /^\/(?!\/)[a-z0-9][a-z0-9/_.-]*\.(png|webp|svg|ico|jpg|jpeg)$/i;
+
+/**
+ * Carpeta `public/` de la aplicación, si se puede ver desde aquí.
+ *
+ * El build y las pruebas corren desde `apps/web`, así que ahí está. Si algún
+ * día el validador corre desde otro sitio, la comprobación de existencia se
+ * omite en vez de fallar por una ruta relativa: la de formato sigue en pie.
+ */
+const CARPETA_PUBLICA = (() => {
+  const ruta = join(process.cwd(), 'public');
+  return existsSync(ruta) ? ruta : null;
+})();
 
 export class InvalidTenantConfigError extends Error {
   constructor(slug: string, issues: readonly string[]) {
@@ -51,6 +73,32 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
 
   if (!/^-?[\d.]+(em|rem|px|%)?$/.test(tenant.branding.typography.headingTracking)) {
     issues.push('branding.typography.headingTracking debe ser una longitud CSS válida.');
+  }
+
+  // --- Recursos de marca -------------------------------------------------
+  //
+  // Un favicon o un isotipo que apunta a un archivo que no está en `public/`
+  // no rompe nada visible en el build: sale un 404 en cada página y la
+  // cabecera queda con un hueco. Por eso se comprueba aquí, que es donde se
+  // puede parar el despliegue.
+  const logo = tenant.branding.logo;
+  const recursos: [string, string][] = [];
+  for (const [clave, imagen] of [['mark', logo.mark], ['full', logo.full]] as const) {
+    if (!imagen) continue;
+    recursos.push([`branding.logo.${clave}.src`, imagen.src]);
+    if (!(imagen.width > 0 && imagen.height > 0)) {
+      issues.push(`branding.logo.${clave}: width y height deben ser mayores que cero.`);
+    }
+  }
+  if (logo.icons) {
+    for (const [clave, ruta] of Object.entries(logo.icons)) recursos.push([`branding.logo.icons.${clave}`, ruta]);
+  }
+  for (const [campo, ruta] of recursos) {
+    if (!RUTA_DE_MARCA.test(ruta) || ruta.includes('..')) {
+      issues.push(`${campo}: "${ruta}" debe ser una ruta del sitio a una imagen (/tenants/<slug>/archivo.png).`);
+    } else if (CARPETA_PUBLICA && !existsSync(join(CARPETA_PUBLICA, ruta))) {
+      issues.push(`${campo}: no existe public${ruta}. ¿Falta ejecutar scripts/generar-marca.mjs?`);
+    }
   }
 
   const glow = tenant.branding.shape.glowIntensity;

@@ -30,7 +30,7 @@ export function BranchesSection({ sedes, slug }: BranchesProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
           {sedes.map((sede, index) => (
             <Reveal key={sede.name} delay={index * 150} className="h-full">
-              <article className="group relative h-full flex flex-col p-8 md:p-12 overflow-hidden rounded-[32px] bg-black/40 backdrop-blur-xl border border-white/10 transition-all duration-500 hover:border-action/40 hover:bg-black/60 hover:shadow-[0_0_50px_rgba(57,255,20,0.1)]">
+              <article className="group relative h-full flex flex-col p-8 md:p-12 overflow-hidden rounded-[32px] bg-black/40 backdrop-blur-xl border border-white/10 transition-all duration-500 hover:border-action/40 hover:bg-black/60 hover:shadow-[0_0_50px_rgb(var(--t-action-rgb)/0.1)]">
                 {/* Aura de fondo */}
                 <div className="absolute -top-32 -right-32 w-64 h-64 bg-action/20 blur-[100px] rounded-full group-hover:bg-action/40 transition-colors duration-700 pointer-events-none" />
                 

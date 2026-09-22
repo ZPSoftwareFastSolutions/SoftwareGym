@@ -63,13 +63,50 @@ export interface BrandShape {
   readonly showGrid: boolean;
 }
 
+/**
+ * Imagen de marca servida desde `public/`.
+ *
+ * Lleva sus dimensiones porque la cabecera la pinta antes de que la imagen
+ * llegue: sin ancho y alto el navegador no puede reservar el hueco y la
+ * navegación salta de sitio al cargar.
+ */
+export interface BrandImage {
+  /** Ruta dentro del sitio: `/tenants/<slug>/isotipo.png`. */
+  readonly src: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Iconos del navegador. Salen de `scripts/generar-marca.mjs`, que los genera
+ * todos a partir del mismo logotipo maestro.
+ */
+export interface BrandIcons {
+  /** `.ico` multitamaño: lo piden navegadores antiguos y quien llama a `/favicon.ico`. */
+  readonly favicon: string;
+  /** PNG cuadrado de 192 px o más, para pestañas de alta densidad y Android. */
+  readonly icon: string;
+  /** PNG de 180 × 180 opaco para la pantalla de inicio de iOS. */
+  readonly apple: string;
+}
+
 export interface BrandLogo {
-  /** Texto del logotipo (se compone tipográficamente, no es imagen). */
+  /** Texto del logotipo, compuesto con la tipografía de la marca. */
   readonly wordmark: string;
   /** Palabra secundaria bajo el wordmark. */
   readonly subMark: string;
-  /** Monograma de 1–2 letras para el favicon y la marca compacta. */
+  /** Monograma de 1–2 letras: la marca compacta mientras no haya isotipo. */
   readonly monogram: string;
+  /**
+   * Isotipo gráfico entregado por el cliente. Si falta, la cabecera compone el
+   * monograma con tipografía: ningún gimnasio queda sin marca por no haber
+   * entregado todavía su archivo.
+   */
+  readonly mark?: BrandImage;
+  /** Logotipo completo (isotipo más nombre), para usos grandes. */
+  readonly full?: BrandImage;
+  /** Iconos de pestaña. Si faltan, el navegador muestra el suyo por defecto. */
+  readonly icons?: BrandIcons;
 }
 
 export interface TenantBranding {

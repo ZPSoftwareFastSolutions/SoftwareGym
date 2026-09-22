@@ -62,7 +62,7 @@ export function TrainingPlansSection({ plans, slug }: TrainingPlansProps) {
                 <article className={cn(
                   "group relative h-full flex flex-col p-8 overflow-hidden rounded-[32px] bg-black/60 border transition-all duration-500",
                   plan.featured 
-                    ? "border-action/50 shadow-[0_0_30px_rgba(57,255,20,0.15)] md:-translate-y-2 md:scale-[1.02] z-20" 
+                    ? "border-action/50 shadow-[0_0_30px_rgb(var(--t-action-rgb)/0.15)] md:-translate-y-2 md:scale-[1.02] z-20" 
                     : "border-white/10 hover:border-white/30 z-10 hover:-translate-y-1 hover:shadow-2xl"
                 )}>
                   {/* Fondo temático */}

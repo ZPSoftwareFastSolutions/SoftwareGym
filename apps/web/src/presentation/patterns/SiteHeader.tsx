@@ -13,6 +13,11 @@
  * Es cliente porque necesita el scroll y el estado del menú. Recibe la
  * navegación YA FILTRADA por feature flags desde el layout (servidor): la
  * decisión de qué mostrar es del dominio, no de la cabecera.
+ *
+ * IDENTIDAD (V4). La cabecera lleva el isotipo oficial y sus acentos salen del
+ * mismo verde del logo, a través del token `--t-action-rgb`: el filo inferior
+ * al hacer scroll, la línea del enlace activo y su brillo. Ningún color está
+ * escrito aquí; si el gimnasio cambia de verde, la cabecera lo sigue sola.
  */
 
 import Link from 'next/link';
@@ -80,23 +85,10 @@ export function SiteHeader({
     };
   }, [menuOpen]);
 
-  const isV2 = pathname.startsWith(`/${slug}/v2`);
-
-  const resolveHref = (segment: string) => {
-    if (isV2) {
-      if (segment === '') return `/${slug}/v2`;
-      return `/${slug}/v2/${segment}`;
-    }
-    return tenantHref(slug, segment);
-  };
+  const resolveHref = (segment: string) => tenantHref(slug, segment);
 
   const isActive = (segment: string): boolean => {
     const href = resolveHref(segment);
-    if (isV2) {
-      // En V2 (Single Page), no hay rutas activas marcadas excepto si comparamos hashes en el cliente, 
-      // pero por simplicidad de SSR, podemos dejar el Inicio activo si no hay hash.
-      return segment === '' ? pathname === `/${slug}/v2` : false;
-    }
     return segment === '' ? pathname === href : pathname.startsWith(href);
   };
 
@@ -106,7 +98,7 @@ export function SiteHeader({
       className={cn(
         'fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300',
         scrolled || menuOpen
-          ? 'border-b border-line bg-[color-mix(in_srgb,var(--t-surface)_88%,transparent)] backdrop-blur-xl'
+          ? 'border-b border-[rgb(var(--t-action-rgb)/0.16)] bg-[color-mix(in_srgb,var(--t-surface)_90%,transparent)] shadow-[0_12px_32px_-22px_rgb(var(--t-action-rgb)/0.45)] backdrop-blur-xl'
           : 'border-b border-transparent bg-transparent',
       )}
       style={{ height: 'var(--header-height)' }}
@@ -124,16 +116,20 @@ export function SiteHeader({
                     href={resolveHref(item.segment)}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'relative inline-flex h-11 items-center whitespace-nowrap px-3.5 text-[0.86rem] font-medium',
+                      // Diez enlaces más el logo no caben holgados a 1024 px: el
+                      // relleno se aprieta hasta `xl` para que el botón de la
+                      // derecha no tenga que encogerse y cortar su texto.
+                      'relative inline-flex h-11 items-center whitespace-nowrap px-2.5 text-[0.86rem] font-medium xl:px-3.5',
                       'rounded-[var(--t-radius-sm)] transition-colors duration-200',
-                      active ? 'text-action' : 'text-muted hover:text-ink',
+                      active ? 'text-action' : 'text-ink/70 hover:text-ink',
                     )}
                   >
                     {item.label}
                     <span
                       aria-hidden="true"
                       className={cn(
-                        'absolute inset-x-3.5 bottom-1.5 h-px origin-left bg-action transition-transform duration-300',
+                        'absolute inset-x-2.5 bottom-1.5 h-0.5 origin-left rounded-full bg-action transition-transform duration-300 xl:inset-x-3.5',
+                        'shadow-[0_0_10px_rgb(var(--t-action-rgb)/0.75)]',
                         active ? 'scale-x-100' : 'scale-x-0',
                       )}
                     />
@@ -144,7 +140,7 @@ export function SiteHeader({
           </ul>
         </nav>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2.5">
           <span className="hidden sm:contents">
             <LinkButton href={resolveHref(ctaSegment)} variant="primary" size="sm">
               {ctaLabel}
@@ -194,7 +190,7 @@ export function SiteHeader({
                   )}
                 >
                   <span className="flex items-baseline gap-3">
-                    <span className="text-[0.68rem] font-mono text-muted">
+                    <span className="text-[0.68rem] font-mono text-action/70">
                       {String(index + 1).padStart(2, '0')}
                     </span>
                     {item.label}

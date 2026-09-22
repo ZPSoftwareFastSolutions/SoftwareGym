@@ -4,7 +4,10 @@
 > carga al abrir una sesión. **Describe el sistema tal como está HOY en esta
 > rama**, no cómo se llegó hasta aquí.
 >
-> - **Última actualización:** 2026-09-16 · creación de la rama `miticogym-v1`
+> - **Última actualización:** 2026-09-22 · rama `miticogym-v4`: logotipo oficial
+>   en la cabecera y como favicon, paleta alineada con el verde del logo
+>   (`#00FA2D`). Ver §5 «Marca» y §9.
+> - Antes: 2026-09-16 · creación de la rama `miticogym-v1`
 >   desde `feat/goldgym-v1`: landing de Mítico Fitness con los datos oficiales
 >   del cliente, **sin panel, sin sesión y sin base de datos**.
 > - **Decisión que define la rama:** [ADR 0012](docs/architecture/adr/0012-landing-sin-base-de-datos.md).
@@ -378,6 +381,17 @@ prueba lo fija (`ningún paquete invita a pagar en la página`).
   mensaje de WhatsApp con lo que la persona escribió y abre la conversación. No
   envía, no guarda y no deja rastro.
 - **Impresión:** `@media print` en `globals.css` + `data-print="hide"`.
+- **Marca (V4).** El logotipo oficial vive en `apps/web/brand/<slug>/logo-plano.png`
+  (maestro, no se sirve). `node scripts/generar-marca.mjs <slug>` genera desde él
+  `public/tenants/<slug>/`: `logo.png`, `isotipo.png` (recorte automático del
+  primer bloque del logo), `favicon.ico` (16/32/48), `icon-192/512.png` y
+  `apple-icon.png`. Se declaran en `branding.logo.mark`, `.full` e `.icons`; el
+  validador comprueba formato de ruta y **que el archivo exista** en `public/`.
+  `ui/Logo.tsx` usa el isotipo si hay, y si no el monograma tipográfico. Los
+  iconos se emiten por metadatos desde la configuración (`lib/brand-icons.ts`),
+  no con `app/icon.png`, que sería global; `/favicon.ico` en la raíz lo sirve
+  `app/favicon.ico/route.ts` (estática). **Ningún componente escribe un verde a
+  mano:** los brillos usan `rgb(var(--t-action-rgb)/α)`, que sale de la paleta.
 
 ---
 
@@ -510,6 +524,7 @@ producción: exactamente esos códigos.
 
 | Fecha | Qué pasó |
 |---|---|
+| 2026-09-22 | **`miticogym-v4`** (desde `miticogym-v3`). Logotipo oficial del CEO (versión plana `MF PNG.png`; el render 3D en pared se descartó) como isotipo de la cabecera y del pie, y como favicon completo (`.ico` 16/32/48, 192, 512, Apple 180), todo generado por `scripts/generar-marca.mjs` desde un maestro en `brand/mitico/`. Paleta movida al verde exacto del logo, `#00FA2D` (antes `#39FF14`), con tonos derivados del mismo matiz y contraste AA o mejor. Los 17 verdes escritos a mano en componentes pasan al token `--t-action-rgb`. Cabecera: sin la lógica muerta de `/v2`, filo y línea activa en el verde de la marca, botón que no se corta a 1024 px. El logo del pie enlazaba a `/mitico/v2` (404): corregido. Validador: rutas de marca y existencia de archivos. 29 pruebas; build de 10 páginas; `npm audit` 0. |
 | 2026-09-16 | **Creación de `miticogym-v1`** desde `feat/goldgym-v1`. Se borran panel, acceso, cobro por QR, middleware, autenticación, los 12 adaptadores de Supabase, los 13 puertos operativos, `core/domain/operations`, los otros dos gimnasios del registro y las carpetas `supabase/`. Las flags de operación salen del contrato. Sedes, horarios y clases pasan a `TenantConfig` con **los datos oficiales de los dos documentos del cliente**; los paquetes con dos precios usan `altPrice`; el botón vuelve a «Consultar». Instalaciones, horarios y clases se presentan en pestañas por sucursal. Equipo y testimonios se apagan por no tener datos reales. El formulario de contacto pasa a componer el mensaje de WhatsApp en vez de perder lo escrito. ADR 0012; 24 pruebas; build de 10 páginas estáticas; `npm audit` 0. |
 
 **De dónde viene esta rama.** `feat/goldgym-v1` = V4.1 del producto completo

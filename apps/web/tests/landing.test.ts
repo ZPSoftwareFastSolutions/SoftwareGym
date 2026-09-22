@@ -364,3 +364,52 @@ test('los precios de dos sucursales son los del tarifario', () => {
     ],
   );
 });
+
+// ------------------------------------------------------- logotipo (V4)
+
+test('el logotipo oficial está configurado y sus archivos existen', () => {
+  const logo = miticoTenant.branding.logo;
+  assert.ok(logo.mark, 'falta el isotipo');
+  assert.ok(logo.icons, 'faltan los iconos del navegador');
+  // La configuración entera ya se validó arriba, incluida la existencia de
+  // cada archivo en public/. Aquí se fija que el isotipo es el recortado.
+  assert.equal(logo.mark.src, '/tenants/mitico/isotipo.png');
+});
+
+test('una ruta de marca a otro dominio se rechaza', () => {
+  for (const ruta of ['//evil.example/logo.png', 'https://evil.example/logo.png', 'javascript:alert(1)']) {
+    const issues = validateTenantConfig(
+      roto((t) => {
+        t.branding.logo.mark.src = ruta;
+      }),
+    );
+    assert.ok(issues.some((i) => i.includes('branding.logo.mark.src')), `aceptó ${ruta}`);
+  }
+});
+
+test('una ruta de marca que sale de public/ con .. se rechaza', () => {
+  const issues = validateTenantConfig(
+    roto((t) => {
+      t.branding.logo.icons.favicon = '/tenants/../../secreto.png';
+    }),
+  );
+  assert.ok(issues.some((i) => i.includes('branding.logo.icons.favicon')));
+});
+
+test('un icono que no está en public/ para el build', () => {
+  const issues = validateTenantConfig(
+    roto((t) => {
+      t.branding.logo.icons.apple = '/tenants/mitico/no-existe.png';
+    }),
+  );
+  assert.ok(issues.some((i) => i.includes('no existe public/tenants/mitico/no-existe.png')));
+});
+
+test('un isotipo sin dimensiones no pasa', () => {
+  const issues = validateTenantConfig(
+    roto((t) => {
+      t.branding.logo.mark.width = 0;
+    }),
+  );
+  assert.ok(issues.some((i) => i.includes('branding.logo.mark')));
+});
