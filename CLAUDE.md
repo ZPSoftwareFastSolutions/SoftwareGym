@@ -4,7 +4,7 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-21 · **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada** (ver §13e). Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
+> - **Última actualización:** 2026-09-21 · **V5 · la tarjeta de QR se DIBUJA en el PDF: se acabaron el QR achatado, las letras partidas y el token fuera del marco** (ver §13e). Antes: **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada**. Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
 > - **Rama de trabajo vigente:** `goldgym-v5` (cadena `feat/goldgym-v1` -> `goldgym-v2` -> ... -> `goldgym-v5`). **Esta rama sirve SOLO a GOLD**: los archivos de Mitico y Aurora se retiraron del registro de tenants (sus landings viven en `miticogym-v3`). El producto sigue siendo enlatado —nada en `src` nombra a un cliente—, pero un despliegue de esta rama ya no responde `/mitico` ni `/aurora-fit`. Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
@@ -2131,7 +2131,8 @@ Lo que traen `goldgym-v2` … `goldgym-v5`, revisado el 2026-09-21 contra las re
   foto, su estado y su racha. Se comunica por eventos de `localStorage` entre pestañas del MISMO navegador (no hay
   WebSocket: el cliente de navegador que se importaba estaba sin usar y se retiró).
 - **Reportes en Excel** (`/panel/reportes/[reporte]/excel`, exceljs en servidor) en lugar del CSV.
-- **QR del socio en PDF** (`/panel/socios/[id]/imprimir-qr`, jspdf + html2canvas).
+- **QR del socio en PDF** (`/panel/socios/[id]/imprimir-qr`). Llegó fotografiando la vista previa con html2canvas;
+  se reescribió el 2026-09-21 para dibujarlo con las primitivas del PDF (más abajo).
 - **Alias de correo por gimnasio** (`mutarEmailParaTenant`): la misma persona puede ser socia de dos gimnasios con su
   correo, porque en Auth se guarda `nombre+slug@dominio`. **Cambia la decisión de V4.2** («una cuenta por correo para
   toda la plataforma»); la ficha guarda el correo con alias y las pantallas lo muestran limpio.
@@ -2187,6 +2188,38 @@ recepción sea agradable en vez de una pared de números.
   ordenada por urgencia (`asuntosDelDia`) con lo que alguien tiene que hacer. Sin nada pendiente dice «Todo al día»,
   que es una respuesta; un hueco no lo es.
 
+**La tarjeta de QR se dibuja, no se fotografía (2026-09-21).** El cliente imprimió la tarjeta y trajo tres
+defectos que en la pantalla no se veían: el QR salía achatado —y un QR achatado escanea mal—, las letras aparecían
+partidas por la mitad y el token de 24 caracteres se salía del marco de corte.
+
+La causa era una sola: el PDF se hacía rasterizando la vista previa con `html2canvas` y estirando esa imagen hasta
+cubrir la hoja. La vista previa tenía SIEMPRE proporción A4, así que en Carta u Oficio todo se deformaba; el texto,
+al ser un mapa de bits reescalado, perdía los trazos finos; y nadie medía si el token cabía.
+
+- **`core/domain/operations/impresion-de-qr.ts`** (dominio puro, en milímetros de la hoja real): las tres hojas
+  (`carta`, `oficio`, `a4`), la celda de cada posición de la rejilla, el reparto vertical de la tarjeta
+  (`distribucionDeTarjeta`), el token partido en líneas (`lineasDelToken`), el cuerpo de letra que cabe
+  (`cuerpoQueCabe`) y los tramos contiguos de cada fila del QR (`tramosDeFila`, que evita dibujar miles de
+  rectángulos sueltos). **La vista previa y el PDF leen estos mismos números**, así que lo que se ve es lo que sale.
+- **`presentation/patterns/qr-pdf.ts`**: el dibujo, contra una interfaz mínima (`LienzoDePdf`) en vez de atarse a
+  jsPDF. El texto es texto —nítido a cualquier zoom y se puede copiar—, el QR son rectángulos calculados desde su
+  matriz (cuadrado exacto) y la línea base va al PIE de cada recuadro, que es lo que arreglaba las letras cortadas.
+  Importa el dominio por ruta RELATIVA y con extensión `.ts` a propósito: su prueba corre con `node --test`, sin
+  empaquetador que resuelva `@core/*`.
+- **La matriz del QR se calcula en el SERVIDOR** (`matrizQr`, en la página): `qrcode-generator` no entra al paquete
+  del navegador (§2.8); al cliente solo llegan booleanos. `jspdf` baja por `import()` diferido, solo al pulsar
+  «Descargar PDF».
+- **`html2canvas` y `file-saver` se retiraron** de las dependencias: ya no hace falta ni fotografiar ni un ayudante
+  para guardar el archivo.
+- **Pruebas que miran dónde cae cada trazo** (`tests/v5-pdf-de-la-tarjeta.test.ts`): ejecutan el mismo
+  `dibujarTarjetaQr` que corre en el navegador contra un lienzo de mentira que apunta cada orden de dibujo, y
+  comprueban en las tres hojas que nada se sale del marco, que el token se imprime entero en dos líneas, que un
+  nombre larguísimo encoge en vez de desbordarse, que dos textos nunca comparten línea base y que el recuadro del QR
+  es cuadrado. Un defecto de papel no lo encuentra un typecheck; lo encuentra saber en qué coordenada acabó cada cosa.
+
+**Estado (2026-09-21, tarjeta de QR):** typecheck limpio · **379 pruebas** (35 nuevas: 28 de geometría y 7 de dibujo)
+· `npm run build` correcto.
+
 **Pendiente de esta rama:**
 1. **Revisión humana con sesión** del tablero de recepción (es lo único que no puede ver el asistente), del
    inventario, el monitor de ingresos, el Excel de reportes y el QR en PDF.
@@ -2194,8 +2227,9 @@ recepción sea agradable en vez de una pared de números.
    una fila en `role_permissions`, no un cambio de código.
 3. **El alias de correo por gimnasio** conviene probarlo con un proveedor que no admita `+` en la parte local, y
    decidir qué pasa con los correos que ya tienen `+` antes del alias.
-4. `jspdf`, `html2canvas` y `exceljs` pesan y contradicen la decisión 15 («PDF = impresión del navegador»): si el PDF
-   del QR y el Excel se quedan, conviene anotarlo como decisión revisada en vez de dejarla contradicha.
+4. `jspdf` y `exceljs` pesan y contradicen la decisión 15 («PDF = impresión del navegador»): si el PDF del QR y el
+   Excel se quedan, conviene anotarlo como decisión revisada en vez de dejarla contradicha. (`html2canvas` y
+   `file-saver` ya salieron al reescribir la tarjeta de QR.)
 
 ---
 ## 14. Historial de versiones
@@ -2203,6 +2237,7 @@ recepción sea agradable en vez de una pared de números.
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
 | V5 alta y tablero | 2026-09-21 | (rama `goldgym-v5`) | **Alta por recepción de punta a punta y tablero del mostrador**: el login acepta las cuentas anteriores al alias de correo (cuatro cuentas reales de GOLD no podían entrar), el enlace de acceso va a la cuenta que ya existe en vez de crear otra, la base empareja cuenta y ficha por correo base (migración `20260921110000`), la ficha explica que sin correo no falta nada, y el tablero abre con «Para hoy» y pliega lo que no es del turno sin quitar ningún bloque. 356 pruebas |
+| V5 QR en PDF | 2026-09-21 | (rama `goldgym-v5`) | **La tarjeta de QR se dibuja en vez de fotografiarse**: se retiró `html2canvas` (y `file-saver`), la geometría de las tres hojas vive en `impresion-de-qr.ts` en milímetros reales y la vista previa lee los mismos números que el PDF. Arregla lo que el cliente vio en el papel: QR achatado, letras partidas y token de 24 caracteres fuera del marco. La matriz del QR se calcula en el servidor y `jspdf` baja diferido. 379 pruebas (35 nuevas, 7 de ellas dibujando contra un lienzo espía) |
 | V5 revisión | 2026-09-21 | (rama `goldgym-v5`) | **Revisión de arquitectura de V5**: `service_role` fuera del código (la contraseña del socio se cambia con su propia sesión), inventario devuelto a su capa con capacidad y permisos propios (`enableInventory`, `inventory.read`/`inventory.manage`), su migración reescrita y **aplicada de verdad** (la anterior nunca se aplicó ni podía), Administración recupera la descarga de reportes, dependencias fijadas y `npm audit` a 0, código muerto retirado. 344 pruebas, batería RLS del inventario pasada |
 | V4.3 Inventario | 2026-09-18 | `e7ac79c`, `fedd507`, `29f5a8f` | **Módulo de Inventario y mejoras**: página `/panel/inventario` con `ModalNuevoProducto`, botón de reserva en la vitrina, monitor de ingresos, reportes en Excel, QR del socio en PDF y alias de correo por gimnasio. **Su migración se añadió pero NO se aplicó** (ver §13e: se reescribió y se aplicó el 2026-09-21) |
 | V4.2 GOLD V1 | 2026-09-16 | `cca427d` → `7600d75` (rama `feat/goldgym-v1`, en GitHub) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, `dpl_4w5XedNhQ68ED1Vs5eckJ67KEH8o`) | Encargo «GOLD'S GYM PREMIUM — V1», seis etapas. **Dos conflictos se resolvieron CON el usuario en vez de sobrescribir reglas**: los 3 accesos diarios contra «una entrada por socio y día» (decisión 20) → tabla `access_passes` aparte, `attendance_records` intacta; y el acceso multisede contra «la membresía vale en todas las sedes» (decisiones 19 y 24) → `membership_plans.branch_scope`, por defecto `todas`, con la migración comprobando que ningún plan existente cambió. Además: **foto de perfil** del socio en Storage privado (no un blob en Postgres) y **modal de identidad** al escanear, con todo el contenido venido del backend; **autorización nominal de clases** (`access_mode = 'autorizados'` + `class_session_admissions`) para eventos con invitados que no son socios; **historial de ingresos** filtrable y paginado en la base; **tableros por puesto** (el orden cambia, el contenido no); **clases del socio** con sus seis situaciones y agenda día → clase → hora → sede → disponibilidad → reservar; **correo de confirmación generado por marca** desde el registro de gimnasios. §18/§19/§20: confirmar el correo deja la sesión abierta en el panel, un fallo de red ya no cierra sesión y el 403 existe de verdad (`forbidden()` de Next 16). 5 migraciones aplicadas con autorización; batería RLS V4.2 (una corrección la encontró ella: la guarda de la foto bloqueaba también a quien no tiene sesión); 280 pruebas; build de 102 páginas |

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { loadTenantPage } from '@/lib/page-guards';
 import { PERMISO, tienePermiso } from '@core/domain/operations/workspace';
 import { membersRepository } from '@infra/config/composition-root';
+import { matrizQr } from '@infra/operations/qr';
 import { exigirPermiso } from '../../../_datos';
 import { ImprimirQrSocio } from '@/presentation/patterns/ImprimirQrSocio';
 
@@ -23,5 +24,16 @@ export default async function ImprimirQrPage({ params }: ImprimirQrProps) {
   const ficha = await socios.ficha(id);
   if (!ficha || !ficha.checkinToken) notFound();
 
-  return <ImprimirQrSocio slug={slug} ficha={ficha} gymName={name} />;
+  // La matriz se calcula AQUÍ, en el servidor: `qrcode-generator` no viaja al
+  // navegador (§2.8). Al cliente solo llegan booleanos.
+  const matriz = matrizQr(ficha.checkinToken);
+  if (!matriz) notFound();
+
+  return (
+    <ImprimirQrSocio
+      gymName={name}
+      matriz={matriz.map((fila) => [...fila])}
+      ficha={{ fullName: ficha.fullName, code: ficha.code, checkinToken: ficha.checkinToken }}
+    />
+  );
 }
