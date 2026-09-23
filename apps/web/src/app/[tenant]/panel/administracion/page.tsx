@@ -13,6 +13,11 @@
  *
  * Todo lo que se ve pasa por RLS con la sesión: un administrador ve SU gimnasio
  * y ningún otro, aunque escriba a mano el id de otro en una consulta.
+ *
+ * V6 · LIMPIO AL ENTRAR, con el mismo criterio que el tablero del gimnasio
+ * (`panelesAbiertosAlCargar`): lo que se ve al cargar son los botones y las
+ * tarjetas; la curva de ingresos, los módulos y el registro de cambios esperan
+ * cerrados en su `PanelPlegable`, cada uno con una línea que dice qué hay dentro.
  */
 
 import type { Metadata } from 'next';
@@ -27,6 +32,7 @@ import { CONTEO_DE_SOCIOS_VACIO } from '@core/domain/operations/members';
 import { describirEvento } from '@core/domain/operations/staff';
 import { membersRepository, receiptsRepository, staffRepository } from '@infra/config/composition-root';
 import { AccionesRapidas } from '@/presentation/patterns/AccionesRapidas';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 import { BarChart } from '@/presentation/ui/BarChart';
 import { Badge } from '@/presentation/ui/Badge';
 import { EmptyState } from '@/presentation/ui/EmptyState';
@@ -86,6 +92,8 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
   });
 
   const grupos = agruparEntradas(modulos.filter((m) => m.grupo !== 'inicio'));
+  const totalDeModulos = grupos.reduce((suma, armado) => suma + armado.entradas.length, 0);
+  const ultimoCambio = actividad[0];
   const socios = tenantHref(slug, 'panel/socios');
   const personalHref = tenantHref(slug, 'panel/personal');
 
@@ -173,21 +181,18 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
       )}
 
       {puedeVerReportes && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ingresos-admin">
+        <PanelPlegable nivel={2} titulo="Ingresos por mes" resumen="La curva mes a mes; el detalle con filtros está en los reportes">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 id="titulo-ingresos-admin" className="t-h3">Ingresos por mes</h2>
-              <p className="mt-1.5 text-[0.86rem] text-muted">
-                Cobros aprobados, incluidos los que entraron por comprobante de QR. El detalle, con sus filtros y su
-                tabla paginada, está en los reportes: aquí va la forma de la curva, no el listado.
-              </p>
-            </div>
+            <p className="max-w-[68ch] text-[0.86rem] text-muted">
+              Cobros aprobados, incluidos los que entraron por comprobante de QR. El detalle, con sus filtros y su
+              tabla paginada, está en los reportes: aquí va la forma de la curva, no el listado.
+            </p>
             <LinkButton href={`${tenantHref(slug, 'panel/reportes/pagos')}?preset=mes`} variant="ghost" size="sm" icon="arrowRight">
               Ver pagos
             </LinkButton>
           </div>
-          <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-6" />
-        </section>
+          <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-2" />
+        </PanelPlegable>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -209,11 +214,14 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
         )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-modulos">
-          <h2 id="titulo-modulos" className="t-h3">Módulos del gimnasio</h2>
-          <p className="mt-1.5 text-[0.86rem] text-muted">Todo lo contratado por {tenant.name}, agrupado como en la navegación.</p>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
+        <PanelPlegable
+          ladoALado
+          nivel={2}
+          titulo="Módulos del gimnasio"
+          resumen={`${totalDeModulos} módulos contratados por ${tenant.name}, agrupados como en la navegación`}
+        >
+          <div className="grid gap-5 sm:grid-cols-2">
             {grupos.map((armado) => (
               <div key={armado.grupo}>
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-muted">{NOMBRE_DE_GRUPO[armado.grupo]}</p>
@@ -235,15 +243,19 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
               </div>
             ))}
           </div>
-        </section>
+        </PanelPlegable>
 
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-actividad">
-          <h2 id="titulo-actividad" className="t-h3">Cambios administrativos</h2>
-          <p className="mt-1.5 text-[0.86rem] text-muted">Roles, cuentas y sedes: quién cambió qué, y cuándo.</p>
+        <PanelPlegable
+          ladoALado
+          nivel={2}
+          titulo="Cambios administrativos"
+          resumen={ultimoCambio ? `El último: ${describirEvento(ultimoCambio)}` : 'Sin cambios registrados todavía'}
+        >
+          <p className="text-[0.86rem] text-muted">Roles, cuentas y sedes: quién cambió qué, y cuándo.</p>
           {actividad.length === 0 ? (
-            <EmptyState icono="shield" titulo="Sin cambios registrados todavía" className="mt-4" />
+            <EmptyState icono="shield" titulo="Sin cambios registrados todavía" />
           ) : (
-            <ol className="mt-5 flex flex-col gap-3">
+            <ol className="flex flex-col gap-3">
               {actividad.map((evento) => (
                 <li key={evento.id} className="flex flex-col gap-0.5 border-b border-line pb-3 text-[0.86rem] last:border-0">
                   <span className="text-ink">{describirEvento(evento)}</span>
@@ -254,7 +266,7 @@ export default async function AdministracionPage({ params }: TenantPageParams) {
               ))}
             </ol>
           )}
-        </section>
+        </PanelPlegable>
       </div>
     </div>
   );

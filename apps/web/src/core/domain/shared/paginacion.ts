@@ -87,6 +87,23 @@ export function paginaDeFilas<T>(filas: readonly T[], pagina: number, porPagina:
   return { filas: filas.slice(desde, desde + tamano), pagina: numero };
 }
 
+/**
+ * V6 · Una lista CORTA ya descargada, repartida en páginas de tamaño fijo, para
+ * un minipanel que se hojea con `‹ ›` sin volver al servidor.
+ *
+ * Solo para ventanas pequeñas y acotadas de antemano (las últimas entradas del
+ * tablero): hojearlas en el navegador ahorra repetir todas las consultas del
+ * tablero por cada clic. Una lista larga se sigue paginando en la base.
+ *
+ * Siempre devuelve al menos una página, aunque sea vacía: quien la dibuja no
+ * tiene que tratar aparte el caso sin filas.
+ */
+export function trocearEnPaginas<T>(filas: readonly T[], porPagina: number): readonly (readonly T[])[] {
+  const tamano = acotarPorPagina(porPagina);
+  const paginas = totalDePaginas(filas.length, tamano);
+  return Array.from({ length: paginas }, (_, indice) => paginaDeFilas(filas, indice + 1, tamano).filas);
+}
+
 /** «26–50 de 312». Sin filas, «0 resultados». */
 export function describirTramo(pagina: number, porPagina: number, total: number, filasEnPagina: number): string {
   if (total <= 0 || filasEnPagina <= 0) return '0 resultados';

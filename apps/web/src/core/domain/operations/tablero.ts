@@ -123,6 +123,41 @@ export function profundidadDelBloque(enfoque: EnfoqueDeTablero, bloque: BloqueDe
 }
 
 /**
+ * V6 · LOS PANELES PESADOS DE DENTRO DE CADA BLOQUE.
+ *
+ * Un bloque tiene dos capas: la fila de tarjetas (el resumen, que se lee de un
+ * vistazo) y los paneles pesados —gráficas y tablas— que hay debajo. El
+ * encargo es que al entrar se vea limpio: botones y resúmenes, y cada cosa
+ * pesada a un clic con su «Ver».
+ *
+ * La regla sale de una pregunta: ¿quién decidió mirar esto?
+ *
+ * - Si el bloque se abre AL CARGAR la página, nadie lo eligió todavía: sus
+ *   paneles empiezan cerrados y lo que se ve son las tarjetas.
+ * - Si el bloque empieza PLEGADO, quien lo abre ya eligió mirarlo: sus paneles
+ *   se ven enteros. Pedirle un segundo clic para ver lo que acaba de abrir
+ *   sería castigarlo por querer el detalle.
+ *
+ * Igual que el plegado de bloques, esto es foco y no seguridad: el contenido de
+ * un panel cerrado es el mismo que el de uno abierto.
+ */
+export function panelesAbiertosAlCargar(enfoque: EnfoqueDeTablero, bloque: BloqueDeTablero): boolean {
+  return profundidadDelBloque(enfoque, bloque) === 'plegado';
+}
+
+/**
+ * V6 · El minipanel de «Últimas entradas»: cuántas trae y de a cuántas se
+ * hojean.
+ *
+ * Se hojea con `‹ ›` en vez de encoger la tabla o la letra: una tabla más
+ * pequeña para que quepa más es una tabla que no se lee en el mostrador. Cinco
+ * filas por página igualan la altura de la gráfica de al lado; cinco páginas
+ * cubren lo reciente, y para más atrás está la página de asistencia, que pagina
+ * en la base.
+ */
+export const ULTIMAS_ENTRADAS = { total: 25, porPagina: 5 } as const;
+
+/**
  * El saludo de la cabecera, con la hora LOCAL DEL GIMNASIO (nunca la del
  * servidor: a las 23:00 de La Paz el servidor ya está en el día siguiente).
  */

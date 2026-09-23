@@ -39,6 +39,13 @@ interface DataTableProps<T> {
    * anuncia como resumen, no como un registro más.
    */
   readonly filaDeTotales?: Readonly<Record<string, ReactNode>>;
+  /**
+   * Para una tabla de pocas columnas en un minipanel de media anchura. Baja el
+   * ancho mínimo a partir del cual la tabla se desplaza en horizontal; la letra
+   * y el alto de fila son los mismos. Encoger la letra para que quepa más no es
+   * una opción: en el mostrador la tabla se lee de pie y a un metro.
+   */
+  readonly compacta?: boolean;
   readonly className?: string;
 }
 
@@ -50,13 +57,14 @@ export function DataTable<T>({
   claveDeFila,
   vacio,
   filaDeTotales,
+  compacta = false,
   className,
 }: DataTableProps<T>) {
   if (filas.length === 0 && vacio) return <>{vacio}</>;
 
   return (
     <div className={cn('-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0', className)}>
-      <table className="w-full min-w-[34rem] border-collapse text-[0.86rem]">
+      <table className={cn('w-full border-collapse text-[0.86rem]', compacta ? 'min-w-[22rem]' : 'min-w-[34rem]')}>
         <caption className={cn('text-start', tituloOculto ? 'sr-only' : 'pb-3 text-muted')}>
           {titulo}
         </caption>

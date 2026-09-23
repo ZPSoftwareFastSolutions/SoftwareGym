@@ -24,6 +24,13 @@
  * frecuentes; debajo, cuatro bloques (operación, dinero, socios, sucursales)
  * ordenados por `ordenDelTablero`. Nadie pierde una sección por mirar desde
  * otro puesto: recepción empieza por el mostrador y gerencia por el dinero.
+ *
+ * V6 · LIMPIO AL ENTRAR. Cada gráfica y cada tabla es un `PanelPlegable` con su
+ * «Ver»: al abrir la página se leen las tarjetas (el resumen) y lo pesado
+ * espera a que alguien lo pida. Qué empieza abierto lo decide el dominio
+ * (`panelesAbiertosAlCargar`), no cada sección por su cuenta. Los paneles que
+ * van en pareja miden lo mismo, y «Últimas entradas» se hojea con `‹ ›` en vez
+ * de encoger su tabla.
  */
 
 import type { Metadata } from 'next';
@@ -38,10 +45,13 @@ import {
   enfoqueDeTablero,
   NOMBRE_DE_ENFOQUE,
   ordenDelTablero,
+  panelesAbiertosAlCargar,
   profundidadDelBloque,
   saludoDelTablero,
+  ULTIMAS_ENTRADAS,
   type BloqueDeTablero,
 } from '@core/domain/operations/tablero';
+import { describirTramo, trocearEnPaginas } from '@core/domain/shared/paginacion';
 import { variacion, type PuntoDeSerie } from '@core/domain/operations/dashboard';
 import { NOMBRE_DE_METODO } from '@core/domain/operations/attendance';
 import { CONTEO_DE_SOCIOS_VACIO } from '@core/domain/operations/members';
@@ -51,8 +61,10 @@ import { branchesRepository, membersRepository, paymentSettingsRepository, recei
 import { TarjetaDeSucursal } from '@/presentation/patterns/TarjetaDeSucursal';
 import { AccionesRapidas } from '@/presentation/patterns/AccionesRapidas';
 import { ResumenDelDia } from '@/presentation/patterns/ResumenDelDia';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 import { Icon } from '@/presentation/icons/Icon';
 import { contextoDeSucursal } from '../_sucursal';
+import { PaginasDeTabla } from './_paginas-de-tabla';
 import { BotonFicha, FichaDeSocioProvider } from '@/presentation/patterns/FichaDeSocio';
 import { BarChart } from '@/presentation/ui/BarChart';
 import { DataTable } from '@/presentation/ui/DataTable';
@@ -134,7 +146,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
     repo.asistenciaDiaria(30),
     puedeVerReportes ? repo.ingresosMensuales() : Promise.resolve([]),
     repo.vencimientos(),
-    repo.historialDeAsistencia({ limite: 8, ...(sedeVista ? { sucursal: sedeVista.id } : {}) }),
+    repo.historialDeAsistencia({ limite: ULTIMAS_ENTRADAS.total, ...(sedeVista ? { sucursal: sedeVista.id } : {}) }),
     repoDeSocios ? repoDeSocios.conteos() : Promise.resolve(CONTEO_DE_SOCIOS_VACIO),
     repoDeSocios ? repoDeSocios.listar({ cumpleMes: true }, 1, 2).then((p) => p.filas) : Promise.resolve([]),
     conComprobantes ? (await receiptsRepository()).contarPendientes() : Promise.resolve(0),
@@ -212,6 +224,21 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
     return { etiqueta: mes, valor: punto.total, detalle: `${mes} ${punto.mes.slice(0, 4)}: ${importe(punto.total, moneda)} en ${punto.cobros} cobros` };
   });
 
+  const entradas30d = puntosDeAsistencia.reduce((suma, punto) => suma + punto.valor, 0);
+
+  // V6 · «Últimas entradas» se hojea dentro de su minipanel. Cada página es
+  // su propia tabla, dibujada aquí; el navegador solo elige cuál se ve.
+  const paginasDeEntradas = trocearEnPaginas(ultimos, ULTIMAS_ENTRADAS.porPagina);
+  // Con varias sedes a la vista, cada fila dice dónde entró; mirando una sola,
+  // repetirlo en cada fila sería ruido.
+  const conSedeEnFila = multisede && sedeVista === null;
+  const cuando = (fecha: string, momento: string) => `${fecha === hoy ? 'hoy' : fechaCorta(fecha)}, ${hora(momento)}`;
+  const masReciente = ultimos[0];
+
+  // V6 · un panel pesado empieza cerrado si su bloque se abre al cargar la
+  // página, y abierto si quien lo ve acaba de abrir el bloque a propósito.
+  const abrirPaneles = (bloque: BloqueDeTablero) => panelesAbiertosAlCargar(enfoque, bloque);
+
   const totalMembresias = kpis.membresiasActivas + kpis.membresiasPorVencer + kpis.membresiasVencidas;
   const porVencerPronto = vencimientos.filter((v) => v.effectiveStatus !== 'expired' && v.daysRemaining <= 10);
   const inactivos = conteo.sinVenir7d;
@@ -279,64 +306,84 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           )}
         </div>
 
-        <div
-          className={cn(
-            'grid items-start gap-6',
-            enfoque === 'mostrador'
-              ? // Recepción mira quién acaba de entrar, no la tendencia del mes.
-                'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]'
-              : 'xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]',
-          )}
-        >
-          <section className={cn('surface-card p-6 sm:p-7', enfoque === 'mostrador' && 'xl:order-2')} aria-labelledby="titulo-asistencia">
+        {/* Los dos minipaneles van a la misma anchura y, abiertos, a la misma
+            altura. Recepción mira primero quién acaba de entrar; los demás,
+            la tendencia. */}
+        <div className="grid gap-6 xl:grid-cols-2">
+          <PanelPlegable
+            ladoALado
+            titulo={`Entradas de los últimos 30 días${sedeVista ? ` · ${sedeVista.name}` : ''}`}
+            resumen={`${entradas30d} entradas en 30 días · ${entradasSemana} en los últimos 7`}
+            abiertoAlInicio={abrirPaneles('operacion')}
+            className={cn(enfoque === 'mostrador' && 'xl:order-2')}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 id="titulo-asistencia" className="t-h3">Entradas de los últimos 30 días{sedeVista ? ` · ${sedeVista.name}` : ''}</h3>
-                <p className="mt-1.5 text-[0.86rem] text-muted">
-                  {sedeVista ? 'Solo las registradas en esta sede. ' : multisede ? 'Todas las sedes, incluido el histórico sin sucursal. ' : ''}
-                  La barra de la derecha es hoy.
-                </p>
-              </div>
+              <p className="text-[0.86rem] text-muted">
+                {sedeVista ? 'Solo las registradas en esta sede. ' : multisede ? 'Todas las sedes, incluido el histórico sin sucursal. ' : ''}
+                La barra de la derecha es hoy.
+              </p>
               {features.enableAttendance && (
                 <LinkButton href={asistencia} variant="ghost" size="sm" icon="arrowRight">
                   Estadísticas
                 </LinkButton>
               )}
             </div>
-            <BarChart titulo="Entradas por día en los últimos 30 días" puntos={puntosDeAsistencia} unidad="entradas" alto={190} className="mt-6" />
-          </section>
+            {/* Al pie del panel: su eje queda a la altura de la paginación de al lado. */}
+            <BarChart titulo="Entradas por día en los últimos 30 días" puntos={puntosDeAsistencia} unidad="entradas" alto={190} className="mt-auto pt-2" />
+          </PanelPlegable>
 
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ultimas">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h3 id="titulo-ultimas" className="t-h3">Últimas entradas{sedeVista ? ` · ${sedeVista.name}` : ''}</h3>
+          <PanelPlegable
+            ladoALado
+            titulo={`Últimas entradas${sedeVista ? ` · ${sedeVista.name}` : ''}`}
+            resumen={
+              masReciente
+                ? `La más reciente: ${masReciente.customerName}, ${cuando(masReciente.attendanceDate, masReciente.checkedInAt)}`
+                : 'Todavía no hay entradas'
+            }
+            abiertoAlInicio={abrirPaneles('operacion')}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[0.86rem] text-muted">Toca un socio para abrir su ficha.</p>
               {features.enableAttendance && (
                 <LinkButton href={asistencia} variant="ghost" size="sm" icon="arrowRight">
                   Control
                 </LinkButton>
               )}
             </div>
-            <DataTable
-              titulo="Últimas entradas registradas"
-              className="mt-5"
-              columnas={[
-                { clave: 'socio', titulo: 'Socio', celda: (fila) => <BotonFicha customerId={fila.customerId}>{fila.customerName}</BotonFicha> },
-                { clave: 'fecha', titulo: 'Fecha', celda: (fila) => fechaCorta(fila.attendanceDate) },
-                { clave: 'hora', titulo: 'Hora', celda: (fila) => hora(fila.checkedInAt) },
-                multisede
-                  ? { clave: 'sucursal', titulo: 'Sucursal', secundaria: sedeVista !== null, celda: (fila) => fila.branchName ?? ETIQUETA_SIN_SUCURSAL }
-                  : { clave: 'metodo', titulo: 'Método', secundaria: true, celda: (fila) => NOMBRE_DE_METODO[fila.method] },
-                {
-                  clave: 'estado',
-                  titulo: 'Estado',
-                  celda: (fila) =>
-                    fila.membershipId ? <Badge tone="action">Con membresía</Badge> : <Badge tone="structural">Sin membresía vigente</Badge>,
-                },
-              ]}
-              filas={ultimos}
-              claveDeFila={(fila) => fila.id}
-              vacio={<EmptyState icono="calendar" titulo="Todavía no hay entradas" />}
+            <PaginasDeTabla
+              etiqueta="Páginas de las últimas entradas"
+              tramos={paginasDeEntradas.map((filas, indice) => describirTramo(indice + 1, ULTIMAS_ENTRADAS.porPagina, ultimos.length, filas.length))}
+              paginas={paginasDeEntradas.map((filas, indice) => (
+                <DataTable
+                  key={indice}
+                  compacta
+                  titulo={`Últimas entradas registradas, página ${indice + 1} de ${paginasDeEntradas.length}`}
+                  columnas={[
+                    {
+                      clave: 'socio',
+                      titulo: 'Socio',
+                      celda: (fila) => (
+                        <>
+                          <BotonFicha customerId={fila.customerId}>{fila.customerName}</BotonFicha>
+                          {conSedeEnFila && <span className="block font-normal text-muted">{fila.branchName ?? ETIQUETA_SIN_SUCURSAL}</span>}
+                        </>
+                      ),
+                    },
+                    { clave: 'cuando', titulo: 'Cuándo', celda: (fila) => <span className="whitespace-nowrap">{cuando(fila.attendanceDate, fila.checkedInAt)}</span> },
+                    {
+                      clave: 'estado',
+                      titulo: 'Estado',
+                      celda: (fila) =>
+                        fila.membershipId ? <Badge tone="action">Con membresía</Badge> : <Badge tone="structural">Sin membresía vigente</Badge>,
+                    },
+                  ]}
+                  filas={filas}
+                  claveDeFila={(fila) => fila.id}
+                  vacio={<EmptyState icono="calendar" titulo="Todavía no hay entradas" />}
+                />
+              ))}
             />
-          </section>
+          </PanelPlegable>
         </div>
       </>
     ),
@@ -386,18 +433,15 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
         </div>
 
         {puedeVerReportes && (
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ingresos">
+          <PanelPlegable titulo="Ingresos por mes" resumen="La curva mes a mes, con los cobros aprobados por comprobante QR" abiertoAlInicio={abrirPaneles('dinero')}>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h3 id="titulo-ingresos" className="t-h3">Ingresos por mes</h3>
-                <p className="mt-1.5 text-[0.86rem] text-muted">Incluye los cobros aprobados desde comprobantes QR.</p>
-              </div>
+              <p className="text-[0.86rem] text-muted">Incluye los cobros aprobados desde comprobantes QR.</p>
               <LinkButton href={`${tenantHref(slug, 'panel/reportes/ingresos-por-plan')}?preset=mes`} variant="ghost" size="sm" icon="arrowRight">
                 Por plan
               </LinkButton>
             </div>
-            <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-6" />
-          </section>
+            <BarChart titulo="Ingresos por mes" puntos={puntosDeIngreso} unidad="bolivianos" alto={170} saltoDeEtiqueta={1} className="mt-2" />
+          </PanelPlegable>
         )}
       </>
     ),
@@ -440,12 +484,16 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           )}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
-          <section id="membresias" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-membresias">
-            <h3 id="titulo-membresias" className="t-h3">Estado de las membresías</h3>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <PanelPlegable
+            ladoALado
+            id="membresias"
+            titulo="Estado de las membresías"
+            resumen={`${kpis.membresiasActivas} activas · ${kpis.membresiasPorVencer} por vencer · ${kpis.membresiasVencidas} vencidas`}
+            abiertoAlInicio={abrirPaneles('socios')}
+          >
             <DonutChart
               titulo="Reparto de membresías por estado"
-              className="mt-6"
               centroValor={`${totalMembresias}`}
               centroEtiqueta="membresías"
               segmentos={[
@@ -455,23 +503,25 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
               ]}
             />
             {gestionSocios && (
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-1">
                 <LinkButton href={`${socios}?estado=active`} variant="secondary" size="sm">Activas</LinkButton>
                 <LinkButton href={`${socios}?estado=expiring_soon`} variant="secondary" size="sm">Por vencer</LinkButton>
                 <LinkButton href={`${socios}?estado=expired`} variant="secondary" size="sm">Vencidas</LinkButton>
               </div>
             )}
-          </section>
+          </PanelPlegable>
 
-          <section id="vencimientos" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-vencimientos">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h3 id="titulo-vencimientos" className="t-h3">A punto de vencer</h3>
-              {porVencerPronto.length > 0 && <Badge tone="structural">{porVencerPronto.length} para llamar</Badge>}
-            </div>
-            <p className="mt-1.5 text-[0.86rem] text-muted">Los próximos diez días. Toca un socio para ver su ficha y su teléfono.</p>
+          <PanelPlegable
+            ladoALado
+            id="vencimientos"
+            titulo="A punto de vencer"
+            resumen={porVencerPronto.length > 0 ? `${porVencerPronto.length} para llamar en los próximos diez días` : 'Nadie vence en los próximos diez días'}
+            abiertoAlInicio={abrirPaneles('socios')}
+          >
+            <p className="text-[0.86rem] text-muted">Los próximos diez días. Toca un socio para ver su ficha y su teléfono.</p>
             <DataTable
+              compacta
               titulo="Membresías que vencen en los próximos diez días"
-              className="mt-5"
               columnas={[
                 { clave: 'socio', titulo: 'Socio', celda: (fila) => <BotonFicha customerId={fila.customerId}>{fila.customerName}</BotonFicha> },
                 { clave: 'plan', titulo: 'Plan', secundaria: true, celda: (fila) => fila.planName ?? '—' },
@@ -482,7 +532,7 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
               claveDeFila={(fila) => fila.membershipId}
               vacio={<EmptyState icono="check" titulo="Nadie vence en los próximos diez días" />}
             />
-          </section>
+          </PanelPlegable>
         </div>
       </>
     ),
@@ -570,24 +620,13 @@ export default async function DashboardDelGimnasioPage({ params, searchParams }:
           if (contenido === null) return null;
 
           // Plegado NO es escondido: el título se lee igual, dice qué hay dentro
-          // y se abre con un clic. Es `<details>` nativo, así que funciona sin
-          // JavaScript y el buscador del navegador lo encuentra.
+          // y se abre con un clic. Es el mismo panel que el de cada gráfica, así
+          // que el «Ver» se comporta igual en toda la página.
           if (profundidadDelBloque(enfoque, bloque) === 'plegado') {
             return (
-              <details key={bloque} className="surface-card group overflow-hidden p-0">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-raised sm:px-7 [&::-webkit-details-marker]:hidden">
-                  <span className="min-w-0">
-                    <span className="block t-h3">{TITULO_DE_BLOQUE[bloque]}</span>
-                    <span className="mt-1 block text-[0.85rem] text-muted">{RESUMEN_DE_BLOQUE[bloque]}</span>
-                  </span>
-                  <span className="inline-flex shrink-0 items-center gap-2 text-[0.86rem] font-semibold text-action">
-                    <span className="hidden sm:inline group-open:hidden">Ver</span>
-                    <span className="hidden group-open:sm:inline">Ocultar</span>
-                    <Icon name="chevronDown" size={18} className="transition-transform group-open:rotate-180" />
-                  </span>
-                </summary>
-                <div className="flex flex-col gap-4 border-t border-line px-6 py-6 sm:px-7">{contenido}</div>
-              </details>
+              <PanelPlegable key={bloque} nivel={2} titulo={TITULO_DE_BLOQUE[bloque]} resumen={RESUMEN_DE_BLOQUE[bloque]}>
+                {contenido}
+              </PanelPlegable>
             );
           }
 
