@@ -4,8 +4,8 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-21 · **V5 · la tarjeta de QR se DIBUJA en el PDF: se acabaron el QR achatado, las letras partidas y el token fuera del marco** (ver §13e), **desplegada** en producción (`gold-gym-psi.vercel.app`, commit `af2d473`). Antes: **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada**. Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
-> - **Rama de trabajo vigente:** `goldgym-v5` (cadena `feat/goldgym-v1` -> `goldgym-v2` -> ... -> `goldgym-v5`). **Esta rama sirve SOLO a GOLD**: los archivos de Mitico y Aurora se retiraron del registro de tenants (sus landings viven en `miticogym-v3`). El producto sigue siendo enlatado —nada en `src` nombra a un cliente—, pero un despliegue de esta rama ya no responde `/mitico` ni `/aurora-fit`. Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
+> - **Última actualización:** 2026-09-22 · **V6 · tableros limpios al entrar: Recepción, Gerencia y Administración abren con botones y resúmenes, y cada gráfica o tabla espera cerrada en su «Ver»** (ver §13f; en la rama `feat/goldgym-v6`, **sin desplegar**). Antes: **V5 · la tarjeta de QR se DIBUJA en el PDF: se acabaron el QR achatado, las letras partidas y el token fuera del marco** (ver §13e), **desplegada** en producción (`gold-gym-psi.vercel.app`, commit `af2d473`). Antes: **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada**. Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
+> - **Rama de trabajo vigente:** `feat/goldgym-v6` (cadena `feat/goldgym-v1` -> `goldgym-v2` -> ... -> `goldgym-v5` -> `feat/goldgym-v6`). **Esta rama sirve SOLO a GOLD**: los archivos de Mitico y Aurora se retiraron del registro de tenants (sus landings viven en `miticogym-v3`). El producto sigue siendo enlatado —nada en `src` nombra a un cliente—, pero un despliegue de esta rama ya no responde `/mitico` ni `/aurora-fit`. Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
 > - **Historia completa** (cada fase, cada defecto con su prueba, cada decisión
@@ -308,7 +308,8 @@ src/
         training.ts              Rutinas y LECTURA del entrenamiento: etiqueta del día por grupo/familia, conclusiones (V3.2); V4: tituloDeRutina, nombreSinEtiquetaDelDia
         classes.ts               Clases: acceso por plan, fechas de un horario, cruces, estado de sesión, ocupación, conclusiones (V3.3)
         reservations.ts          Reservas: ventana, cancelación tardía, cupo y espera, bloqueo por faltas, reglas, conclusiones (V3.4)
-        tablero.ts               V4.2: con qué mirada se abre un dashboard (enfoque, orden de bloques, acciones rápidas)
+        tablero.ts               V4.2: con qué mirada se abre un dashboard (enfoque, orden de bloques, acciones rápidas);
+                                 V5: profundidad de cada bloque; V6: panelesAbiertosAlCargar y ULTIMAS_ENTRADAS
         agenda-del-socio.ts      V4.2: en qué situación está el socio ante una sesión (inscrito, completo, próximo…)
         acceso-al-panel.ts       V4.2: situación → respuesta (acceso, 403, 503, su panel). Solo «sin sesión» va al login
         periodo.ts               Presets hoy/ayer/7d/30d/mes/mes-anterior/año
@@ -1109,6 +1110,11 @@ los mismos filtros, BOM UTF-8, comillas en todo campo y neutraliza fórmulas
   (`IconoDeEnlace`/`GiroDeEnlace` con `useLinkStatus`: el icono del enlace pulsado gira; ya lo usan `DashboardNav`,
   `StatCard` con `href` y `LinkButton`). Botones que esperan se deshabilitan con `aria-busy`. **Nada de `loading.tsx`
   en rutas con guardas** (rompe 307/404). La carga es mitigación: primero se optimiza la consulta.
+- **Paneles plegables (V6):** `patterns/PanelPlegable.tsx` es el «Ver» de todos los tableros: título y una línea que
+  dice qué hay dentro, siempre visibles; el cuerpo, a un clic. Patrón disclosure de WAI-ARIA (botón con
+  `aria-expanded`/`aria-controls` dentro del encabezado, cuerpo con `hidden`), NO `<details>`: dos paneles lado a
+  lado (`ladoALado`) tienen que medir lo mismo abiertos, y eso exige controlar la caja. El cuerpo sigue montado al
+  cerrar; con `id`, una dirección `#ancla` lo abre sola. Qué empieza abierto lo decide el dominio, no la página.
 - **Listas (V4):** `Paginacion` (tramo «26–50 de 312», primera/última/vecinas, objetivos de 44 px) y
   `FiltroConCarga` (`next/form` GET + botón con estado). Iconos nuevos: `chevronDown/Left/Right`, `key`.
 
@@ -2236,11 +2242,52 @@ al ser un mapa de bits reescalado, perdía los trazos finos; y nadie medía si e
    Excel se quedan, conviene anotarlo como decisión revisada en vez de dejarla contradicha. (`html2canvas` y
    `file-saver` ya salieron al reescribir la tarjeta de QR.)
 
+## 13f. V6 · tableros limpios al entrar (rama `feat/goldgym-v6`)
+
+El encargo: que los tableros de Recepción, Gerencia y Administración no enseñen «full datos» al abrirse. Recepción ya
+plegaba «Socios y membresías» y «Dinero»; V6 lleva esa misma lógica a cada gráfica y cada tabla de los tres puestos.
+
+- **Una regla, en el dominio** (`panelesAbiertosAlCargar`, en `tablero.ts`): un panel pesado empieza CERRADO si su
+  bloque se abre al cargar —nadie lo pidió todavía— y ABIERTO si su bloque empezaba plegado —quien lo abre ya eligió
+  mirarlo y no se le pide un segundo clic—. Una prueba afirma que ningún puesto abre la página con una gráfica o una
+  tabla desplegada. Al entrar se ven `ResumenDelDia`, `AccionesRapidas` y las filas de `StatCard`; nada más.
+- **Un solo componente para todo «Ver»** (`PanelPlegable`, §6): los bloques plegados de V5 (antes `<details>`) y cada
+  panel pesado usan el mismo, así que abrir y cerrar se comporta igual en toda la página.
+- **Parejas simétricas:** «Últimas entradas» y «Entradas de los últimos 30 días», y también «Estado de las membresías» y
+  «A punto de vencer», van a la misma anchura (`xl:grid-cols-2`) y, abiertas, a la misma altura. La gráfica se ancla al
+  pie (`mt-auto`) para que su eje quede en la línea de la paginación de al lado. Cerrado, un panel es solo su barra y
+  no se estira a la altura del vecino abierto.
+- **«Últimas entradas» se hojea con `‹ ›`, no se encoge.** La consulta trae 25 (`ULTIMAS_ENTRADAS`) y
+  `trocearEnPaginas` (en `shared/paginacion.ts`) las reparte de a 5. Cada página es una tabla dibujada en el servidor y
+  `panel/gimnasio/_paginas-de-tabla.tsx` solo elige cuál se ve (`currentPage`, actualización funcional). Todas se apilan
+  en la misma celda de una rejilla y las ocultas son `inert`: la caja mide lo que la página más alta, así que pasar de
+  página no hace saltar nada. Para más atrás, «Control» lleva a asistencia, que pagina en la base.
+- **La tabla cabe sin encoger la letra:** columnas Socio (con la sede debajo solo en la vista global) · Cuándo («hoy,
+  20:10») · Estado, y `DataTable compacta` baja el ancho mínimo de 34 a 22 rem. A media columna en 1280 px mide 493 de
+  493 px; en un móvil de 375 px se desplaza dentro de su caja, como toda tabla ancha (§6).
+- **Administración** (`panel/administracion`): la curva de ingresos, «Módulos del gimnasio» y «Cambios
+  administrativos» esperan cerrados, cada uno con una línea que dice qué hay dentro (cuántos módulos, cuál fue el último
+  cambio). Las tarjetas y los botones siguen a la vista.
+
+**Verificado (2026-09-22):** typecheck limpio · **392 pruebas** (13 nuevas) · build de 40 páginas · `npm audit` 0 ·
+greps vacíos. La rejilla y la paginación se midieron en el navegador con una página de prueba temporal (mismos
+componentes, datos de mentira, retirada antes del commit): pareja abierta 551 × 666 px las dos y con la misma base;
+cerrada, 87 px las dos; abrir una no estira a la otra; seis clics seguidos llegan a «5 / 5 · 21–23 de 23» (la primera
+versión se quedaba en la 2: calculaba la página siguiente con el valor del render anterior); en 375 px, sin
+desplazamiento horizontal de la página y botones de 44 × 44 px.
+
+**Pendiente:**
+1. **Revisión humana con sesión** de `panel/gimnasio` con recepción, gerencia y administración, y de
+   `panel/administracion` (el asistente no inicia sesión).
+2. **Desplegar cuando se pida.** El proyecto Vercel `gold-gym` NO está conectado a GitHub (§13e): subir la rama no
+   publica nada. Se despliega con `npx vercel deploy --prod` desde `apps/web`, y solo cuando el usuario lo pide.
+
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
+| V6 tableros limpios | 2026-09-22 | (rama `feat/goldgym-v6`, sin desplegar) | **Recepción, Gerencia y Administración abren limpios**: cada gráfica y tabla es un `PanelPlegable` con su «Ver», y qué empieza abierto lo decide el dominio (`panelesAbiertosAlCargar`); parejas de minipaneles simétricas; «Últimas entradas» se hojea con `‹ ›` (25 de a 5) sin encoger la tabla; los bloques plegados de V5 pasan al mismo componente. 392 pruebas (13 nuevas) |
 | V5 alta y tablero | 2026-09-21 | (rama `goldgym-v5`) | **Alta por recepción de punta a punta y tablero del mostrador**: el login acepta las cuentas anteriores al alias de correo (cuatro cuentas reales de GOLD no podían entrar), el enlace de acceso va a la cuenta que ya existe en vez de crear otra, la base empareja cuenta y ficha por correo base (migración `20260921110000`), la ficha explica que sin correo no falta nada, y el tablero abre con «Para hoy» y pliega lo que no es del turno sin quitar ningún bloque. 356 pruebas |
 | V5 QR en PDF | 2026-09-22 | `af2d473` (rama `goldgym-v5`) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, `dpl_7bZv7js1wcgPbyfhKSCzbx2e3H1k`) | **La tarjeta de QR se dibuja en vez de fotografiarse**: se retiró `html2canvas` (y `file-saver`), la geometría de las tres hojas vive en `impresion-de-qr.ts` en milímetros reales y la vista previa lee los mismos números que el PDF. Arregla lo que el cliente vio en el papel: QR achatado, letras partidas y token de 24 caracteres fuera del marco. La matriz del QR se calcula en el servidor y `jspdf` baja diferido. 379 pruebas (35 nuevas, 7 de ellas dibujando contra un lienzo espía) |
 | V5 revisión | 2026-09-21 | (rama `goldgym-v5`) | **Revisión de arquitectura de V5**: `service_role` fuera del código (la contraseña del socio se cambia con su propia sesión), inventario devuelto a su capa con capacidad y permisos propios (`enableInventory`, `inventory.read`/`inventory.manage`), su migración reescrita y **aplicada de verdad** (la anterior nunca se aplicó ni podía), Administración recupera la descarga de reportes, dependencias fijadas y `npm audit` a 0, código muerto retirado. 344 pruebas, batería RLS del inventario pasada |
