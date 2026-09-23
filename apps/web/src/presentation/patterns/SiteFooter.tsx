@@ -1,6 +1,13 @@
 /**
  * CAPA: Presentation / Patterns (organismo)
  * Pie de página: marca, navegación, contacto, horario resumido y legales.
+ *
+ * V7 · CUATRO COLUMNAS SEPARADAS. Antes la navegación era una sola lista larga
+ * y, por debajo de `lg`, todo el pie caía en una única columna interminable.
+ * Ahora: marca y lema · navegación repartida en DOS listas verticales ·
+ * contacto (con el horario resumido), y una fila inferior con los legales
+ * separada por un borde sutil. En el móvil las dos listas siguen lado a lado;
+ * en tableta, marca y contacto comparten fila y la navegación va debajo.
  */
 
 import Link from 'next/link';
@@ -20,6 +27,15 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
   const { slug, name, legalName, contact, social, hours, branding, features } = tenant;
   const year = new Date().getFullYear();
 
+  // La navegación se reparte en dos listas verticales; «Acceso socios» cierra
+  // la segunda. La primera se lleva la mitad redondeada hacia arriba.
+  const enlaces = [
+    ...navigation.map((item) => ({ clave: item.segment || 'home', href: tenantHref(slug, item.segment), etiqueta: item.label })),
+    ...(features.memberLogin ? [{ clave: 'acceso', href: tenantHref(slug, 'acceso'), etiqueta: 'Acceso socios' }] : []),
+  ];
+  const mitad = Math.ceil(enlaces.length / 2);
+  const columnas = [enlaces.slice(0, mitad), enlaces.slice(mitad)].filter((columna) => columna.length > 0);
+
   const openDays = hours.week.filter((d) => !d.closed);
   const firstOpen = openDays[0];
   const lastOpen = openDays[openDays.length - 1];
@@ -31,84 +47,39 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
     <footer data-print="hide" className="relative overflow-hidden border-t border-line bg-raised">
       <div aria-hidden="true" className="bg-grid opacity-40" />
 
-      <div className="shell relative py-16 lg:py-20">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+      <div className="shell relative py-14 lg:py-20">
+        <div className="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr]">
+          {/* Columna 1 · marca y lema */}
           <div className="flex flex-col gap-5">
             <Logo logo={branding.logo} href={tenantHref(slug)} name={name} />
             <p className="t-body max-w-xs text-[0.92rem]">{tenant.tagline}.</p>
             <SocialLinks social={social} name={name} />
           </div>
 
-          <nav aria-labelledby="footer-nav">
-            <h2
-              id="footer-nav"
-              className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-muted"
-            >
-              Navegación
-            </h2>
-            <ul className="flex flex-col gap-2.5">
-              {navigation.map((item) => (
-                <li key={item.segment || 'home'}>
-                  <Link
-                    href={tenantHref(slug, item.segment)}
-                    className="inline-flex min-h-9 items-center text-[0.92rem] text-muted transition-colors hover:text-action"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-              {features.memberLogin && (
-                <li>
-                  <Link
-                    href={tenantHref(slug, 'acceso')}
-                    className="inline-flex min-h-9 items-center text-[0.92rem] text-muted transition-colors hover:text-action"
-                  >
-                    Acceso socios
-                  </Link>
-                </li>
-              )}
-            </ul>
+          {/* Columnas 2 y 3 · navegación en dos listas verticales */}
+          <nav aria-label="Navegación del sitio" className="grid grid-cols-2 gap-8 sm:order-3 sm:col-span-2 lg:order-none lg:col-span-2">
+            {columnas.map((columna, indice) => (
+              <div key={indice}>
+                <h2 className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-muted">{indice === 0 ? 'Navegación' : 'Más'}</h2>
+                <ul className="flex flex-col gap-2">
+                  {columna.map((enlace) => (
+                    <li key={enlace.clave}>
+                      <Link href={enlace.href} className="inline-flex min-h-9 items-center text-[0.92rem] text-muted transition-colors hover:text-action">
+                        {enlace.etiqueta}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </nav>
 
-          <div>
-            <h2 className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-muted">
-              Horario
-            </h2>
-            <ul className="flex flex-col gap-2.5 text-[0.92rem] text-muted">
-              {firstOpen && (
-                <li className="flex items-start gap-2.5">
-                  <Icon name="clock" size={17} className="mt-0.5 shrink-0 text-action" />
-                  <span>
-                    {firstOpen.day} a {lastOpen?.day}
-                    <br />
-                    <span className="text-ink">
-                      {firstOpen.open} – {firstOpen.close}
-                    </span>
-                  </span>
-                </li>
-              )}
-              <li>
-                <Link
-                  href={tenantHref(slug, 'horarios')}
-                  className="inline-flex min-h-9 items-center gap-1.5 text-action transition-opacity hover:opacity-80"
-                >
-                  Ver horario completo
-                  <Icon name="arrowRight" size={15} />
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-muted">
-              Contacto
-            </h2>
+          {/* Columna 4 · contacto y horario */}
+          <div className="flex flex-col gap-4 sm:order-2 lg:order-none">
+            <h2 className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-muted">Contacto</h2>
             <ul className="flex flex-col gap-3 text-[0.92rem]">
               <li>
-                <a
-                  href={telHref(contact.phone)}
-                  className="inline-flex min-h-9 items-start gap-2.5 text-muted transition-colors hover:text-action"
-                >
+                <a href={telHref(contact.phone)} className="inline-flex min-h-9 items-start gap-2.5 text-muted transition-colors hover:text-action">
                   <Icon name="phone" size={17} className="mt-0.5 shrink-0 text-action" />
                   {contact.phone}
                 </a>
@@ -117,10 +88,7 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
                   un `mailto:` vacío abre el cliente de correo sin destinatario. */}
               {contact.email !== '' && (
                 <li>
-                  <a
-                    href={mailtoHref(contact.email)}
-                    className="inline-flex min-h-9 items-start gap-2.5 break-all text-muted transition-colors hover:text-action"
-                  >
+                  <a href={mailtoHref(contact.email)} className="inline-flex min-h-9 items-start gap-2.5 break-all text-muted transition-colors hover:text-action">
                     <Icon name="mail" size={17} className="mt-0.5 shrink-0 text-action" />
                     {contact.email}
                   </a>
@@ -135,17 +103,34 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
                   {[contact.city, contact.country].filter((parte) => parte !== '').join(', ')}
                 </span>
               </li>
+              {firstOpen && (
+                <li className="flex items-start gap-2.5 text-muted">
+                  <Icon name="clock" size={17} className="mt-0.5 shrink-0 text-action" />
+                  <span>
+                    {firstOpen.day} a {lastOpen?.day}
+                    <br />
+                    <span className="text-ink">
+                      {firstOpen.open} – {firstOpen.close}
+                    </span>
+                    <br />
+                    <Link href={tenantHref(slug, 'horarios')} className="inline-flex min-h-9 items-center gap-1.5 text-action transition-opacity hover:opacity-80">
+                      Ver horario completo
+                      <Icon name="arrowRight" size={15} />
+                    </Link>
+                  </span>
+                </li>
+              )}
             </ul>
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 border-t border-line pt-7 sm:flex-row sm:items-center sm:justify-between">
+        {/* Fila inferior · legales, separada por un borde sutil */}
+        <div className="mt-12 flex flex-col gap-3 border-t border-line/60 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[0.8rem] text-muted">
             © {year} {legalName}. Todos los derechos reservados.
           </p>
           <p className="text-[0.8rem] text-muted">
-            Plataforma desarrollada por{' '}
-            <span className="font-semibold text-ink">ZP Software Fast Solutions</span>
+            Plataforma desarrollada por <span className="font-semibold text-ink">ZP Software Fast Solutions</span>
           </p>
         </div>
       </div>

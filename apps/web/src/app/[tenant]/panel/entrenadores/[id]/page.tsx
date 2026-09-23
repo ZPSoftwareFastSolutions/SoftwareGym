@@ -47,6 +47,7 @@ import {
   eliminarAusencia,
   finalizarAsignacion,
 } from '../actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Entrenador', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -152,8 +153,7 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-          <section id="socios" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-socios">
-            <h2 id="titulo-socios" className="t-h3">Socios asignados</h2>
+          <PanelPlegable nivel={2} id="socios" titulo="Socios asignados" resumen={`${vigentes.length} vigentes · ${historicas.length} finalizados`}>
             <DataTable
               titulo={`Socios asignados a ${entrenador.fullName}`}
               className="mt-5"
@@ -225,16 +225,15 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
                 </ul>
               </details>
             )}
-          </section>
+          </PanelPlegable>
 
           {puedeAsignar ? (
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-asignar">
-              <h2 id="titulo-asignar" className="t-h3">Asignar socio</h2>
+            <PanelPlegable nivel={2} titulo="Asignar socio" resumen="Principal o secundario, según lo que permite su plan">
               <p className="mt-1.5 text-[0.86rem] text-muted">Solo socios con membresía vigente cuyo plan incluya entrenador.</p>
               <div className="mt-5">
                 <AsignarSocioForm slug={slug} trainerId={entrenador.id} socios={opciones} />
               </div>
-            </section>
+            </PanelPlegable>
           ) : (
             <section className="surface-card p-6 sm:p-7">
               <EmptyState icono="lock" titulo={entrenador.isActive ? 'Solo gerencia asigna socios' : 'Activa al entrenador para asignarle socios'} />
@@ -242,8 +241,7 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
           )}
         </div>
 
-        <section id="ausencias" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-ausencias">
-          <h2 id="titulo-ausencias" className="t-h3">No disponibilidad</h2>
+        <PanelPlegable nivel={2} id="ausencias" titulo="No disponibilidad" resumen={pendientes.length === 0 ? 'Sin ausencias programadas' : `${pendientes.length} ausencias por venir`}>
           <p className="mt-1.5 text-[0.86rem] text-muted">Horas, turnos, días o periodos en los que no atiende. En la hora del gimnasio. No es una agenda.</p>
           <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <DataTable
@@ -271,12 +269,11 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
             />
             {puedeGestionar && <AusenciaForm slug={slug} trainerId={entrenador.id} turnos={turnos} hoy={hoy} />}
           </div>
-        </section>
+        </PanelPlegable>
 
         {puedeGestionar && (
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-cuenta">
-              <h2 id="titulo-cuenta" className="t-h3">Cuenta de acceso</h2>
+            <PanelPlegable nivel={2} titulo="Cuenta de acceso" resumen={entrenador.appUserId ? 'Tiene cuenta vinculada' : 'Sin cuenta vinculada'}>
               {entrenador.appUserId ? (
                 <div className="mt-4 flex flex-col gap-4">
                   <p className="text-[0.9rem] text-ink">
@@ -297,10 +294,9 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
                   <VincularCuentaForm slug={slug} trainerId={entrenador.id} correoSugerido={entrenador.email} />
                 </div>
               )}
-            </section>
+            </PanelPlegable>
 
-            <section id="sedes" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-sedes">
-              <h2 id="titulo-sedes" className="t-h3">Sedes donde trabaja</h2>
+            <PanelPlegable nivel={2} id="sedes" titulo="Sedes donde trabaja" resumen="Dónde puede dictar y registrar">
               <div className="mt-4">
                 <SucursalesDeEntrenadorForm
                   slug={slug}
@@ -324,17 +320,16 @@ export default async function EntrenadorPage({ params }: EntrenadorPageProps) {
                   <AccionConEstado accion={activarEntrenador} campos={campos} etiqueta="Activar entrenador" icono="refresh" variante="primario" className="w-fit" />
                 )}
               </div>
-            </section>
+            </PanelPlegable>
           </div>
         )}
 
         {puedeGestionar && (
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-datos">
-            <h2 id="titulo-datos" className="t-h3">Datos del entrenador</h2>
+          <PanelPlegable nivel={2} titulo="Datos del entrenador" resumen="Nombre, contacto, presentación y especialidades">
             <div className="mt-6">
               <EntrenadorForm slug={slug} entrenador={entrenador} />
             </div>
-          </section>
+          </PanelPlegable>
         )}
       </div>
     </FichaDeSocioProvider>

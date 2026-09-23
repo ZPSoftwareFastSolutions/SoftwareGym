@@ -38,6 +38,7 @@ import { Icon } from '@/presentation/icons/Icon';
 import { ETIQUETA_SIN_SUCURSAL, FILTRO_SIN_SUCURSAL, repartoPorSucursal } from '@core/domain/operations/branches';
 import { exigirPermiso, fechaCorta, hora } from '../_datos';
 import { contextoDeSucursal } from '../_sucursal';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Control de asistencia', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -167,98 +168,101 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
           />
         </div>
 
-        <section id="estadisticas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-dias">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 id="titulo-dias" className="t-h3">Entradas por día</h2>
-              <p className="mt-1.5 text-[0.86rem] text-muted">Últimos 30 días. La barra de la derecha es hoy.</p>
-            </div>
-            {puedeVerReportes && (
-              <LinkButton href={`${tenantHref(slug, 'panel/reportes/asistencia')}?preset=30d`} variant="ghost" size="sm" icon="chart" iconPosition="start">
-                Reporte completo
-              </LinkButton>
-            )}
-          </div>
-          <BarChart titulo="Entradas por día en los últimos 30 días" puntos={puntosPorDia} unidad="entradas" alto={190} className="mt-6" />
-        </section>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-calor">
-            <h2 id="titulo-calor" className="t-h3">¿Cuándo hay más gente?</h2>
-            <p className="mt-1.5 text-[0.86rem] text-muted">Entradas por día de la semana y hora, en los últimos 30 días. Cuanto más intenso, más gente.</p>
-            <HeatMap titulo="Entradas por día de la semana y hora" filas={DIAS} columnas={HORAS.map((h) => String(h).padStart(2, '0'))} valores={calor} className="mt-6" />
-          </section>
-
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-metodos">
-            <h2 id="titulo-metodos" className="t-h3">Cómo registran la entrada</h2>
-            <p className="mt-1.5 text-[0.86rem] text-muted">Cuántos ya usan el QR y cuántos siguen pasando a mano.</p>
-            <DonutChart
-              titulo="Entradas por método de registro"
-              className="mt-6"
-              centroValor={`${resumen.total}`}
-              centroEtiqueta="entradas"
-              segmentos={[
-                { etiqueta: NOMBRE_DE_METODO.qr, valor: porMetodo.get('qr') ?? 0, color: 'var(--t-action)' },
-                { etiqueta: NOMBRE_DE_METODO.manual, valor: porMetodo.get('manual') ?? 0, color: 'var(--t-structural)' },
-                { etiqueta: NOMBRE_DE_METODO.kiosk, valor: porMetodo.get('kiosk') ?? 0, color: 'color-mix(in srgb, var(--t-muted) 60%, transparent)' },
-              ]}
-            />
-          </section>
-        </div>
-
-        {multisede && reparto.length > 0 && (
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-sedes">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 id="titulo-sedes" className="t-h3">Entradas por sucursal</h2>
-                <p className="mt-1.5 text-[0.86rem] text-muted">Últimos 30 días. El mismo socio puede entrenar en varias sedes con su única membresía.</p>
+        <PanelPlegable nivel={2} titulo="Estadísticas de los últimos 30 días" resumen={`${resumen.total} entradas · por día, por hora y por método${multisede && reparto.length > 0 ? ', y por sucursal' : ''}`} id="estadisticas">
+          <div className="flex flex-col gap-6">
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-dias">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 id="titulo-dias" className="t-h3">Entradas por día</h3>
+                  <p className="mt-1.5 text-[0.86rem] text-muted">Últimos 30 días. La barra de la derecha es hoy.</p>
+                </div>
+                {puedeVerReportes && (
+                  <LinkButton href={`${tenantHref(slug, 'panel/reportes/asistencia')}?preset=30d`} variant="ghost" size="sm" icon="chart" iconPosition="start">
+                    Reporte completo
+                  </LinkButton>
+                )}
               </div>
-              {puedeVerReportes && (
-                <LinkButton href={`${tenantHref(slug, 'panel/reportes/asistencia-por-sucursal')}?preset=30d`} variant="ghost" size="sm" icon="chart" iconPosition="start">
-                  Comparar sedes
-                </LinkButton>
-              )}
-            </div>
-            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
-              <DonutChart
-                titulo="Entradas por sucursal en los últimos 30 días"
-                centroValor={`${resumen.total}`}
-                centroEtiqueta="entradas"
-                segmentos={reparto.map((r, i) => ({
-                  etiqueta: r.nombre,
-                  valor: r.visitas,
-                  color: r.branchId === null ? 'color-mix(in srgb, var(--t-muted) 60%, transparent)' : (COLORES_DE_SEDE[i % COLORES_DE_SEDE.length] ?? 'var(--t-action)'),
-                }))}
-              />
-              <ul className="flex flex-col gap-2">
-                {reparto.map((r) => (
-                  <li key={r.branchId ?? 'sin'}>
-                    <a
-                      href={`${base}?sucursal=${r.branchId ?? FILTRO_SIN_SUCURSAL}#historial`}
-                      className="flex min-h-11 items-center justify-between gap-3 rounded-[var(--t-radius-md)] bg-raised px-4 text-[0.9rem] transition-colors hover:text-action"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon name="pin" size={15} className={r.branchId ? 'text-action' : 'text-muted'} />
-                        {r.nombre}
-                      </span>
-                      <span className="tabular-nums text-muted">{r.visitas}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
+              <BarChart titulo="Entradas por día en los últimos 30 días" puntos={puntosPorDia} unidad="entradas" alto={190} className="mt-6" />
+            </section>
 
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-horas">
-          <h2 id="titulo-horas" className="t-h3">Entradas por hora</h2>
-          <BarChart titulo="Entradas por hora del día" puntos={puntosPorHora} unidad="entradas" alto={170} saltoDeEtiqueta={2} className="mt-6" />
-        </section>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+              <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-calor">
+                <h3 id="titulo-calor" className="t-h3">¿Cuándo hay más gente?</h3>
+                <p className="mt-1.5 text-[0.86rem] text-muted">Entradas por día de la semana y hora, en los últimos 30 días. Cuanto más intenso, más gente.</p>
+                <HeatMap titulo="Entradas por día de la semana y hora" filas={DIAS} columnas={HORAS.map((h) => String(h).padStart(2, '0'))} valores={calor} className="mt-6" />
+              </section>
 
-        <section id="historial" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-historial">
+              <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-metodos">
+                <h3 id="titulo-metodos" className="t-h3">Cómo registran la entrada</h3>
+                <p className="mt-1.5 text-[0.86rem] text-muted">Cuántos ya usan el QR y cuántos siguen pasando a mano.</p>
+                <DonutChart
+                  titulo="Entradas por método de registro"
+                  className="mt-6"
+                  centroValor={`${resumen.total}`}
+                  centroEtiqueta="entradas"
+                  segmentos={[
+                    { etiqueta: NOMBRE_DE_METODO.qr, valor: porMetodo.get('qr') ?? 0, color: 'var(--t-action)' },
+                    { etiqueta: NOMBRE_DE_METODO.manual, valor: porMetodo.get('manual') ?? 0, color: 'var(--t-structural)' },
+                    { etiqueta: NOMBRE_DE_METODO.kiosk, valor: porMetodo.get('kiosk') ?? 0, color: 'color-mix(in srgb, var(--t-muted) 60%, transparent)' },
+                  ]}
+                />
+              </section>
+            </div>
+
+            {multisede && reparto.length > 0 && (
+              <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-sedes">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 id="titulo-sedes" className="t-h3">Entradas por sucursal</h3>
+                    <p className="mt-1.5 text-[0.86rem] text-muted">Últimos 30 días. El mismo socio puede entrenar en varias sedes con su única membresía.</p>
+                  </div>
+                  {puedeVerReportes && (
+                    <LinkButton href={`${tenantHref(slug, 'panel/reportes/asistencia-por-sucursal')}?preset=30d`} variant="ghost" size="sm" icon="chart" iconPosition="start">
+                      Comparar sedes
+                    </LinkButton>
+                  )}
+                </div>
+                <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
+                  <DonutChart
+                    titulo="Entradas por sucursal en los últimos 30 días"
+                    centroValor={`${resumen.total}`}
+                    centroEtiqueta="entradas"
+                    segmentos={reparto.map((r, i) => ({
+                      etiqueta: r.nombre,
+                      valor: r.visitas,
+                      color: r.branchId === null ? 'color-mix(in srgb, var(--t-muted) 60%, transparent)' : (COLORES_DE_SEDE[i % COLORES_DE_SEDE.length] ?? 'var(--t-action)'),
+                    }))}
+                  />
+                  <ul className="flex flex-col gap-2">
+                    {reparto.map((r) => (
+                      <li key={r.branchId ?? 'sin'}>
+                        <a
+                          href={`${base}?sucursal=${r.branchId ?? FILTRO_SIN_SUCURSAL}#historial`}
+                          className="flex min-h-11 items-center justify-between gap-3 rounded-[var(--t-radius-md)] bg-raised px-4 text-[0.9rem] transition-colors hover:text-action"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Icon name="pin" size={15} className={r.branchId ? 'text-action' : 'text-muted'} />
+                            {r.nombre}
+                          </span>
+                          <span className="tabular-nums text-muted">{r.visitas}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+
+            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-horas">
+              <h3 id="titulo-horas" className="t-h3">Entradas por hora</h3>
+              <BarChart titulo="Entradas por hora del día" puntos={puntosPorHora} unidad="entradas" alto={170} saltoDeEtiqueta={2} className="mt-6" />
+            </section>
+          </div>
+        </PanelPlegable>
+
+        <PanelPlegable nivel={2} id="historial" titulo="Historial" resumen={`${historial.total} ${hayFiltro ? 'resultados con los filtros' : 'entradas registradas'} · busca por socio, sede o fechas`} abiertoAlInicio={hayFiltro || pagina > 1}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="titulo-historial" className="t-h3">Historial</h2>
               <p className="mt-1.5 text-[0.86rem] text-muted">Toca un socio para ver su ficha completa.</p>
             </div>
             <Badge tone="neutral">{historial.total} {hayFiltro ? 'resultados' : 'entradas'}</Badge>
@@ -339,7 +343,7 @@ export default async function AsistenciaPage({ params, searchParams }: Asistenci
             filasEnPagina={registros.length}
             ancla="historial"
           />
-        </section>
+        </PanelPlegable>
       </div>
     </FichaDeSocioProvider>
   );

@@ -28,6 +28,7 @@ import { Modal } from '@/presentation/ui/Modal';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon, type AnyIconKey } from '@/presentation/icons/Icon';
 import { justificarInasistencia } from './reservas-actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 const ICONO_DE_TONO: Readonly<Record<ConclusionDeReservas['tono'], AnyIconKey>> = {
   bueno: 'check',
@@ -119,8 +120,7 @@ export async function SeccionDeReservas({ slug }: { readonly slug: string }) {
         </ul>
       </section>
 
-      <section id="reservas-por-clase" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-reservas-por-clase">
-        <h2 id="titulo-reservas-por-clase" className="t-h3">Reservas por clase</h2>
+      <PanelPlegable nivel={2} id="reservas-por-clase" titulo="Reservas por clase" resumen={`${conActividad.length} clases con reservas en 30 días`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">Sesiones de los últimos 30 días.</p>
         <DataTable<EstadisticaDeReservas>
           titulo="Cumplimiento de reservas por clase en 30 días"
@@ -152,10 +152,9 @@ export async function SeccionDeReservas({ slug }: { readonly slug: string }) {
           }}
           vacio={<EmptyState icono="calendar" titulo="Todavía no hay reservas en los últimos 30 días" />}
         />
-      </section>
+      </PanelPlegable>
 
-      <section id="faltas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-faltas">
-        <h2 id="titulo-faltas" className="t-h3">Faltas recientes</h2>
+      <PanelPlegable nivel={2} id="faltas" titulo="Faltas recientes" resumen={inasistencias.length === 0 ? 'Sin faltas recientes' : `${inasistencias.length} faltas para revisar o justificar`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">
           Reservas sin asistencia y cancelaciones tardías de 30 días. Justificar una falta la saca del conteo y le avisa al socio.
         </p>
@@ -222,7 +221,7 @@ export async function SeccionDeReservas({ slug }: { readonly slug: string }) {
           claveDeFila={(f) => f.reservationId}
           vacio={<EmptyState icono="check" titulo="Sin faltas en los últimos 30 días" />}
         />
-      </section>
+      </PanelPlegable>
     </>
   );
 }

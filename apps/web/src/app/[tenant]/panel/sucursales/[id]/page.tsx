@@ -35,6 +35,7 @@ import {
   hacerSucursalPrincipal,
   retirarPersonal,
 } from '../actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Sucursal', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -127,15 +128,13 @@ export default async function SucursalPage({ params }: SucursalPageProps) {
           <StatCard href="#personal" etiqueta="Personal asignado" valor={`${datos?.usuariosAsignados ?? 0}`} icono="user" comparacion={globales.length > 0 ? `+ ${globales.length} con alcance global` : 'con acceso a esta sede'} accion="Asignar personal" />
         </div>
 
-        <section id="actividad" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-actividad">
-          <h2 id="titulo-actividad" className="t-h3">Entradas de los últimos 30 días</h2>
+        <PanelPlegable nivel={2} id="actividad" titulo={`Entradas de los últimos 30 días`} resumen={`${datos?.asistencias30d ?? 0} entradas en ${sucursal.name} en 30 días`}>
           <p className="mt-1.5 text-[0.86rem] text-muted">Solo las registradas en {sucursal.name}. La barra de la derecha es hoy.</p>
           <BarChart titulo={`Entradas por día en ${sucursal.name}`} puntos={puntos} unidad="entradas" alto={170} className="mt-6" />
-        </section>
+        </PanelPlegable>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-ultimas">
-            <h2 id="titulo-ultimas" className="t-h3">Últimas entradas en esta sede</h2>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <PanelPlegable nivel={2} titulo="Últimas entradas en esta sede" resumen={ultimas.length === 0 ? 'Todavía no hay entradas en esta sede' : `Las ${ultimas.length} más recientes, con su hora`} ladoALado>
             <DataTable
               titulo={`Últimas entradas en ${sucursal.name}`}
               className="mt-5"
@@ -149,10 +148,9 @@ export default async function SucursalPage({ params }: SucursalPageProps) {
               claveDeFila={(fila) => fila.id}
               vacio={<EmptyState icono="calendar" titulo="Todavía no hay entradas en esta sede" descripcion="Aparecerán en cuanto recepción registre entradas con esta sede de trabajo." />}
             />
-          </section>
+          </PanelPlegable>
 
-          <section className="surface-card flex flex-col gap-5 p-6 sm:p-7" aria-labelledby="titulo-estado">
-            <h2 id="titulo-estado" className="t-h3">Estado</h2>
+          <PanelPlegable nivel={2} titulo="Estado" resumen={`${sucursal.isActive ? 'Activa' : 'Inactiva'}${sucursal.isPrimary ? ' · principal' : ''} · dirección, contacto y horario`} ladoALado>
             <dl className="flex flex-col gap-2 text-[0.88rem]">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Dirección</dt>
@@ -199,11 +197,10 @@ export default async function SucursalPage({ params }: SucursalPageProps) {
                 Es la sede por defecto del gimnasio. Para desactivarla, primero haz principal a otra sede.
               </p>
             )}
-          </section>
+          </PanelPlegable>
         </div>
 
-        <section id="personal" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-personal">
-          <h2 id="titulo-personal" className="t-h3">Personal de esta sede</h2>
+        <PanelPlegable nivel={2} id="personal" titulo="Personal de esta sede" resumen={`${conAsignacion.length} asignados · ${globales.length} con alcance en todas las sedes`}>
           <p className="mt-1.5 text-[0.86rem] text-muted">
             Quien está asignado puede registrar entradas aquí. {globales.length > 0 && `${globales.map((p) => p.fullName).join(', ')} opera${globales.length === 1 ? '' : 'n'} en todas las sedes por su rol.`}
           </p>
@@ -242,15 +239,14 @@ export default async function SucursalPage({ params }: SucursalPageProps) {
             claveDeFila={(p) => p.appUserId}
             vacio={<EmptyState icono="group" titulo="No hay personal que asignar" descripcion="Toda cuenta del personal que no tenga alcance global aparece aquí." />}
           />
-        </section>
+        </PanelPlegable>
 
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-editar">
-          <h2 id="titulo-editar" className="t-h3">Datos de la sede</h2>
+        <PanelPlegable nivel={2} titulo="Datos de la sede" resumen="Editar nombre, dirección, teléfono, horario y mapa">
           <p className="mt-1.5 text-[0.86rem] text-muted">Lo que se publica en la web: dirección, horario y ubicación.</p>
           <div className="mt-6">
             <SucursalForm slug={slug} sucursal={sucursal} />
           </div>
-        </section>
+        </PanelPlegable>
       </div>
     </FichaDeSocioProvider>
   );

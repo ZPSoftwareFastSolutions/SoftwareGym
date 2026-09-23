@@ -23,6 +23,7 @@ import { EmptyState } from '@/presentation/ui/EmptyState';
 import { Modal } from '@/presentation/ui/Modal';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { exigirPermiso } from '../_datos';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Entrenadores', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -138,8 +139,7 @@ export default async function EntrenadoresPage({ params }: TenantPageParams) {
       </section>
 
       {puedeEditarPlanes && (
-        <section id="planes" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-planes">
-          <h2 id="titulo-planes" className="t-h3">Entrenador según el plan</h2>
+        <PanelPlegable nivel={2} id="planes" titulo="Entrenador según el plan" resumen={`${planesConEntrenador} planes incluyen entrenador`}>
           <p className="mt-1.5 max-w-[70ch] text-[0.86rem] leading-relaxed text-muted">
             Solo se asigna entrenador a socios con membresía vigente cuyo plan lo incluya. «Principal» permite un entrenador principal; «Secundarios» es cuántos entrenadores especializados más admite. La base lo vuelve a comprobar en cada asignación.
           </p>
@@ -167,7 +167,7 @@ export default async function EntrenadoresPage({ params }: TenantPageParams) {
             claveDeFila={(r) => r.planId}
             vacio={<EmptyState icono="layers" titulo="No hay planes activos" />}
           />
-        </section>
+        </PanelPlegable>
       )}
     </div>
   );

@@ -28,6 +28,7 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
 import { liberarArchivosSinUso } from './actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Ejercicios', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -188,10 +189,9 @@ export default async function EjerciciosPage({ params, searchParams }: Ejercicio
       </section>
 
       {uso && (
-        <section id="almacenamiento" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-almacenamiento">
+        <PanelPlegable nivel={2} id="almacenamiento" titulo="Espacio para medios" resumen="Cuánto de la cuota del gimnasio ocupan las imágenes y los clips">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-[64ch]">
-              <h2 id="titulo-almacenamiento" className="t-h3">Espacio para medios</h2>
               <p className="mt-1.5 text-[0.86rem] leading-relaxed text-muted">
                 Cada gimnasio tiene una cuota. Las imágenes se comprimen solas al subirlas; los clips son cortos y llevan miniatura; los vídeos largos conviene enlazarlos desde YouTube o Vimeo, que no ocupan espacio.
               </p>
@@ -207,7 +207,7 @@ export default async function EjerciciosPage({ params, searchParams }: Ejercicio
             )}
           </div>
           <UsoDeMedios uso={uso} className="mt-5" />
-        </section>
+        </PanelPlegable>
       )}
     </div>
   );

@@ -38,6 +38,7 @@ import { LinkButton } from '@/presentation/ui/Button';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon, type AnyIconKey } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Entrenamiento', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -217,9 +218,8 @@ export default async function EntrenamientoPage({ params }: TenantPageParams) {
         </ul>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <section id="semana" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-semana">
-          <h2 id="titulo-semana" className="t-h3">La semana del gimnasio</h2>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <PanelPlegable nivel={2} id="semana" titulo="La semana del gimnasio" resumen="Ejercicios registrados en cada día de la semana" ladoALado>
           <p className="mt-1.5 text-[0.86rem] text-muted">Ejercicios registrados por día de la semana (90 días).</p>
           <BarChart titulo="Ejercicios registrados por día de la semana" puntos={serieSemanal} unidad="ejercicios" alto={170} className="mt-6" />
           <ul className="mt-6 flex flex-col gap-2">
@@ -237,10 +237,9 @@ export default async function EntrenamientoPage({ params }: TenantPageParams) {
                 </li>
               ))}
           </ul>
-        </section>
+        </PanelPlegable>
 
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-mapa">
-          <h2 id="titulo-mapa" className="t-h3">Qué músculo, qué día</h2>
+        <PanelPlegable nivel={2} titulo="Qué músculo, qué día" resumen={`Los ${gruposDelMapa.length} grupos más trabajados, día por día`} ladoALado>
           <p className="mt-1.5 text-[0.86rem] text-muted">Cuanto más intenso el color, más veces se entrenó ese grupo ese día.</p>
           {gruposDelMapa.length === 0 ? (
             <EmptyState className="mt-6" icono="chart" titulo="Todavía no hay registros" />
@@ -254,11 +253,10 @@ export default async function EntrenamientoPage({ params }: TenantPageParams) {
               className="mt-6"
             />
           )}
-        </section>
+        </PanelPlegable>
       </div>
 
-      <section id="ejercicios" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-ejercicios-metricas">
-        <h2 id="titulo-ejercicios-metricas" className="t-h3">Cuánta gente hace cada ejercicio</h2>
+      <PanelPlegable nivel={2} id="ejercicios" titulo="Cuánta gente hace cada ejercicio" resumen={`${hechos.length} de ${ejercicios.length} ejercicios se hicieron en los últimos 30 días`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">
           Todo el catálogo, incluidos los que nadie hizo: eso también dice algo.
           {features.enableExercises && ' Los que no están en ninguna rutina no van a aparecer nunca.'}
@@ -295,10 +293,9 @@ export default async function EntrenamientoPage({ params }: TenantPageParams) {
           }}
           vacio={<EmptyState icono="dumbbell" titulo="El catálogo está vacío" descripcion="Carga ejercicios para poder armar rutinas." />}
         />
-      </section>
+      </PanelPlegable>
 
-      <section id="socios" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-socios-metricas">
-        <h2 id="titulo-socios-metricas" className="t-h3">Qué hace cada socio</h2>
+      <PanelPlegable nivel={2} id="socios" titulo="Qué hace cada socio" resumen={`${resumenPorSocio.length} socios registraron ejercicios en 30 días`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">Su ejercicio más repetido en 30 días y cuánto registró.</p>
         <DataTable<ResumenDeSocio>
           titulo="Actividad por socio en 30 días"
@@ -339,7 +336,7 @@ export default async function EntrenamientoPage({ params }: TenantPageParams) {
             />
           }
         />
-      </section>
+      </PanelPlegable>
     </div>
   );
 }

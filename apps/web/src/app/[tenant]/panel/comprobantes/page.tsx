@@ -41,6 +41,7 @@ import { Icon } from '@/presentation/icons/Icon';
 import { MiniaturaDeComprobante } from '@/presentation/patterns/MiniaturaDeComprobante';
 import { exigirPermiso, fechaCorta, hora, importe } from '../_datos';
 import { leerFiltros, type ParametrosDeUrl } from '../reportes/_filtros';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Comprobantes', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -146,11 +147,7 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
         </div>
 
         {puedeCobrar && sinMembresia.length > 0 && (
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-altas">
-            <h2 id="titulo-altas" className="flex items-center gap-2 t-h3">
-              <Icon name="user" size={18} className="text-action" />
-              Altas esperando comprobante
-            </h2>
+          <PanelPlegable nivel={2} titulo="Socios sin membresía" resumen={`${sinMembresia.length} socios esperando su primer plan`}>
             <p className="mt-1.5 text-[0.86rem] text-muted">
               Socios registrados que todavía no tienen membresía. Adjunta su comprobante y el plan propuesto se activa al aprobarlo.
             </p>
@@ -182,7 +179,7 @@ export default async function ComprobantesPage({ params, searchParams }: Comprob
                 </li>
               ))}
             </ul>
-          </section>
+          </PanelPlegable>
         )}
 
         <section className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-bandeja">

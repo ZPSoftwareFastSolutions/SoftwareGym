@@ -46,6 +46,7 @@ import { Button, LinkButton } from '@/presentation/ui/Button';
 import { Icon } from '@/presentation/icons/Icon';
 import { MiniaturaDeComprobante } from '@/presentation/patterns/MiniaturaDeComprobante';
 import { exigirPermiso, fechaCorta, importe } from '../../_datos';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Ficha del socio', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -310,12 +311,8 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
         </section>
       </div>
 
-      <section id="membresia" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-membresia">
+      <PanelPlegable nivel={3} id="membresia" titulo="Membresías" resumen={ficha.planName ? `Plan vigente: ${ficha.planName} · vender, renovar y ver su historial` : 'Sin plan vigente · vender una membresía'}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 id="titulo-membresia" className="flex items-center gap-2 t-h3">
-            <Icon name="shield" size={18} className="text-action" />
-            Membresías
-          </h3>
           <div className="flex flex-wrap gap-2" data-print="hide">
             {puede(PERMISO.venderMembresias) && !archivado && (
               <Modal
@@ -367,23 +364,15 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
           claveDeFila={(m) => m.id}
           vacio={<p className="mt-5 text-[0.88rem] text-muted">Todavía no tiene membresías.</p>}
         />
-      </section>
+      </PanelPlegable>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section id="constancia" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-constancia">
-          <h3 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
-            <Icon name="fire" size={18} className="text-action" />
-            Constancia
-          </h3>
+        <PanelPlegable nivel={3} id="constancia" titulo="Constancia" resumen="Su racha y el calendario de las últimas semanas" ladoALado>
           <RachaCalendario racha={racha} />
-        </section>
+        </PanelPlegable>
 
         {verPagos && (
-          <section id="pagos" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-pagos">
-            <h3 id="titulo-pagos" className="flex items-center gap-2 t-h3">
-              <Icon name="wallet" size={18} className="text-action" />
-              Pagos
-            </h3>
+          <PanelPlegable nivel={3} id="pagos" titulo="Pagos" resumen="Lo que pagó, con fecha, plan, método e importe" ladoALado>
             <DataTable
               titulo="Pagos del socio"
               className="mt-5"
@@ -398,17 +387,13 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
               filaDeTotales={pagos.length > 0 ? { importe: importe(pagos.reduce((s, p) => s + p.amount, 0)) } : undefined}
               vacio={<p className="mt-5 text-[0.88rem] text-muted">Sin pagos registrados.</p>}
             />
-          </section>
+          </PanelPlegable>
         )}
       </div>
 
       {conComprobantes && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-comprobantes">
+        <PanelPlegable nivel={3} titulo="Comprobantes" resumen="Capturas de pago por QR y su revisión">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 id="titulo-comprobantes" className="flex items-center gap-2 t-h3">
-              <Icon name="receipt" size={18} className="text-action" />
-              Comprobantes
-            </h3>
             {puede(PERMISO.cobrar) && !archivado && (
               <Modal
                 titulo="Adjuntar comprobante"
@@ -450,15 +435,11 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
               ))}
             </ul>
           )}
-        </section>
+        </PanelPlegable>
       )}
 
       {(puede(PERMISO.archivarSocios) || puede(PERMISO.gestionarUsuarios)) && (
-        <section className="surface-card border-structural/30 p-6 sm:p-7" aria-labelledby="titulo-gestion" data-print="hide">
-          <h3 id="titulo-gestion" className="flex items-center gap-2 t-h3">
-            <Icon name="lock" size={18} className="text-structural" />
-            Zona de gerencia
-          </h3>
+        <PanelPlegable nivel={3} titulo="Zona de gerencia" resumen="Archivar la ficha y desvincular su cuenta">
           <p className="mt-1.5 text-[0.86rem] text-muted">
             Archivar saca al socio de las listas y conserva todo su histórico de pagos y asistencia:
             en {name} los socios no se borran.
@@ -488,7 +469,7 @@ export default async function FichaDeSocioPage({ params }: FichaPageProps) {
               />
             )}
           </div>
-        </section>
+        </PanelPlegable>
       )}
     </div>
   );

@@ -33,6 +33,7 @@ import { EmptyState } from '@/presentation/ui/EmptyState';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Mis socios', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -106,8 +107,7 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
         />
       </div>
 
-      <section id="socios" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-socios">
-        <h2 id="titulo-mis-socios" className="t-h3">Tus socios</h2>
+      <PanelPlegable nivel={2} id="socios" titulo="Tus socios" resumen={`${socios.length} a tu cargo · ${porVencer} por vencer · ${sinVigencia} sin membresía vigente`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">Los asigna gerencia según el plan de cada socio.</p>
         <DataTable
           titulo="Socios asignados a tu cargo"
@@ -150,13 +150,12 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
           claveDeFila={(s) => s.assignmentId}
           vacio={<EmptyState icono="group" titulo="Todavía no tienes socios asignados" descripcion="Cuando gerencia te asigne socios, aparecerán aquí." />}
         />
-      </section>
+      </PanelPlegable>
 
       {misSesiones && (
-        <section id="clases" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-clases-entrenador">
+        <PanelPlegable nivel={2} id="clases" titulo="Tus clases de esta semana" resumen={misSesiones.length === 0 ? 'Sin clases asignadas esta semana' : `${misSesiones.length} sesiones en los próximos siete días`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="titulo-mis-clases-entrenador" className="t-h3">Tus clases de esta semana</h2>
               <p className="mt-1.5 text-[0.86rem] text-muted">Entra a la sesión para registrar quién vino. Solo ves y registras a los asistentes de las clases que dictas.</p>
             </div>
             <LinkButton href={tenantHref(slug, 'panel/clases')} variant="secondary" size="sm" icon="calendar" iconPosition="start">
@@ -174,12 +173,11 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
               ))}
             </ul>
           )}
-        </section>
+        </PanelPlegable>
       )}
 
       {tenant.features.enableRoutines && (
-        <section id="rutinas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-rutinas-de-mis-socios">
-          <h2 id="titulo-rutinas-de-mis-socios" className="t-h3">Rutinas de tus socios</h2>
+        <PanelPlegable nivel={2} id="rutinas" titulo="Rutinas de tus socios" resumen={`${rutinas.length} rutinas vigentes de tus socios`}>
           <p className="mt-1.5 text-[0.86rem] text-muted">
             Entra a una para ajustarla o marcar lo que hizo el socio. Cada rutina es una copia suya: lo que cambies no toca la plantilla.
           </p>
@@ -233,11 +231,10 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
             claveDeFila={(r) => r.id}
             vacio={<EmptyState icono="layers" titulo="Tus socios todavía no tienen rutina" descripcion="Arma una rutina y asígnasela desde «Rutinas»." />}
           />
-        </section>
+        </PanelPlegable>
       )}
 
-      <section id="ausencias" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-ausencias">
-        <h2 id="titulo-mis-ausencias" className="t-h3">Tus ausencias registradas</h2>
+      <PanelPlegable nivel={2} id="ausencias" titulo="Tus ausencias registradas" resumen={ausencias.length === 0 ? 'Sin ausencias programadas' : `${ausencias.length} ausencias por venir`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">Las registra gerencia. Si falta alguna o hay un error, avísale.</p>
         <DataTable
           titulo="Tus ausencias pendientes"
@@ -251,7 +248,7 @@ export default async function EspacioDelEntrenadorPage({ params }: TenantPagePar
           claveDeFila={(a) => a.id}
           vacio={<EmptyState icono="calendar" titulo="Sin ausencias programadas" />}
         />
-      </section>
+      </PanelPlegable>
     </div>
   );
 }

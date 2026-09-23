@@ -41,6 +41,7 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon, type AnyIconKey } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
 import { SeccionDeReservas } from './_reservas';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Clases', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -280,16 +281,14 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
         )}
       </section>
 
-      <section id="semana" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-semana">
-        <h2 id="titulo-semana" className="t-h3">Esta semana</h2>
+      <PanelPlegable nivel={2} id="semana" titulo="Esta semana" resumen={`${programadasSemana.length} sesiones en siete días · ${cuposSemana} lugares libres`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">Las canceladas quedan tachadas con su motivo en la sesión.</p>
         <div className="mt-5">
           <AgendaSemanal dias={agenda} hoy={hoy} hrefDeSesion={(s) => hrefDeSesion(s.id)} />
         </div>
-      </section>
+      </PanelPlegable>
 
-      <section id="catalogo" className="scroll-mt-28" aria-labelledby="titulo-catalogo">
-        <h2 id="titulo-catalogo" className="t-h3 mb-4">Catálogo de clases</h2>
+      <PanelPlegable nivel={2} id="catalogo" titulo="Catálogo de clases" resumen={`${activas.length} clases activas${sinAcceso > 0 ? ` · ${sinAcceso} sin plan que las incluya` : ''}`}>
         {clases.length === 0 ? (
           <div className="surface-card">
             <EmptyState
@@ -305,7 +304,7 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
             ))}
           </div>
         )}
-      </section>
+      </PanelPlegable>
 
       {resumen && (
         <>
@@ -334,8 +333,7 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
             </ul>
           </section>
 
-          <section id="rendimiento" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-rendimiento">
-            <h2 id="titulo-rendimiento" className="t-h3">Rendimiento por clase</h2>
+          <PanelPlegable nivel={2} id="rendimiento" titulo="Rendimiento por clase" resumen="Ocupación de cada clase en los últimos 30 días">
             <p className="mt-1.5 text-[0.86rem] text-muted">Sesiones ya terminadas de los últimos 30 días.</p>
             <DataTable<EstadisticaDeClase>
               titulo="Ocupación por clase en 30 días"
@@ -371,10 +369,9 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
               }}
               vacio={<EmptyState icono="chart" titulo="Sin sesiones terminadas todavía" />}
             />
-          </section>
+          </PanelPlegable>
 
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-franjas">
-            <h2 id="titulo-franjas" className="t-h3">Cuándo se llenan</h2>
+          <PanelPlegable nivel={2} titulo="Cuándo se llenan" resumen="Ocupación por día y hora de los últimos 90 días">
             <p className="mt-1.5 text-[0.86rem] text-muted">Asistentes promedio por sesión, por día y hora de inicio (90 días).</p>
             {horas.length === 0 ? (
               <EmptyState className="mt-5" icono="chart" titulo="Todavía no hay sesiones terminadas" />
@@ -388,7 +385,7 @@ export default async function ClasesPage({ params, searchParams }: ClasesPagePro
                 className="mt-6"
               />
             )}
-          </section>
+          </PanelPlegable>
         </>
       )}
 

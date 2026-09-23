@@ -50,6 +50,7 @@ import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../../../_datos';
 import { quitarAsistenciaDeClase } from '../../actions';
 import { cerrarListaDeSesion, justificarInasistencia } from '../../reservas-actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Sesión de clase', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -141,10 +142,9 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
         <div className="flex min-w-0 flex-col gap-6">
           {conReservas && personal && (
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-reservas-sesion">
+            <PanelPlegable nivel={2} titulo="Reservas" resumen={`${reservas.filter((r) => r.status === 'reservada').length} con lugar · ${reservas.filter((r) => r.status === 'en_espera').length} en espera`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 id="titulo-reservas-sesion" className="t-h3">Reservas</h2>
                   <p className="mt-1.5 text-[0.86rem] text-muted">
                     {sesion.reservadas} {sesion.reservadas === 1 ? 'lugar reservado' : 'lugares reservados'} sin llegar todavía
                     {sesion.enEspera > 0 ? ` · ${sesion.enEspera} en lista de espera` : ''}
@@ -239,11 +239,10 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
                 claveDeFila={(r) => r.reservationId}
                 vacio={<EmptyState icono="calendar" titulo="Nadie reservó esta sesión" descripcion={!iniciada && !cancelada ? 'Los socios reservan desde su panel; también puedes reservar por ellos.' : undefined} />}
               />
-            </section>
+            </PanelPlegable>
           )}
 
-          <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-asistentes">
-            <h2 id="titulo-asistentes" className="t-h3">Asistentes</h2>
+          <PanelPlegable nivel={2} titulo="Asistentes" resumen={`${sesion.ocupados} de ${sesion.capacity} lugares ocupados`}>
             <p className="mt-1.5 text-[0.86rem] text-muted">Quién estuvo en esta sesión. No cuenta como entrada al gimnasio: esa la marca el QR de recepción.</p>
             <BarraDeOcupacion asistentes={sesion.ocupados} capacidad={sesion.capacity} enEspera={sesion.enEspera} className="mt-5 max-w-md" />
 
@@ -301,16 +300,13 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
                 />
               }
             />
-          </section>
+          </PanelPlegable>
 
           {/* V4.2 · Personas autorizadas. Se muestra cuando la clase exige
               autorización nominal (`autorizados`) o cuando ya hay alguien
               autorizado: en una clase normal, una sección vacía solo estorba. */}
           {personal && (sesion.accessMode === 'autorizados' || admisiones.length > 0) && (
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-admisiones">
-              <h2 id="titulo-admisiones" className="t-h3">
-                Personas autorizadas
-              </h2>
+            <PanelPlegable nivel={2} titulo="Personas autorizadas" resumen={`${admisiones.length} autorizadas para esta sesión`}>
               <p className="mt-1.5 text-[0.86rem] text-muted">
                 {sesion.accessMode === 'autorizados'
                   ? 'Esta clase solo admite a quien esté autorizado aquí, sea socio o no. Nadie entra por tener membresía.'
@@ -325,7 +321,7 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
                   sePuedeAutorizar={puedeTomarAsistencia && !cancelada && dentroDeVentana}
                 />
               </div>
-            </section>
+            </PanelPlegable>
           )}
         </div>
 
@@ -353,8 +349,7 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
           )}
 
           {editable && (
-            <section className="surface-card flex flex-col gap-3 p-6" aria-labelledby="titulo-gestion-sesion">
-              <h2 id="titulo-gestion-sesion" className="t-h3">Gestión</h2>
+            <PanelPlegable nivel={2} titulo="Gestión" resumen="Editar o cancelar la sesión">
               <Modal
                 titulo="Editar sesión"
                 descripcion="Solo esta fecha: el horario semanal no cambia."
@@ -394,7 +389,7 @@ export default async function SesionDeClasePage({ params }: SesionPageProps) {
               >
                 <CancelarSesionForm slug={slug} sessionId={sesion.id} />
               </Modal>
-            </section>
+            </PanelPlegable>
           )}
         </aside>
       </div>

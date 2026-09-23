@@ -39,6 +39,7 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../../_datos';
 import { activarClase, archivarClase, desactivarHorario } from '../actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Clase', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -116,8 +117,7 @@ export default async function ClasePage({ params }: ClasePageProps) {
         <StatCard href="#proximas" etiqueta="Ocupación 30 días" valor={stats?.ocupacion30d !== null && stats?.ocupacion30d !== undefined ? `${stats.ocupacion30d} %` : '—'} icono="chart" comparacion={stats ? `${stats.asistencias30d} asistencias · ${stats.socios30d} socios` : 'se calcula con las sesiones terminadas'} accion="Ver sesiones" />
       </div>
 
-      <section id="planes" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-planes">
-        <h2 id="titulo-planes" className="t-h3">Planes que la incluyen</h2>
+      <PanelPlegable nivel={2} id="planes" titulo="Planes que la incluyen" resumen={sinAcceso ? 'Ningún plan la incluye todavía' : 'Quién puede entrar a esta clase según su plan'}>
         <p className="mt-1.5 text-[0.86rem] text-muted">
           {clase.accessMode === 'planes'
             ? 'Solo los socios con uno de estos planes vigente el día de la sesión pueden registrarse. La base lo comprueba al registrar.'
@@ -130,12 +130,11 @@ export default async function ClasePage({ params }: ClasePageProps) {
         ) : (
           <p className="mt-4 text-[0.9rem] text-ink">{clase.planNames.length > 0 ? clase.planNames.join(' · ') : 'Ningún plan marcado.'}</p>
         )}
-      </section>
+      </PanelPlegable>
 
-      <section id="horarios" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-horarios">
+      <PanelPlegable nivel={2} id="horarios" titulo="Horario semanal" resumen={`${activos.length} horarios activos`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 id="titulo-horarios" className="t-h3">Horario semanal</h2>
             <p className="mt-1.5 text-[0.86rem] text-muted">De aquí salen las sesiones al generarlas. Cambiar un horario no toca las sesiones ya creadas.</p>
           </div>
           {puedeGestionar && clase.isActive && (
@@ -212,11 +211,10 @@ export default async function ClasePage({ params }: ClasePageProps) {
             />
           }
         />
-      </section>
+      </PanelPlegable>
 
-      <section id="proximas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-proximas">
+      <PanelPlegable nivel={2} id="proximas" titulo="Próximas sesiones" resumen={`${proximas.filter((s) => s.estado !== 'cancelada').length} en las próximas tres semanas · ${pasadas.length} en las dos últimas`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 id="titulo-proximas" className="t-h3">Próximas sesiones</h2>
           {puedeGestionar && clase.isActive && (
             <Modal
               titulo={`Programar «${clase.name}»`}
@@ -257,13 +255,12 @@ export default async function ClasePage({ params }: ClasePageProps) {
             </ul>
           </details>
         )}
-      </section>
+      </PanelPlegable>
 
       {puedeGestionar && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-datos-clase">
+        <PanelPlegable nivel={2} titulo="Datos de la clase" resumen="Nombre, categoría, nivel, duración, capacidad e instructor">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="titulo-datos-clase" className="t-h3">Datos de la clase</h2>
               <p className="mt-1.5 text-[0.86rem] text-muted">{NOMBRE_DE_TIPO_DE_CLASE[clase.kind]}. Cambiar la capacidad aquí vale para las sesiones que se generen después.</p>
             </div>
             {clase.isActive ? (
@@ -282,7 +279,7 @@ export default async function ClasePage({ params }: ClasePageProps) {
           <div className="mt-6">
             <ClaseForm slug={slug} clase={clase} instructores={opcionesDeInstructor} />
           </div>
-        </section>
+        </PanelPlegable>
       )}
     </div>
   );

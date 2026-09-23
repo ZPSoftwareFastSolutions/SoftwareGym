@@ -32,6 +32,7 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../../_datos';
 import { activarRutina, desactivarRutina, finalizarRutinaAsignada, quitarEjercicioDeRutina } from '../actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Rutina', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -212,10 +213,9 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
         />
       </section>
 
-      <section id="asignada" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-asignada">
+      <PanelPlegable nivel={2} id="asignada" titulo="Quién la está haciendo" resumen="Socios con esta rutina asignada">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 id="titulo-asignada" className="t-h3">Quién la está haciendo</h2>
             <p className="mt-1.5 text-[0.86rem] text-muted">Cada socio tiene su copia: los cambios de arriba no le cambian la suya.</p>
           </div>
           {puedeAsignar && socios.length > 0 && ejercicios.length > 0 && (
@@ -276,12 +276,11 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
           claveDeFila={(a) => a.id}
           vacio={<EmptyState icono="group" titulo="Nadie la tiene asignada todavía" />}
         />
-      </section>
+      </PanelPlegable>
 
       {puedeGestionar && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-datos-rutina">
+        <PanelPlegable nivel={2} titulo="Datos de la rutina" resumen="Nombre, día, programa, notas y duración">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h2 id="titulo-datos-rutina" className="t-h3">Datos de la rutina</h2>
             {rutina.isActive ? (
               <AccionConEstado
                 accion={desactivarRutina}
@@ -309,7 +308,7 @@ export default async function RutinaPage({ params }: RutinaPageProps) {
           <div className="mt-6">
             <RutinaForm slug={slug} rutina={rutina} programas={programas.filter((p) => p.isActive)} />
           </div>
-        </section>
+        </PanelPlegable>
       )}
     </div>
   );

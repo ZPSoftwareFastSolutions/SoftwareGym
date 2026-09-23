@@ -44,6 +44,7 @@ import { ReportFilters } from '@/presentation/patterns/ReportFilters';
 import { LinkButton } from '@/presentation/ui/Button';
 import { exigirPermiso, fechaCorta, importe } from '../../_datos';
 import { leerFiltros, type ParametrosDeUrl } from '../_filtros';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 interface ReportePageProps {
   readonly params: Promise<{ tenant: string; reporte: string }>;
@@ -209,10 +210,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
       </div>
 
       {definicion.grafico && serie.length > 0 && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-grafico-reporte">
-          <h2 id="titulo-grafico-reporte" className="t-h3">
-            {definicion.grafico.titulo}
-          </h2>
+        <PanelPlegable nivel={2} titulo={definicion.grafico.titulo} resumen="El mismo periodo, en forma de gráfico">
           <BarChart
             titulo={definicion.grafico.titulo}
             puntos={serie}
@@ -220,7 +218,7 @@ export default async function ReportePage({ params, searchParams }: ReportePageP
             saltoDeEtiqueta={serie.length > 12 ? Math.ceil(serie.length / 10) : 1}
             className="mt-6"
           />
-        </section>
+        </PanelPlegable>
       )}
 
       <section id="tabla" className="surface-card scroll-mt-28 p-6 sm:p-7">

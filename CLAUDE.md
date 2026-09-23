@@ -4,8 +4,8 @@
 > este repositorio. **Describe el sistema tal como está HOY**, no cómo se llegó
 > hasta aquí.
 >
-> - **Última actualización:** 2026-09-22 · **V6 · tableros limpios al entrar: Recepción, Gerencia y Administración abren con botones y resúmenes, y cada gráfica o tabla espera cerrada en su «Ver»** (ver §13f; en la rama `feat/goldgym-v6`, **sin desplegar**). Antes: **V5 · la tarjeta de QR se DIBUJA en el PDF: se acabaron el QR achatado, las letras partidas y el token fuera del marco** (ver §13e), **desplegada** en producción (`gold-gym-psi.vercel.app`, commit `af2d473`). Antes: **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada**. Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
-> - **Rama de trabajo vigente:** `feat/goldgym-v6` (cadena `feat/goldgym-v1` -> `goldgym-v2` -> ... -> `goldgym-v5` -> `feat/goldgym-v6`). **Esta rama sirve SOLO a GOLD**: los archivos de Mitico y Aurora se retiraron del registro de tenants (sus landings viven en `miticogym-v3`). El producto sigue siendo enlatado —nada en `src` nombra a un cliente—, pero un despliegue de esta rama ya no responde `/mitico` ni `/aurora-fit`. Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
+> - **Última actualización:** 2026-09-22 · **V7 · pie de página en columnas y el «Ver» llevado a TODAS las pantallas del panel, incluido el del socio bajo su tarjeta** (ver §13g; rama `goldgym-v7`, **sin desplegar**). Antes: **V6 · tableros limpios al entrar: Recepción, Gerencia y Administración abren con botones y resúmenes, y cada gráfica o tabla espera cerrada en su «Ver»** (ver §13f; en la rama `feat/goldgym-v6`, **sin desplegar**). Antes: **V5 · la tarjeta de QR se DIBUJA en el PDF: se acabaron el QR achatado, las letras partidas y el token fuera del marco** (ver §13e), **desplegada** en producción (`gold-gym-psi.vercel.app`, commit `af2d473`). Antes: **V5 revisada: inventario por sucursal ordenado, `service_role` retirado del código y arquitectura re-verificada**. Antes: **V4.2 GOLD V1 completa: identidad, pases de acceso, autorización de clases, tableros por puesto, clases del socio y correo de confirmación** (5 migraciones aplicadas, batería RLS pasada y **desplegada** en el proyecto Vercel `gold-gym` — https://gold-gym-psi.vercel.app, commit `7600d75` —, ver §13d).
+> - **Rama de trabajo vigente:** `goldgym-v7` (cadena `feat/goldgym-v1` -> `goldgym-v2` -> ... -> `goldgym-v5` -> `feat/goldgym-v6` -> `goldgym-v7`). **Esta rama sirve SOLO a GOLD**: los archivos de Mitico y Aurora se retiraron del registro de tenants (sus landings viven en `miticogym-v3`). El producto sigue siendo enlatado —nada en `src` nombra a un cliente—, pero un despliegue de esta rama ya no responde `/mitico` ni `/aurora-fit`. Decisiones: [ADR 0011](docs/architecture/adr/0011-anuncios-y-contenido-por-sucursal.md) · V4: [ADR 0010](docs/architecture/adr/0010-administracion-del-gimnasio-y-rendimiento.md).
 > - **Roadmap de la serie V3:** `GYM_PLATFORM_ROADMAP_V3.md` (lo aporta el
 >   usuario; no vive en el repositorio). Decisiones de V3.0: [ADR 0005](docs/architecture/adr/0005-multisucursal.md) · V3.1: [ADR 0006](docs/architecture/adr/0006-entrenadores-y-medios-de-ejercicios.md) · V3.2: [ADR 0007](docs/architecture/adr/0007-rutinas-asignadas-y-metricas-de-entrenamiento.md) · V3.3: [ADR 0008](docs/architecture/adr/0008-clases-sesiones-y-acceso-por-plan.md) · V3.4: [ADR 0009](docs/architecture/adr/0009-reservas-lista-de-espera-y-faltas.md).
 > - **Historia completa** (cada fase, cada defecto con su prueba, cada decisión
@@ -2282,11 +2282,42 @@ desplazamiento horizontal de la página y botones de 44 × 44 px.
 2. **Desplegar cuando se pida.** El proyecto Vercel `gold-gym` NO está conectado a GitHub (§13e): subir la rama no
    publica nada. Se despliega con `npx vercel deploy --prod` desde `apps/web`, y solo cuando el usuario lo pide.
 
+## 13g. V7 · pie en columnas y «Ver» en todo el panel (rama `goldgym-v7`)
+
+**«Dashboard» es todo el panel.** El usuario lo aclaró: cuando pide algo para «los dashboards» de un rol se refiere a
+TODAS sus pantallas, no solo al resumen. V7 lleva el `PanelPlegable` de V6 a cada página del panel con un criterio fijo:
+**la herramienta principal de la página queda a la vista** (el escáner de asistencia, la agenda de hoy, la lista de
+socios, la bandeja de comprobantes, la tabla del reporte, «Registrar asistencia» en una sesión) y **lo secundario y
+pesado espera cerrado** con una línea que dice qué hay dentro: gráficas, estadísticas, historiales, tablas de apoyo y
+formularios de edición.
+
+- **Asistencia:** las cinco gráficas van en un solo panel «Estadísticas de los últimos 30 días»; el historial se abre
+  solo si la dirección trae filtros o una página > 1 (buscar no puede devolver un panel cerrado).
+- **Clases** (semana, catálogo, rendimiento, franjas, reservas por clase, faltas), **ficha de clase**, **sesión**
+  (reservas, asistentes, autorizados y gestión; «Registrar» visible), **entrenador** (sus socios, clases, rutinas y
+  ausencias), **entrenadores** y su ficha, **entrenamiento** (las «Conclusiones» siguen a la vista), **sucursales** y su
+  ficha, **cobros**, **ficha del socio** (membresías, constancia, pagos, comprobantes y zona de gerencia; datos y QR a la
+  vista), **rutinas**, **ejercicios**, el gráfico de cada **reporte** y las altas pendientes de **comprobantes**.
+- **Panel del socio:** la tarjeta superior (QR a la izquierda, perfil y membresía a la derecha) y «Tu membresía» no se
+  tocaron. Se pliegan rutina, clases, últimas entradas y pagos, y el `<details>` de «Información adicional» pasa al
+  mismo `PanelPlegable`.
+- **Las anclas siguen funcionando:** cada panel conserva el `id` de su sección y se abre solo cuando la dirección llega
+  con ese `#ancla` (las tarjetas que enlazan a `#socios`, `#historial`, `#reservas-por-clase`…).
+- **Pie de página** (`SiteFooter`): marca y lema · navegación en DOS listas verticales · contacto con el horario
+  resumido, y los legales en una fila aparte con un borde sutil. Tableta: marca y contacto arriba, navegación debajo;
+  móvil: las dos listas lado a lado. Medido: cuatro columnas en 1280 px, sin desplazamiento horizontal en 768 ni 375 px.
+
+**Verificado (2026-09-22):** typecheck limpio · 392 pruebas · build de 40 páginas · `npm audit` 0 · greps vacíos. Las
+pantallas con sesión no las recorrió el asistente (§2.10): revisión humana pendiente.
+
+**Despliegue:** `gold-gym` no está conectado a GitHub (§13e); subir la rama no publica nada.
+
 ---
 ## 14. Historial de versiones
 
 | Versión | Fecha | Commits clave | Resumen |
 |---|---|---|---|
+| V7 panel entero y pie | 2026-09-22 | (rama `goldgym-v7`, sin desplegar) | **El «Ver» llega a todas las pantallas del panel** (gerencia, administración, recepción, entrenador y lo secundario del socio): la herramienta principal de cada página a la vista y gráficas, historiales, tablas de apoyo y formularios de edición plegados; anclas que abren su panel. **Pie de página en cuatro columnas** con la navegación en dos listas y los legales aparte. 392 pruebas |
 | V6 tableros limpios | 2026-09-22 | (rama `feat/goldgym-v6`, sin desplegar) | **Recepción, Gerencia y Administración abren limpios**: cada gráfica y tabla es un `PanelPlegable` con su «Ver», y qué empieza abierto lo decide el dominio (`panelesAbiertosAlCargar`); parejas de minipaneles simétricas; «Últimas entradas» se hojea con `‹ ›` (25 de a 5) sin encoger la tabla; los bloques plegados de V5 pasan al mismo componente. 392 pruebas (13 nuevas) |
 | V5 alta y tablero | 2026-09-21 | (rama `goldgym-v5`) | **Alta por recepción de punta a punta y tablero del mostrador**: el login acepta las cuentas anteriores al alias de correo (cuatro cuentas reales de GOLD no podían entrar), el enlace de acceso va a la cuenta que ya existe en vez de crear otra, la base empareja cuenta y ficha por correo base (migración `20260921110000`), la ficha explica que sin correo no falta nada, y el tablero abre con «Para hoy» y pliega lo que no es del turno sin quitar ningún bloque. 356 pruebas |
 | V5 QR en PDF | 2026-09-22 | `af2d473` (rama `goldgym-v5`) · **producción** Vercel `gold-gym` (`gold-gym-psi.vercel.app`, `dpl_7bZv7js1wcgPbyfhKSCzbx2e3H1k`) | **La tarjeta de QR se dibuja en vez de fotografiarse**: se retiró `html2canvas` (y `file-saver`), la geometría de las tres hojas vive en `impresion-de-qr.ts` en milímetros reales y la vista previa lee los mismos números que el PDF. Arregla lo que el cliente vio en el papel: QR achatado, letras partidas y token de 24 caracteres fuera del marco. La matriz del QR se calcula en el servidor y `jspdf` baja diferido. 379 pruebas (35 nuevas, 7 de ellas dibujando contra un lienzo espía) |

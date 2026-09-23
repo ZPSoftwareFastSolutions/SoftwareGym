@@ -60,6 +60,7 @@ import { Icon } from '@/presentation/icons/Icon';
 import { exigirPerfil, fechaCorta, hora, importe } from '../_datos';
 import { SugerenciaCambioContrasena } from '@/presentation/patterns/SugerenciaCambioContrasena';
 import { getAuthenticatedUser } from '@infra/auth/supabase.server';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 
 export const metadata: Metadata = { title: 'Mi panel', robots: { index: false, follow: false } };
@@ -582,8 +583,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
 
 
           {rutinas.length > 0 && (
-            <section id="mi-rutina" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mi-rutina">
-              <h2 id="titulo-mi-rutina" className="t-h3">Tu rutina</h2>
+            <PanelPlegable nivel={2} id="mi-rutina" titulo="Tu rutina" resumen={`${rutinas.length === 1 ? 'Una rutina asignada' : `${rutinas.length} rutinas asignadas`} · marca lo que vas haciendo`}>
               <p className="mt-1.5 text-[0.86rem] text-muted">
                 La armó tu entrenador. Marca cada ejercicio al terminarlo: así queda tu progreso y él ve cómo vas.
               </p>
@@ -609,13 +609,12 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                   </li>
                 ))}
               </ul>
-            </section>
+            </PanelPlegable>
           )}
 
           {conClases && clasesDelGimnasio.some((c) => c.isActive) && (
-            <section id="mis-clases" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-mis-clases">
+            <PanelPlegable nivel={2} id="mis-clases" titulo="Tus clases" resumen={`${misClases.length} clases incluidas en tu plan · reserva y mira tu agenda`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <h2 id="titulo-mis-clases" className="t-h3">Tus clases</h2>
                 {conReservas && (
                   <Modal
                     titulo="Cómo funcionan las reservas"
@@ -740,12 +739,11 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                   </ul>
                 </div>
               )}
-            </section>
+            </PanelPlegable>
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <section id="mis-entradas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-historial">
-              <h2 id="titulo-historial" className="t-h3">Tus últimas entradas</h2>
+            <PanelPlegable nivel={2} id="mis-entradas" titulo="Tus últimas entradas" resumen={ultimasEntradas.length === 0 ? 'Aún no hay entradas registradas' : `Las ${ultimasEntradas.length} más recientes, con fecha y hora`} ladoALado>
               {multisede && (
                 <p className="mt-1.5 text-[0.84rem] text-muted">Tu membresía vale en todas las sedes de {perfil.tenantName ?? name}.</p>
               )}
@@ -763,10 +761,9 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                 claveDeFila={(fila) => fila.id}
                 vacio={<EmptyState icono="calendar" titulo="Aún no hay entradas registradas" descripcion="En cuanto registres tu primera entrada con el QR, aparecerá aquí." />}
               />
-            </section>
+            </PanelPlegable>
 
-            <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-pagos">
-              <h2 id="titulo-pagos" className="t-h3">Tus pagos</h2>
+            <PanelPlegable nivel={2} titulo="Tus pagos" resumen={pagos.length === 0 ? 'Sin pagos registrados' : `${pagos.length} pagos registrados`} ladoALado>
               <DataTable
                 titulo="Tus pagos registrados"
                 className="mt-5"
@@ -780,24 +777,16 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                 claveDeFila={(p) => p.id}
                 vacio={<EmptyState icono="wallet" titulo="Sin pagos registrados" />}
               />
-            </section>
+            </PanelPlegable>
           </div>
-          <details className="group surface-card">
-            <summary className="flex cursor-pointer items-center justify-between p-6 font-semibold text-ink marker:content-none sm:p-7 hover:bg-raised/30 transition-colors">
-              <span className="flex items-center gap-2 t-h3">
-                <Icon name="plus" size={18} className="text-action" />
-                Información adicional (Horarios, Datos y Constancia)
-              </span>
-              <Icon name="chevronDown" size={20} className="text-muted transition-transform group-open:rotate-180" />
-            </summary>
-            
-            <div className="flex flex-col gap-6 border-t border-line/60 p-6 sm:p-7 bg-raised/10">
+          <PanelPlegable nivel={2} titulo="Información adicional" resumen="Horario del gimnasio, tu constancia y tus datos">
+            <div className="flex flex-col gap-6">
               {tenant.hours.week.length > 0 && (
                 <section aria-labelledby="titulo-horario-socio">
-                  <h2 id="titulo-horario-socio" className="flex items-center gap-2 t-h3">
+                  <h3 id="titulo-horario-socio" className="flex items-center gap-2 t-h3">
                     <Icon name="clock" size={18} className="text-action" />
                     Horario del gimnasio
-                  </h2>
+                  </h3>
                   <p className="mt-1.5 text-[0.86rem] text-muted">
                     {horarioDeHoy === null
                       ? 'Consulta en recepción el horario de hoy.'
@@ -829,18 +818,18 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
 
               <div className="grid gap-6 lg:grid-cols-2 pt-6 border-t border-line/60">
                 <section aria-labelledby="titulo-constancia">
-                  <h2 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
+                  <h3 id="titulo-constancia" className="mb-5 flex items-center gap-2 t-h3">
                     <Icon name="fire" size={18} className="text-action" />
                     Tu constancia
-                  </h2>
+                  </h3>
                   <RachaCalendario racha={racha} />
                 </section>
 
                 <section aria-labelledby="titulo-datos">
-                  <h2 id="titulo-datos" className="flex items-center gap-2 t-h3">
+                  <h3 id="titulo-datos" className="flex items-center gap-2 t-h3">
                     <Icon name="idcard" size={18} className="text-action" />
                     Información personal
-                  </h2>
+                  </h3>
                   <dl className="mt-4">
                     <Dato etiqueta="Nombre" valor={ficha?.fullName ?? perfil.fullName} />
                     <Dato etiqueta="Código de socio" valor={ficha?.code} />
@@ -856,7 +845,7 @@ export default async function PanelDeSocioPage({ params, searchParams }: SocioPa
                 </section>
               </div>
             </div>
-          </details>
+          </PanelPlegable>
         </>
       )}
     </div>

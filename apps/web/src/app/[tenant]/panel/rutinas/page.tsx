@@ -36,6 +36,7 @@ import { StatCard } from '@/presentation/ui/StatCard';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../_datos';
 import { desactivarPrograma, finalizarRutinaAsignada } from './actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Rutinas', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -264,10 +265,9 @@ export default async function RutinasPage({ params }: TenantPageParams) {
         )}
       </section>
 
-      <section id="asignadas" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-asignadas">
+      <PanelPlegable nivel={2} id="asignadas" titulo="Rutinas asignadas" resumen="Quién está haciendo qué, y cuánto marcó en la última semana">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 id="titulo-asignadas" className="t-h3">Rutinas asignadas</h2>
             <p className="mt-1.5 text-[0.86rem] text-muted">Quién está haciendo qué, y cuánto marcó en la última semana.</p>
           </div>
           {puedeAsignar && socios.length > 0 && (
@@ -349,7 +349,7 @@ export default async function RutinasPage({ params }: TenantPageParams) {
             />
           }
         />
-      </section>
+      </PanelPlegable>
     </div>
   );
 }

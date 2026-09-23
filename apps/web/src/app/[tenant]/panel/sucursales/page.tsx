@@ -26,6 +26,7 @@ import { Modal } from '@/presentation/ui/Modal';
 import { StatCard } from '@/presentation/ui/StatCard';
 import { exigirPermiso } from '../_datos';
 import { contextoDeSucursal } from '../_sucursal';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Sucursales', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -127,10 +128,9 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
       </section>
 
       {comparativa.length > 1 && (
-        <section id="comparativa" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-comparativa">
+        <PanelPlegable nivel={2} id="comparativa" titulo="Comparativa de 30 días" resumen={`${total30d} entradas entre las sedes en 30 días`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="titulo-comparativa" className="t-h3">Comparativa de 30 días</h2>
               <p className="mt-1.5 text-[0.86rem] text-muted">
                 Entradas por sede.
                 {sinSede30d > 0 && ` Además hay ${sinSede30d} entradas anteriores a las sucursales («${ETIQUETA_SIN_SUCURSAL.toLowerCase()}»).`}
@@ -143,11 +143,10 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
             )}
           </div>
           <BarChart titulo="Entradas por sucursal en los últimos 30 días" puntos={comparativa} unidad="entradas" alto={170} saltoDeEtiqueta={1} className="mt-6" />
-        </section>
+        </PanelPlegable>
       )}
 
-      <section id="personal" className="surface-card scroll-mt-28 p-6 sm:p-7" aria-labelledby="titulo-personal">
-        <h2 id="titulo-personal" className="t-h3">Quién trabaja dónde</h2>
+      <PanelPlegable nivel={2} id="personal" titulo="Quién trabaja dónde" resumen={`${personal.length} cuentas del personal y sus sedes`}>
         <p className="mt-1.5 text-[0.86rem] text-muted">
           Una cuenta con alcance global opera en todas las sedes. El resto solo registra en las sedes asignadas; se asignan desde cada sucursal.
         </p>
@@ -174,7 +173,7 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
           claveDeFila={(p) => p.appUserId}
           vacio={<EmptyState icono="group" titulo="No hay cuentas del personal que mostrar" />}
         />
-      </section>
+      </PanelPlegable>
     </div>
   );
 }

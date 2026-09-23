@@ -31,6 +31,7 @@ import { EmptyState } from '@/presentation/ui/EmptyState';
 import { Icon } from '@/presentation/icons/Icon';
 import { exigirPermiso } from '../../_datos';
 import { activarEjercicio, desactivarEjercicio, eliminarMedio } from '../actions';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Ejercicio', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -177,8 +178,7 @@ export default async function EjercicioPage({ params }: EjercicioPageProps) {
       </div>
 
       {puedeGestionar && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-agregar">
-          <h2 id="titulo-agregar" className="t-h3">Agregar medio</h2>
+        <PanelPlegable nivel={2} titulo="Agregar medio" resumen="Imagen, GIF, clip corto o enlace de YouTube o Vimeo">
           {uso && <UsoDeMedios uso={uso} className="mt-4" />}
           {caben ? (
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -188,16 +188,15 @@ export default async function EjercicioPage({ params }: EjercicioPageProps) {
           ) : (
             <p className="mt-4 text-[0.88rem] text-muted">Este ejercicio ya tiene {LIMITES_DE_MEDIOS.porEjercicio} medios. Quita alguno para agregar otro.</p>
           )}
-        </section>
+        </PanelPlegable>
       )}
 
       {puedeGestionar && (
-        <section className="surface-card p-6 sm:p-7" aria-labelledby="titulo-datos-ejercicio">
-          <h2 id="titulo-datos-ejercicio" className="t-h3">Datos del ejercicio</h2>
+        <PanelPlegable nivel={2} titulo="Datos del ejercicio" resumen="Nombre, grupo muscular, equipo e instrucciones">
           <div className="mt-6">
             <EjercicioForm slug={slug} ejercicio={ejercicio} />
           </div>
-        </section>
+        </PanelPlegable>
       )}
     </div>
   );

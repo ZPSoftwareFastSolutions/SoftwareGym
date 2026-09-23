@@ -33,6 +33,7 @@ import { Button, LinkButton } from '@/presentation/ui/Button';
 import { DataTable } from '@/presentation/ui/DataTable';
 import { Modal } from '@/presentation/ui/Modal';
 import { exigirPermiso } from '../_datos';
+import { PanelPlegable } from '@/presentation/patterns/PanelPlegable';
 
 export const metadata: Metadata = { title: 'Cobro por QR', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -76,10 +77,7 @@ export default async function CobrosPage({ params }: TenantPageParams) {
         </LinkButton>
       </section>
 
-      <section className="surface-card p-6 sm:p-7" aria-labelledby="cobro-datos">
-        <h3 id="cobro-datos" className="mb-4 text-[1.05rem] font-semibold">
-          Datos y modalidad
-        </h3>
+      <PanelPlegable nivel={2} titulo="Datos del cobro" resumen="Titular, banco, nota y modalidad del cobro por QR">
         <AjustesDeCobroForm
           slug={slug}
           holder={ajustes?.holder ?? respaldo?.holder ?? null}
@@ -87,14 +85,11 @@ export default async function CobrosPage({ params }: TenantPageParams) {
           note={ajustes?.note ?? respaldo?.note ?? null}
           qrMode={modo}
         />
-      </section>
+      </PanelPlegable>
 
-      <section className="surface-card p-6 sm:p-7" aria-labelledby="cobro-general">
+      <PanelPlegable nivel={2} titulo="QR general" resumen={general ? 'Cargado: sirve para cualquier pago de monto libre' : 'Todavía sin QR general'}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 id="cobro-general" className="text-[1.05rem] font-semibold">
-              QR general
-            </h3>
             <p className="mt-1 text-[0.84rem] text-muted">
               {modo === 'global'
                 ? 'Con la modalidad actual, todos los planes se cobran con este QR.'
@@ -113,12 +108,9 @@ export default async function CobrosPage({ params }: TenantPageParams) {
           )}
         </div>
         <QrDeCobroForm slug={slug} plan={null} actual={datosDelActual(general, hoy)} />
-      </section>
+      </PanelPlegable>
 
-      <section className="surface-card p-6 sm:p-7" aria-labelledby="cobro-planes">
-        <h3 id="cobro-planes" className="text-[1.05rem] font-semibold">
-          QR por plan
-        </h3>
+      <PanelPlegable nivel={2} titulo="QR de cada plan" resumen={`${planes.length} planes activos · ${qrs.filter((qr) => qr.planId !== null).length} con QR propio`}>
         <p className="mt-1 max-w-[70ch] text-[0.84rem] leading-relaxed text-muted">
           {modo === 'por_plan'
             ? 'Cada plan se cobra con su QR si lo tiene vigente; si no, con el QR general.'
@@ -236,7 +228,7 @@ export default async function CobrosPage({ params }: TenantPageParams) {
             </div>
           </div>
         )}
-      </section>
+      </PanelPlegable>
     </div>
   );
 }
