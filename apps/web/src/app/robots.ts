@@ -7,10 +7,8 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
+      // Landing pública entera indexable: no hay panel ni acceso que ocultar.
       allow: '/',
-      // El portal del socio no aporta nada al índice y no debe aparecer en
-      // resultados de búsqueda.
-      disallow: ['/*/acceso'],
     },
     sitemap: `${BASE_URL}/sitemap.xml`,
   };

@@ -14,6 +14,7 @@ import type { FeatureFlags } from '@core/domain/tenant/feature-flags';
 import type { TenantConfig } from '@core/domain/tenant/tenant-config';
 import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
+import { tenantHref } from '@/lib/tenant-links';
 
 export interface TenantPageParams {
   readonly params: Promise<{ tenant: string }>;
@@ -52,9 +53,16 @@ export async function loadTenantPage(
   return tenant;
 }
 
-/** Metadatos de una página interior, con el título compuesto por el tenant. */
+/**
+ * Metadatos de una página interior, con el título compuesto por el tenant.
+ *
+ * `segmento` es la ruta de la página (`planes`, `legal/privacidad`) y fija su
+ * URL canónica. Antes todas declaraban como canónica la portada: para Google,
+ * Planes u Horarios eran copias del inicio y podían quedar fuera del índice.
+ */
 export async function tenantPageMetadata(
   params: TenantPageParams['params'],
+  segmento: string,
   title: string,
   description?: string,
 ) {
@@ -66,6 +74,6 @@ export async function tenantPageMetadata(
   return {
     title,
     description: description ?? tenant.seo.description,
-    alternates: { canonical: `/${tenant.slug}` },
+    alternates: { canonical: tenantHref(tenant.slug, segmento) },
   };
 }

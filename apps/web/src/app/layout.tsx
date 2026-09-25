@@ -18,6 +18,7 @@ import { getTenantBySlug } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
 import { DEFAULT_TENANT_SLUG } from '@infra/tenants/tenant.registry';
 import { iconosDeMarca } from '@/lib/brand-icons';
+import { SITE_URL } from '@/lib/site-url';
 import '@/styles/globals.css';
 
 const bodySans = Inter({
@@ -55,6 +56,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const porDefecto = await getTenantBySlug(tenantRepository(), DEFAULT_TENANT_SLUG);
 
   return {
+    // Base de las URL absolutas (canónica, Open Graph). Sin ella Next deja las
+    // rutas relativas y los buscadores no saben a qué dominio pertenecen.
+    metadataBase: new URL(SITE_URL),
     authors: [{ name: 'ZP Software Fast Solutions' }],
     robots: { index: true, follow: true },
     icons: porDefecto ? iconosDeMarca(porDefecto.branding.logo) : undefined,

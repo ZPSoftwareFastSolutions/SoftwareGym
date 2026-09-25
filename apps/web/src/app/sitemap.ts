@@ -11,6 +11,7 @@ import type { MetadataRoute } from 'next';
 import { visibleNavigation } from '@core/application/tenant/get-tenant.usecase';
 import { tenantRepository } from '@infra/config/composition-root';
 import { TENANT_REGISTRY } from '@infra/tenants/tenant.registry';
+import { DOCUMENTOS_LEGALES } from '@core/domain/legal/documentos-legales';
 import { SITE_URL } from '@/lib/site-url';
 
 const BASE_URL = SITE_URL;
@@ -34,6 +35,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: now,
         changeFrequency: 'monthly',
         priority: item.segment === '' ? 0.9 : 0.7,
+      });
+    }
+
+    for (const documento of DOCUMENTOS_LEGALES) {
+      entries.push({
+        url: `${BASE_URL}/${slug}/legal/${documento}`,
+        lastModified: new Date(`${tenant.legal.updatedAt}T00:00:00Z`),
+        changeFrequency: 'yearly',
+        priority: 0.2,
       });
     }
   }

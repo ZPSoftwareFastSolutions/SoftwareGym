@@ -11,7 +11,7 @@ import { Reveal } from '@/presentation/ui/Reveal';
 import { Icon } from '@/presentation/icons/Icon';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Contacto');
+  return tenantPageMetadata(params, 'contacto', 'Contacto');
 }
 
 export default async function ContactoPage({ params }: TenantPageParams) {
@@ -94,7 +94,7 @@ export default async function ContactoPage({ params }: TenantPageParams) {
                 límite, Next no puede prerenderizar la página y el build se cae. El
                 hueco reservado evita que el resto salte al hidratar. */}
             <Suspense fallback={<div className="min-h-[36rem] rounded-3xl border border-white/10 bg-black/40" />}>
-              <ContactForm contact={contact} name={name} sedes={sedes} />
+              <ContactForm contact={contact} name={name} sedes={sedes} slug={slug} />
             </Suspense>
           </Reveal>
         </div>
@@ -103,9 +103,9 @@ export default async function ContactoPage({ params }: TenantPageParams) {
       {features.showSchedule && (
         <section className="shell max-w-7xl mx-auto py-20 relative border-t border-white/10">
           <Reveal>
-            <h3 className="text-3xl font-black text-white mb-6 text-center" style={{ fontFamily: 'var(--t-font-display)' }}>
+            <h2 className="text-3xl font-black text-white mb-6 text-center" style={{ fontFamily: 'var(--t-font-display)' }}>
               Cuándo venir
-            </h3>
+            </h2>
             <p className="text-center text-white/60 max-w-2xl mx-auto mb-12">
               Si vas a pasar por primera vez, te recomendamos evitar la franja de mayor concurrencia.
             </p>

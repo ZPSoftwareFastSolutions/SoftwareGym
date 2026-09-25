@@ -32,6 +32,8 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
       {/* TABS HEADER */}
       <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
         <button
+          type="button"
+          aria-pressed={activeTab === 'atencion'}
           onClick={() => setActiveTab('atencion')}
           className={cn(
             'px-4 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 border',
@@ -46,6 +48,8 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
           </div>
         </button>
         <button
+          type="button"
+          aria-pressed={activeTab === 'clases'}
           onClick={() => setActiveTab('clases')}
           className={cn(
             'px-4 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 border',
@@ -67,12 +71,14 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
           {sedes.map(sede => (
             <button
               key={sede.code}
+              type="button"
+              aria-pressed={activeSede === sede.code}
               onClick={() => setActiveSede(sede.code)}
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-semibold transition-colors',
                 activeSede === sede.code
                   ? 'bg-white/20 text-white'
-                  : 'bg-transparent text-white/40 hover:bg-white/10 hover:text-white/80'
+                  : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white/80'
               )}
             >
               {sede.name}
@@ -84,6 +90,9 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
       {/* CONTENT: ATENCIÓN */}
       {activeTab === 'atencion' && (
         <Reveal>
+          <h2 className="sr-only">
+            Horario de atención{sedes.length > 1 ? ` — ${sedes.find((s) => s.code === activeSede)?.name ?? ''}` : ''}
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4">
             {currentSedeHours.map((day) => (
               <div 
@@ -93,7 +102,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
                   day.closed ? 'bg-red-500/10 border-red-500/20' : 'bg-black/60 hover:border-action/40'
                 )}
               >
-                <h4 className="text-xl font-black text-white mb-4 uppercase tracking-widest">{day.day.substring(0, 3)}</h4>
+                <h3 className="text-xl font-black text-white mb-4 uppercase tracking-widest"><abbr title={day.day} className="no-underline">{day.day.substring(0, 3)}</abbr></h3>
                 {day.closed ? (
                   <span className="text-red-400 font-bold text-sm">CERRADO</span>
                 ) : (
@@ -112,9 +121,12 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
       {/* CONTENT: CLASES */}
       {activeTab === 'clases' && (
         <Reveal>
+          <h2 className="sr-only">
+            Horario de clases{sedes.length > 1 ? ` — ${sedes.find((s) => s.code === activeSede)?.name ?? ''}` : ''}
+          </h2>
           <div className="space-y-4">
             {filteredClasses.length === 0 ? (
-              <div className="text-center py-12 text-white/40">No hay clases programadas para esta sede.</div>
+              <div className="text-center py-12 text-white/70">No hay clases programadas para esta sede.</div>
             ) : (
               filteredClasses.map((clase) => {
                 let bgClass = 'bg-black/60 border-white/10';
@@ -125,7 +137,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
                 return (
                   <div key={clase.id} className={cn('flex flex-col md:flex-row items-center justify-between p-6 rounded-3xl border backdrop-blur-md gap-6 transition-all hover:scale-[1.02]', bgClass)}>
                     <div className="flex-1">
-                      <h4 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>{clase.name}</h4>
+                      <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>{clase.name}</h3>
                       <p className="text-white/60 text-sm">{clase.description}</p>
                     </div>
                     
@@ -135,7 +147,7 @@ export function ScheduleTabs({ classes, hours, sedes }: ScheduleTabsProps) {
                         // domingo dejaba el 7 sin nombre.
                         return (
                           <div key={i} className="flex flex-col items-center bg-black/40 px-4 py-2 rounded-xl min-w-[100px] border border-white/5">
-                            <span className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">{NOMBRE_DE_DIA_ISO[h.weekday].slice(0, 3)}</span>
+                            <span className="text-xs text-white/70 uppercase tracking-widest font-bold mb-1">{NOMBRE_DE_DIA_ISO[h.weekday].slice(0, 3)}</span>
                             <span className="text-action font-mono">{rangoLegible(h)}</span>
                           </div>
                         );

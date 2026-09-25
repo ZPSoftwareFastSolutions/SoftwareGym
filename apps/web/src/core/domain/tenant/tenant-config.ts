@@ -175,6 +175,16 @@ export interface TenantConfig {
   readonly features: FeatureFlags;
   readonly seo: SeoConfig;
   readonly content: TenantContent;
+  /**
+   * Datos de los avisos legales (`/legal/*`). El texto de los documentos es del
+   * producto (`core/domain/legal`); aquí solo lo que es propio del gimnasio.
+   */
+  readonly legal: {
+    /** Fecha de la última revisión de los avisos, `AAAA-MM-DD`. */
+    readonly updatedAt: string;
+    /** NIT. Ausente mientras el gimnasio no lo entregue: no se inventa. */
+    readonly taxId?: string;
+  };
   /** Metadatos de aprovisionamiento. Informativos. */
   readonly provisioning: {
     readonly plan: 'starter' | 'professional' | 'enterprise';

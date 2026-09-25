@@ -4,12 +4,14 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { ContactInfo } from '@core/domain/tenant/tenant-config';
 import type { SedeDeVitrina } from '@core/domain/catalog/branches';
+import Link from 'next/link';
+import { tenantHref } from '@/lib/tenant-links';
 import { Icon } from '@/presentation/icons/Icon';
 
 const FIELD_CLASSES = [
   'w-full min-h-12 rounded-xl',
   'border border-white/20 bg-white/5 px-4 py-3',
-  'text-white placeholder:text-white/40',
+  'text-white placeholder:text-white/60',
   'transition-all duration-300 focus:border-action focus:bg-white/10 focus:outline-none focus:ring-1 focus:ring-action',
 ].join(' ');
 
@@ -28,12 +30,13 @@ interface ContactFormProps {
   readonly contact: ContactInfo;
   readonly name: string;
   readonly sedes?: readonly SedeDeVitrina[];
+  readonly slug: string;
 }
 
-export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
+export function ContactForm({ contact, name, sedes = [], slug }: ContactFormProps) {
   const searchParams = useSearchParams();
   const [nombre, setNombre] = useState('');
-  const [correo, setCorreo] = useState('');
+  const [acepta, setAcepta] = useState(false);
   const [interes, setInteres] = useState('');
   const [sedeSeleccionada, setSedeSeleccionada] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -61,7 +64,6 @@ export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
     [
       `¡Hola, ${name}! Te escribo desde la web.`,
       `Soy ${nombre.trim()}.`,
-      correo.trim() ? `Correo: ${correo.trim()}` : '',
       interes ? `Me interesa: ${interes}.` : '',
       mensaje.trim() ? `\n${mensaje.trim()}` : '',
     ]
@@ -70,10 +72,12 @@ export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
 
   const enviar = (e: FormEvent) => {
     e.preventDefault();
-    if (!numero) return;
+    if (!numero || !acepta) return;
 
     const encoded = encodeURIComponent(redactar());
-    window.open(`https://wa.me/${numero}?text=${encoded}`, '_blank');
+    // `noopener`: sin él, la pestaña de WhatsApp recibe una referencia a esta
+    // página (`window.opener`) y podría redirigirla.
+    window.open(`https://wa.me/${numero}?text=${encoded}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -82,37 +86,27 @@ export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
       
       <header className="mb-8">
         <h2 className="text-3xl font-black text-white" style={{ fontFamily: 'var(--t-font-display)' }}>ESCRÍBENOS</h2>
-        <p className="mt-2 text-white/60">Completa el formulario y te responderemos el mismo día.</p>
+        <p className="mt-2 text-white/60">Completa el formulario y te responderemos lo antes posible.</p>
       </header>
 
       <form onSubmit={enviar} className="relative z-10 flex flex-col gap-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label htmlFor="nombre" className={LABEL_CLASSES}>
-              Nombre y apellido
-            </label>
-            <input
-              id="nombre"
-              required
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className={FIELD_CLASSES}
-              placeholder="Tu nombre"
-            />
-          </div>
-          <div>
-            <label htmlFor="correo" className={LABEL_CLASSES}>
-              Correo electrónico
-            </label>
-            <input
-              id="correo"
-              type="email"
-              value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
-              className={FIELD_CLASSES}
-              placeholder="tucorreo@ejemplo.com"
-            />
-          </div>
+        {/* Solo el nombre: la respuesta llega por WhatsApp, así que el teléfono
+            ya lo tiene el gimnasio y el correo no se usaría para nada. Pedir
+            datos que no se usan es acumular datos sin motivo. */}
+        <div>
+          <label htmlFor="nombre" className={LABEL_CLASSES}>
+            Nombre
+          </label>
+          <input
+            id="nombre"
+            required
+            autoComplete="given-name"
+            maxLength={80}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className={FIELD_CLASSES}
+            placeholder="Tu nombre"
+          />
         </div>
 
         {sedes.length > 1 && (
@@ -170,6 +164,7 @@ export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
           <textarea
             id="mensaje"
             rows={4}
+            maxLength={1000}
             value={mensaje}
             onChange={(e) => setMensaje(e.target.value)}
             className={FIELD_CLASSES}
@@ -177,11 +172,35 @@ export function ContactForm({ contact, name, sedes = [] }: ContactFormProps) {
           />
         </div>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 flex items-start gap-3">
-          <Icon name="shield" size={18} className="text-action shrink-0 mt-0.5" />
-          <p className="text-xs leading-relaxed text-white/50">
-            Versión de demostración: el envío abre una conversación de WhatsApp con Mítico Fitness. El registro automático de consultas llega con el sistema de gestión.
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+          <p className="flex items-start gap-3 text-sm leading-relaxed text-white/75">
+            <Icon name="shield" size={18} className="mt-0.5 shrink-0 text-action" />
+            <span>
+              Este sitio no guarda lo que escribes. Al enviar se abre WhatsApp con tu mensaje ya
+              redactado, y lo lees antes de mandarlo. WhatsApp es un servicio de Meta, con sus propias
+              condiciones.
+            </span>
           </p>
+          {/* Consentimiento explícito, sin marcar por defecto: lo exige que el
+              dato salga hacia un tercero (WhatsApp) y es la única forma de que
+              el consentimiento sea una decisión y no un descuido. */}
+          <label htmlFor="acepta" className="flex cursor-pointer items-start gap-3 text-sm text-white/85">
+            <input
+              id="acepta"
+              type="checkbox"
+              required
+              checked={acepta}
+              onChange={(e) => setAcepta(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[var(--t-action)]"
+            />
+            <span>
+              Acepto que mi nombre y mi mensaje se envíen por WhatsApp a {name}, según la{' '}
+              <Link href={tenantHref(slug, 'legal/privacidad')} className="text-action underline underline-offset-2">
+                política de privacidad
+              </Link>
+              .
+            </span>
+          </label>
         </div>
 
         <button

@@ -7,7 +7,7 @@ import { GallerySection } from '@/presentation/sections/GallerySection';
 import { ordenarSedes } from '@core/domain/catalog/branches';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Instalaciones');
+  return tenantPageMetadata(params, 'instalaciones', 'Instalaciones');
 }
 
 export default async function FacilitiesPage({ params }: TenantPageParams) {

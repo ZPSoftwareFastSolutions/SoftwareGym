@@ -6,7 +6,7 @@ import { FacilitiesSection } from '@/presentation/sections/FacilitiesSection';
 import { GallerySection } from '@/presentation/sections/GallerySection';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Galería');
+  return tenantPageMetadata(params, 'galeria', 'Galería');
 }
 
 export default async function GalleryPage({ params }: TenantPageParams) {
@@ -21,7 +21,7 @@ export default async function GalleryPage({ params }: TenantPageParams) {
         slug={slug}
         eyebrow="Galería"
         title="Mira antes de venir"
-        lead="Las imágenes definitivas se sustituyen por la sesión fotográfica del gimnasio; la composición y el recorrido ya son los definitivos."
+        lead="Un recorrido por los espacios del gimnasio. Pronto con las fotografías de nuestras sedes."
         breadcrumb={breadcrumb}
       />
 

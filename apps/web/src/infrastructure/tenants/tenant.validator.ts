@@ -75,6 +75,14 @@ export function validateTenantConfig(tenant: TenantConfig): readonly string[] {
     issues.push('branding.typography.headingTracking debe ser una longitud CSS válida.');
   }
 
+  // --- Avisos legales -----------------------------------------------------
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tenant.legal.updatedAt) || Number.isNaN(Date.parse(tenant.legal.updatedAt))) {
+    issues.push('legal.updatedAt debe ser una fecha AAAA-MM-DD.');
+  }
+  if (tenant.legal.taxId !== undefined && !/^\d{5,15}$/.test(tenant.legal.taxId)) {
+    issues.push('legal.taxId (NIT) debe ser solo dígitos.');
+  }
+
   // --- Recursos de marca -------------------------------------------------
   //
   // Un favicon o un isotipo que apunta a un archivo que no está en `public/`

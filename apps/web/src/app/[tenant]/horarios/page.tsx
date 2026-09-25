@@ -7,8 +7,7 @@ import { FaqSection } from '@/presentation/sections/FaqSection';
 import { ScheduleTabs } from '@/presentation/sections/ScheduleTabs';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(
-    params,
+  return tenantPageMetadata(params, 'horarios',
     'Horarios',
     'Horario de atención de cada sede y agenda semanal de clases dirigidas.',
   );

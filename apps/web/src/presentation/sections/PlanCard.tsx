@@ -55,16 +55,17 @@ export function PlanCard({ plan, href }: PlanCardProps) {
           {plan.features.map((feature) => (
             <li key={feature.label} className={cn(
               "flex items-start gap-3",
-              feature.included ? "text-white/90" : "text-white/30"
+              feature.included ? "text-white/90" : "text-white/60 line-through decoration-white/40"
             )}>
               <span className={cn(
                 "flex-shrink-0 mt-1 flex items-center justify-center w-5 h-5 rounded-full",
-                feature.included ? "bg-action/20 text-action" : "bg-white/5 text-white/20"
+                feature.included ? "bg-action/20 text-action" : "bg-white/5 text-white/50"
               )}>
                 <Icon name={feature.included ? 'check' : 'close'} size={12} strokeWidth={3} />
               </span>
               <span className={cn("text-sm leading-relaxed", !feature.included && "line-through")}>
                 {feature.label}
+                <span className="sr-only">{feature.included ? ' (incluido)' : ' (no incluido)'}</span>
               </span>
             </li>
           ))}

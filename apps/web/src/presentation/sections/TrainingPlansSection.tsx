@@ -74,12 +74,12 @@ export function TrainingPlansSection({ plans, slug }: TrainingPlansProps) {
                   )}
 
                   {/* Gran emoji de fondo */}
-                  <div className="absolute top-6 right-6 text-8xl opacity-[0.15] transform group-hover:scale-125 transition-transform duration-700 pointer-events-none z-0">
+                  <div aria-hidden="true" className="absolute top-6 right-6 text-8xl opacity-[0.15] transform group-hover:scale-125 transition-transform duration-700 pointer-events-none z-0">
                     {emoji}
                   </div>
 
                   <div className="relative z-10 flex flex-col h-full">
-                    <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-4xl group-hover:bg-white/20 transition-colors duration-500 backdrop-blur-sm border border-white/5">
+                    <div aria-hidden="true" className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-4xl group-hover:bg-white/20 transition-colors duration-500 backdrop-blur-sm border border-white/5">
                       {emoji}
                     </div>
                     
@@ -101,20 +101,21 @@ export function TrainingPlansSection({ plans, slug }: TrainingPlansProps) {
                           {plan.price}
                         </span>
                       </div>
-                      <span className="text-xs font-semibold uppercase tracking-widest text-white/40">/{plan.period}</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest text-white/70">/{plan.period}</span>
                     </div>
 
                     <ul className="flex-1 space-y-4 mb-8">
                       {plan.features.map((feature, idx) => (
-                        <li key={idx} className={cn("flex items-start gap-3", !feature.included && "opacity-40")}>
+                        <li key={idx} className={cn("flex items-start gap-3", !feature.included && "text-white/60 line-through decoration-white/40")}>
                           <span className={cn(
                             "flex-shrink-0 mt-0.5 flex items-center justify-center w-5 h-5 rounded-full",
-                            feature.included ? "bg-white/10 text-white" : "bg-white/5 text-white/20"
+                            feature.included ? "bg-white/10 text-white" : "bg-white/5 text-white/50"
                           )}>
                             <Icon name={feature.included ? 'check' : 'close'} size={12} strokeWidth={3} />
                           </span>
                           <span className={cn("text-sm leading-snug text-white/90", !feature.included && "line-through")}>
                             {feature.label}
+                            <span className="sr-only">{feature.included ? ' (incluido)' : ' (no incluido)'}</span>
                           </span>
                         </li>
                       ))}

@@ -8,6 +8,7 @@ import type { TenantConfig } from '@core/domain/tenant/tenant-config';
 import type { NavItem } from '@core/domain/tenant/tenant-config';
 import { mailtoHref, telHref, tenantHref } from '@/lib/tenant-links';
 import { Icon } from '../icons/Icon';
+import { DOCUMENTOS_LEGALES, TITULO_DE_DOCUMENTO } from '@core/domain/legal/documentos-legales';
 import { Logo } from '../ui/Logo';
 import { SocialLinks } from './SocialLinks';
 
@@ -33,7 +34,7 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
           </div>
 
           <nav aria-labelledby="footer-nav">
-            <h2 id="footer-nav" className="mb-4 text-xs font-bold uppercase tracking-widest text-white/40">
+            <h2 id="footer-nav" className="mb-4 text-xs font-bold uppercase tracking-widest text-white/70">
               Navegación
             </h2>
             <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -51,7 +52,7 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
           </nav>
 
           <address className="not-italic" aria-labelledby="footer-contact">
-            <h2 id="footer-contact" className="mb-4 text-xs font-bold uppercase tracking-widest text-white/40">
+            <h2 id="footer-contact" className="mb-4 text-xs font-bold uppercase tracking-widest text-white/70">
               Contacto
             </h2>
             <ul className="flex flex-col gap-3 text-sm text-white/70">
@@ -90,11 +91,26 @@ export function SiteFooter({ tenant, navigation }: SiteFooterProps) {
           </address>
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-7 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-white/40">
+        <nav aria-label="Avisos legales" className="mt-14 border-t border-white/10 pt-7">
+          <ul className="flex flex-wrap gap-x-6 gap-y-1">
+            {DOCUMENTOS_LEGALES.map((id) => (
+              <li key={id}>
+                <Link
+                  href={tenantHref(slug, `legal/${id}`)}
+                  className="inline-flex min-h-11 items-center text-sm text-white/75 transition-colors hover:text-action"
+                >
+                  {TITULO_DE_DOCUMENTO[id]}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-white/70">
             © {year} {legalName}. Todos los derechos reservados.
           </p>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-white/70">
             Plataforma desarrollada por{' '}
             <span className="font-semibold text-white/80">ZP Software Fast Solutions</span>
           </p>

@@ -75,7 +75,10 @@ const SEMANA_MIRAFLORES = [
 export const miticoTenant: TenantConfig = {
   slug: 'mitico',
   name: 'Mítico Fitness',
-  legalName: 'Mítico Fitness S.R.L.',
+  // PENDIENTE: razón social y NIT sin confirmar por el cliente. Hasta tenerlos
+  // se publica el nombre comercial: una razón social supuesta en un aviso legal
+  // identificaría a una empresa que puede no existir con ese nombre.
+  legalName: 'Mítico Fitness',
   tagline: 'El dolor que sientes hoy es la fuerza que tendrás mañana. Si crees que puedes, puedes.',
 
   domains: ['miticofitness.com', 'www.miticofitness.com'],
@@ -201,7 +204,7 @@ export const miticoTenant: TenantConfig = {
     title: 'Mítico Fitness — El dolor que sientes hoy es la fuerza que tendrás mañana. Si crees que puedes, puedes.',
     titleTemplate: '%s | Mítico Fitness',
     description:
-      'Gimnasio en La Paz con dos sedes, Centro (El Prado) y Miraflores, y una sola membresía. Paquetes mensuales desde 180 Bs, rutinas de entrenamiento personalizado, baile urbano, Fight DO, heels, danza árabe y nutricionista profesional.',
+      'Gimnasio en La Paz con dos sedes, Centro (El Prado) y Miraflores. Paquetes mensuales desde 180 Bs, rutinas de entrenamiento personalizado, baile urbano, Fight DO, heels, danza árabe y nutricionista profesional.',
     keywords: [
       'gimnasio la paz',
       'gimnasio el prado la paz',
@@ -217,6 +220,11 @@ export const miticoTenant: TenantConfig = {
     locale: 'es_BO',
   },
 
+  // Avisos legales (/mitico/legal/*). Sin NIT hasta que el cliente lo entregue.
+  legal: {
+    updatedAt: '2026-09-25',
+  },
+
   provisioning: {
     plan: 'professional',
     activeSince: '2026-01-15',
@@ -229,7 +237,7 @@ export const miticoTenant: TenantConfig = {
       title: 'Vamos con',
       titleAccent: 'todo',
       subtitle:
-        'El dolor que sientes hoy es la fuerza que tendrás mañana. Entrenamiento personalizado, clases dirigidas y nutrición profesional, en dos sedes con una sola membresía.',
+        'El dolor que sientes hoy es la fuerza que tendrás mañana. Entrenamiento personalizado, clases dirigidas y nutrición profesional, en dos sedes y con paquetes para entrenar en una o en las dos.',
       primaryCta: { label: 'Ver paquetes', segment: 'planes' },
       secondaryCta: { label: 'Hablar por WhatsApp', segment: 'contacto' },
       // PENDIENTE: cifras a confirmar con el cliente. Las dos primeras salen de
@@ -239,7 +247,7 @@ export const miticoTenant: TenantConfig = {
         { value: '2', label: 'sedes en La Paz' },
         { value: '5', label: 'disciplinas dirigidas' },
         { value: '6', label: 'rutinas personalizadas' },
-        { value: '16 h', label: 'abierto cada día' },
+        { value: '07–23 h', label: 'de lunes a viernes' },
       ],
     },
 
@@ -387,7 +395,6 @@ export const miticoTenant: TenantConfig = {
             currency: 'Bs',
             period: 'mensual',
             featured: true,
-            badge: 'Más popular',
             features: [
               { label: 'Entrenamiento personalizado', included: true },
               { label: 'Entrada a dos sucursales', included: false },
@@ -455,7 +462,6 @@ export const miticoTenant: TenantConfig = {
             period: 'mensual',
             altPrice: { label: 'con las dos sucursales', price: 240 },
             featured: true,
-            badge: 'Más popular',
             features: [
               { label: 'Entrenamiento personalizado', included: true },
               { label: 'Batido semanal', included: true },
@@ -516,7 +522,6 @@ export const miticoTenant: TenantConfig = {
             period: 'mensual',
             altPrice: { label: 'con las dos sucursales', price: 320 },
             featured: true,
-            badge: 'Más elegido',
             features: [
               { label: 'Entrenamiento personalizado', included: true },
               { label: 'Batido semanal', included: true },
@@ -746,7 +751,6 @@ export const miticoTenant: TenantConfig = {
             name: 'Polera negra con diseño',
             price: 40,
             currency: 'Bs',
-            badge: 'Más popular',
           },
         ],
       },
@@ -766,7 +770,6 @@ export const miticoTenant: TenantConfig = {
             name: 'Pre-entreno Venom',
             price: 350,
             currency: 'Bs',
-            badge: 'Más popular',
           },
           { id: 'creatina', name: 'Creatina', price: 370, currency: 'Bs' },
           {
@@ -774,7 +777,6 @@ export const miticoTenant: TenantConfig = {
             name: 'Proteína',
             price: 460,
             currency: 'Bs',
-            badge: 'Más popular',
           },
         ],
       },
@@ -806,13 +808,9 @@ export const miticoTenant: TenantConfig = {
         name: 'Sala de pesas',
         description:
           'La planta principal de la sede del Centro: peso libre, máquinas y el espacio donde se entrena la fuerza con seguimiento de los entrenadores.',
-        area: '520 m²',
+        area: '',
         icon: 'dumbbell',
-        stats: [
-          { label: 'Racks de potencia', value: '4' },
-          { label: 'Estaciones', value: '62' },
-          { label: 'Mancuernas', value: '2–50 kg' },
-        ],
+        stats: [],
         branchCode: 'PRADO',
       },
       {
@@ -820,13 +818,9 @@ export const miticoTenant: TenantConfig = {
         name: 'Zona de cardio',
         description:
           'Cintas, elípticos y bicicletas para el trabajo aeróbico, dentro del mismo horario extendido de 07:00 a 23:00.',
-        area: '140 m²',
+        area: '',
         icon: 'heart',
-        stats: [
-          { label: 'Equipos', value: '24' },
-          { label: 'Pantalla propia', value: 'Todos' },
-          { label: 'Luz natural', value: 'Ventanal norte' },
-        ],
+        stats: [],
         branchCode: 'PRADO',
       },
       {
@@ -834,13 +828,9 @@ export const miticoTenant: TenantConfig = {
         name: 'Salón de clases',
         description:
           'Donde se dictan baile urbano, Fight DO, heels y danza árabe de la sede del Centro, de lunes a viernes por la tarde y la noche.',
-        area: '180 m²',
+        area: '',
         icon: 'group',
-        stats: [
-          { label: 'Capacidad', value: '28' },
-          { label: 'Clases/semana', value: '18' },
-          { label: 'Climatización', value: 'Independiente' },
-        ],
+        stats: [],
         branchCode: 'PRADO',
       },
       {
@@ -848,13 +838,9 @@ export const miticoTenant: TenantConfig = {
         name: 'Sala de pesas',
         description:
           'La sala de Mítico Fitness Life, en Miraflores, con el mismo trabajo de fuerza y seguimiento personalizado de la casa.',
-        area: '450 m²',
+        area: '',
         icon: 'dumbbell',
-        stats: [
-          { label: 'Racks de potencia', value: '3' },
-          { label: 'Estaciones', value: '50' },
-          { label: 'Kettlebells', value: '4–40 kg' },
-        ],
+        stats: [],
         branchCode: 'MIRAFLORES',
       },
       {
@@ -862,13 +848,9 @@ export const miticoTenant: TenantConfig = {
         name: 'Zona de cardio',
         description:
           'Trabajo aeróbico en la sede que además abre los domingos por la mañana, de 08:00 a 14:00.',
-        area: '120 m²',
+        area: '',
         icon: 'heart',
-        stats: [
-          { label: 'Equipos', value: '18' },
-          { label: 'Elípticos', value: '6' },
-          { label: 'Uso libre', value: 'Sí' },
-        ],
+        stats: [],
         branchCode: 'MIRAFLORES',
       },
       {
@@ -876,13 +858,9 @@ export const miticoTenant: TenantConfig = {
         name: 'Salón de baile',
         description:
           'La sala de Miraflores: baile urbano por la tarde, baile fitness, Fight DO y danza árabe, con su propio horario semanal.',
-        area: '200 m²',
+        area: '',
         icon: 'group',
-        stats: [
-          { label: 'Capacidad', value: '35' },
-          { label: 'Piso amortiguado', value: 'Sí' },
-          { label: 'Sistema de audio', value: 'Pro' },
-        ],
+        stats: [],
         branchCode: 'MIRAFLORES',
       },
       {

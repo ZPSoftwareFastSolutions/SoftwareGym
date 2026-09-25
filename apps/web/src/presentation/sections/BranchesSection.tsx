@@ -1,6 +1,8 @@
 'use client';
 
 import type { SedeDeVitrina } from '@core/domain/catalog/branches';
+import { urlDeMapaEmbebido, urlDeUbicacion } from '@core/domain/catalog/branches';
+import { MapaBajoDemanda } from '@/presentation/patterns/MapaBajoDemanda';
 import { tenantHref } from '@/lib/tenant-links';
 import { Icon } from '@/presentation/icons/Icon';
 import { LinkButton } from '@/presentation/ui/Button';
@@ -51,7 +53,7 @@ export function BranchesSection({ sedes, slug }: BranchesProps) {
                 </header>
                 
                 <div className="relative z-10 flex-1">
-                  <h5 className="text-sm font-semibold text-white/40 uppercase tracking-widest mb-4">Equipamiento Principal</h5>
+                  <h5 className="text-sm font-semibold text-white/70 uppercase tracking-widest mb-4">Equipamiento Principal</h5>
                   <ul className="flex flex-wrap gap-3 mb-8">
                     {sede.highlights.map((f) => (
                       <li key={f} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white/80 text-sm flex items-center gap-2">
@@ -64,14 +66,14 @@ export function BranchesSection({ sedes, slug }: BranchesProps) {
                   {/* MAPA Y CONTACTO */}
                   <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-8">
                     <div className="space-y-4">
-                      <h5 className="text-sm font-semibold text-white/40 uppercase tracking-widest mb-4">Contacto</h5>
+                      <h5 className="text-sm font-semibold text-white/70 uppercase tracking-widest mb-4">Contacto</h5>
                       
                       <div className="flex flex-col">
                         <p className="text-white flex items-center gap-3 text-lg font-bold">
                           <Icon name="phone" size={18} className="text-action" />
                           {sede.phone}
                         </p>
-                        <span className="text-white/40 text-xs pl-[30px] mt-1">Línea directa Sede {sede.name.split('·')[0]?.trim() ?? sede.name}</span>
+                        <span className="text-white/70 text-xs pl-[30px] mt-1">Línea directa Sede {sede.name.split('·')[0]?.trim() ?? sede.name}</span>
                       </div>
 
                       {sede.scheduleNote && (
@@ -94,15 +96,10 @@ export function BranchesSection({ sedes, slug }: BranchesProps) {
                     </div>
 
                     <div className="w-full h-56 md:h-64 rounded-2xl overflow-hidden border border-white/10 opacity-80 group-hover:opacity-100 transition-opacity duration-500">
-                      <iframe
-                        title={`Mapa de ${sede.name}`}
-                        src={sede.mapEmbedUrl || `https://www.google.com/maps?q=${encodeURIComponent(sede.address)}&z=17&output=embed`}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen={false}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
+                      <MapaBajoDemanda
+                        titulo={`Mapa de ${sede.name}`}
+                        src={urlDeMapaEmbebido(sede) ?? ''}
+                        enlace={urlDeUbicacion(sede)}
                       />
                     </div>
                   </div>

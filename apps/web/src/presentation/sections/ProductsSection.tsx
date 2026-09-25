@@ -36,7 +36,7 @@ export function ProductsSection({ categories, contact, slug }: ProductsProps) {
                       <span className="text-white/90 font-medium">{item.name}</span>
                       <div className="flex flex-col items-end shrink-0">
                         <span className="font-bold text-action">{item.price}</span>
-                        {item.note && <span className="text-[0.7rem] text-white/40">{item.note}</span>}
+                        {item.note && <span className="text-[0.7rem] text-white/70">{item.note}</span>}
                       </div>
                     </li>
                   ))}

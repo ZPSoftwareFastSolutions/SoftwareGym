@@ -64,9 +64,23 @@ export async function generateMetadata({ params }: TenantLayoutProps): Promise<M
       title: seo.title,
       description: seo.description,
       locale: seo.locale,
+      // La vista previa al compartir el enlace (WhatsApp, Facebook) muestra el
+      // logotipo oficial en vez de una tarjeta vacía.
+      ...(tenant.branding.logo.full
+        ? {
+            images: [
+              {
+                url: tenant.branding.logo.full.src,
+                width: tenant.branding.logo.full.width,
+                height: tenant.branding.logo.full.height,
+                alt: `Logotipo de ${name}`,
+              },
+            ],
+          }
+        : {}),
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title: seo.title,
       description: seo.description,
     },

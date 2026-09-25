@@ -5,7 +5,7 @@ import { ClassesSection } from '@/presentation/sections/ClassesSection';
 import { PageHero } from '@/presentation/layouts/PageHero';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Clases', 'Clases dirigidas con su horario semanal por sede.');
+  return tenantPageMetadata(params, 'clases', 'Clases', 'Clases dirigidas con su horario semanal por sede.');
 }
 
 export default async function ClasesPage({ params }: TenantPageParams) {
@@ -20,7 +20,7 @@ export default async function ClasesPage({ params }: TenantPageParams) {
         slug={tenant.slug}
         eyebrow="Disciplinas"
         title="Domina nuevas habilidades"
-        lead="Baile, combate y ritmo, incluidos en tu membresía."
+        lead="Baile, combate y ritmo. Consulta qué paquetes incluyen cada disciplina."
         breadcrumb={breadcrumb}
       />
       <ClassesSection clases={content.classes} sedes={sedes} slug={tenant.slug} hideTitle={true} />

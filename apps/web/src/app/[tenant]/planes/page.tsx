@@ -7,7 +7,7 @@ import { Reveal } from '@/presentation/ui/Reveal';
 import { PageHero } from '@/presentation/layouts/PageHero';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Planes y membresías');
+  return tenantPageMetadata(params, 'planes', 'Planes y membresías');
 }
 
 export default async function PlanesPage({ params }: TenantPageParams) {

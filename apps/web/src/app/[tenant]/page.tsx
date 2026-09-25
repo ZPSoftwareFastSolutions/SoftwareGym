@@ -1,4 +1,6 @@
 import { loadTenantPage, type TenantPageParams } from '@/lib/page-guards';
+import { datosEstructurados, jsonLd } from '@/lib/datos-estructurados';
+import { SITE_URL } from '@/lib/site-url';
 import { ordenarSedes } from '@core/domain/catalog/branches';
 import { HeroSection } from '@/presentation/sections/HeroSection';
 import { ServicesSection } from '@/presentation/sections/ServicesSection';
@@ -19,6 +21,11 @@ export default async function TenantHomePage({ params }: TenantPageParams) {
 
   return (
     <div className="relative flex flex-col min-h-screen z-10 bg-transparent">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- JSON generado en el servidor y escapado en `jsonLd`.
+        dangerouslySetInnerHTML={{ __html: jsonLd(datosEstructurados(tenant, SITE_URL)) }}
+      />
       <HeroSection hero={content.hero} slug={slug} sedes={sedes.map((s) => s.name)} />
       
       <MarqueeStrip

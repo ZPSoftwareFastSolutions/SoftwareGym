@@ -413,3 +413,59 @@ test('un isotipo sin dimensiones no pasa', () => {
   );
   assert.ok(issues.some((i) => i.includes('branding.logo.mark')));
 });
+
+// ------------------------------------------------ cumplimiento legal (V5)
+
+import {
+  DOCUMENTOS_LEGALES,
+  documentoLegal,
+  esDocumentoLegal,
+} from '../src/core/domain/legal/documentos-legales.ts';
+import { datosEstructurados, jsonLd } from '../src/lib/datos-estructurados.ts';
+
+test('los cuatro documentos legales se generan con el responsable y la fecha', () => {
+  for (const id of DOCUMENTOS_LEGALES) {
+    const doc = documentoLegal(id, miticoTenant);
+    assert.ok(doc.secciones.length >= 3, `${id} sin contenido`);
+    const texto = doc.secciones.flatMap((s) => s.parrafos).join(' ');
+    assert.ok(texto.includes(miticoTenant.legalName), `${id} no nombra al responsable`);
+    assert.equal(doc.actualizado, miticoTenant.legal.updatedAt);
+  }
+  assert.equal(esDocumentoLegal('privacidad'), true);
+  assert.equal(esDocumentoLegal('../panel'), false);
+});
+
+test('ningún aviso legal publica una razón social o un NIT no confirmados', () => {
+  const texto = DOCUMENTOS_LEGALES.flatMap((id) => documentoLegal(id, miticoTenant).secciones)
+    .flatMap((s) => s.parrafos)
+    .join(' ');
+  assert.ok(!/S\.R\.L\.|S\.A\./.test(texto));
+  assert.ok(!/NIT \d/.test(texto), 'no hay NIT entregado y aun así se publica uno');
+});
+
+test('la política de cookies dice lo que hace el sitio: sin cookies propias', () => {
+  const texto = documentoLegal('cookies', miticoTenant).secciones.flatMap((s) => s.parrafos).join(' ');
+  assert.ok(texto.includes('no instala cookies propias'));
+  assert.ok(texto.includes('Ver mapa'));
+});
+
+test('una fecha de avisos legales mal escrita no pasa', () => {
+  const issues = validateTenantConfig(
+    roto((t) => {
+      t.legal.updatedAt = '25/09/2026';
+    }),
+  );
+  assert.ok(issues.some((i) => i.includes('legal.updatedAt')));
+});
+
+test('los datos estructurados no declaran reseñas ni valoraciones', () => {
+  const datos = datosEstructurados(miticoTenant, 'https://ejemplo.bo');
+  const texto = JSON.stringify(datos);
+  assert.ok(!/aggregateRating|review/i.test(texto));
+  assert.equal(datos['@type'], 'HealthClub');
+  assert.ok(texto.includes('+59177700867'));
+});
+
+test('el JSON-LD no puede cerrar su propia etiqueta <script>', () => {
+  assert.ok(!jsonLd({ nombre: '</script><script>alert(1)</script>' }).includes('</script>'));
+});

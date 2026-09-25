@@ -17,6 +17,9 @@ interface ClassesProps {
 
 export function ClassesSection({ clases, sedes, slug, hideTitle }: ClassesProps) {
   if (clases.length === 0) return null;
+  // Con el título de la sección (h2 + h3) la tarjeta es h4; sin él, cuelga
+  // directamente del h1 de la página y tiene que ser h2 para no saltar niveles.
+  const TituloDeClase = hideTitle ? 'h2' : 'h4';
 
   return (
     <section className="relative w-full py-16 md:py-24">
@@ -29,7 +32,7 @@ export function ClassesSection({ clases, sedes, slug, hideTitle }: ClassesProps)
                 Domina nuevas habilidades
               </h3>
               <p className="mt-4 text-white/70 text-lg">
-                Baile, combate y ritmo, incluidos en tu membresía. Desbloquea tu potencial.
+                Baile, combate y ritmo. Pregunta qué paquetes incluyen cada disciplina.
               </p>
             </Reveal>
             
@@ -71,15 +74,15 @@ export function ClassesSection({ clases, sedes, slug, hideTitle }: ClassesProps)
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-transparent z-10" />
                   
                   {/* Gran emoji de fondo */}
-                  <div className="absolute top-4 right-4 text-7xl opacity-20 transform group-hover:scale-125 transition-transform duration-700 pointer-events-none z-10">
+                  <div aria-hidden="true" className="absolute top-4 right-4 text-7xl opacity-20 transform group-hover:scale-125 transition-transform duration-700 pointer-events-none z-10">
                     {emoji}
                   </div>
                   
                   <div className="relative z-20 transform transition-transform duration-500 group-hover:-translate-y-2">
-                    <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-3xl group-hover:bg-action group-hover:text-black transition-colors duration-500">
+                    <div aria-hidden="true" className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-3xl group-hover:bg-action group-hover:text-black transition-colors duration-500">
                       {emoji}
                     </div>
-                    <h4 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>{clase.name}</h4>
+                    <TituloDeClase className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'var(--t-font-display)' }}>{clase.name}</TituloDeClase>
                     <p className="text-white/60 text-sm line-clamp-3 mb-4">{clase.description}</p>
                     
                     <div className="flex flex-wrap gap-2">

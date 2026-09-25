@@ -5,7 +5,7 @@ import { BranchesSection } from '@/presentation/sections/BranchesSection';
 import { PageHero } from '@/presentation/layouts/PageHero';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Sucursales', 'Nuestras sedes en La Paz, con dirección, horario y cómo llegar.');
+  return tenantPageMetadata(params, 'sucursales', 'Sucursales', 'Nuestras sedes, con dirección, horario y cómo llegar.');
 }
 
 export default async function SucursalesPage({ params }: TenantPageParams) {
@@ -20,7 +20,7 @@ export default async function SucursalesPage({ params }: TenantPageParams) {
         slug={slug}
         eyebrow="Sucursales"
         title="Donde tú estés"
-        lead="Varias sucursales con una sola membresía."
+        lead={content.branches?.lead ?? 'Nuestras sedes, con dirección, horario y cómo llegar.'}
         breadcrumb={breadcrumb}
       />
       <BranchesSection sedes={sedes} slug={slug} />

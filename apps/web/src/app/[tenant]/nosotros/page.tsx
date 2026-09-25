@@ -7,7 +7,7 @@ import { TestimonialsSection } from '@/presentation/sections/TestimonialsSection
 import { ClosingCtaSection } from '@/presentation/sections/ClosingCtaSection';
 
 export async function generateMetadata({ params }: TenantPageParams): Promise<Metadata> {
-  return tenantPageMetadata(params, 'Nosotros');
+  return tenantPageMetadata(params, 'nosotros', 'Nosotros');
 }
 
 export default async function AboutPage({ params }: TenantPageParams) {

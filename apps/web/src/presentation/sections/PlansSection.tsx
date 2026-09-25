@@ -28,7 +28,7 @@ export function PlansSection({ groups, note, slug, hideTitle }: PlansProps) {
                 Elige tu nivel de compromiso
               </h3>
               <p className="mt-6 text-white/70 text-lg">
-                Sin contratos forzosos. Sin letras pequeñas. Solo tú y tus resultados.
+                Precios del tarifario vigente. Consulta las condiciones de cada paquete en recepción.
               </p>
             </Reveal>
           </div>
@@ -40,7 +40,7 @@ export function PlansSection({ groups, note, slug, hideTitle }: PlansProps) {
               {withPlans.length > 1 && (
                 <Reveal>
                   <header className="mb-12 md:text-center">
-                    <h4 className="text-3xl font-bold text-white mb-2">{group.name}</h4>
+                    <h2 className="text-3xl font-bold text-white mb-2">{group.name}</h2>
                     <p className="text-white/60">{group.description}</p>
                   </header>
                 </Reveal>
@@ -63,7 +63,7 @@ export function PlansSection({ groups, note, slug, hideTitle }: PlansProps) {
 
         <Reveal delay={200}>
           <div className="mt-20 flex items-center justify-center text-center">
-            <p className="text-sm text-white/40 max-w-lg bg-white/5 px-6 py-3 rounded-full border border-white/10">
+            <p className="text-sm text-white/70 max-w-lg bg-white/5 px-6 py-3 rounded-full border border-white/10">
               {note}
             </p>
           </div>

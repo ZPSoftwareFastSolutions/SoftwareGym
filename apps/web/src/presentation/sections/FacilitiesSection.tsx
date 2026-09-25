@@ -41,6 +41,8 @@ export function FacilitiesSection({ facilities, sucursales = [], eyebrow, title 
             {grupos.map((grupo) => (
               <button
                 key={grupo.key}
+                type="button"
+                aria-pressed={activeTab === grupo.key}
                 onClick={() => setActiveTab(grupo.key)}
                 className={cn(
                   'px-8 py-3 rounded-full font-bold text-sm tracking-widest uppercase transition-all duration-300 border',

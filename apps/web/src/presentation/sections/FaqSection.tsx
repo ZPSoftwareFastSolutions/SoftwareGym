@@ -13,21 +13,33 @@ interface FaqProps {
 function FaqAccordionItem({ item, isOpen, onClick }: { item: FaqItem; isOpen: boolean; onClick: () => void }) {
   return (
     <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden transition-all hover:bg-white/10 hover:border-action/30">
-      <button 
+      <button
         type="button"
+        id={`faq-${item.id}`}
         onClick={onClick}
-        className="flex w-full items-center justify-between px-6 py-5 text-left focus:outline-none"
+        aria-expanded={isOpen}
+        aria-controls={`faq-${item.id}-respuesta`}
+        // Sin `focus:outline-none`: quitaba el anillo de foco y quien navega
+        // con teclado no veía en qué pregunta estaba.
+        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-action"
       >
         <span className={cn("text-lg font-bold transition-colors", isOpen ? "text-action" : "text-white")}>
           {item.question}
         </span>
         <Icon
+          aria-hidden="true"
           name="chevronDown"
           size={20}
           className={cn("text-white/50 transition-transform duration-300", isOpen && "rotate-180 text-action")}
         />
       </button>
-      <div 
+      <div
+        id={`faq-${item.id}-respuesta`}
+        role="region"
+        aria-labelledby={`faq-${item.id}`}
+        // Cerrada, la respuesta sigue en el DOM para la animación: `inert` la
+        // saca del foco y de los lectores de pantalla mientras no se ve.
+        inert={!isOpen}
         className={cn(
           "grid transition-all duration-300 ease-in-out",
           isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
